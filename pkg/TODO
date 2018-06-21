@@ -1,0 +1,24 @@
+### TODO #######################################################################
+
+- Need fitnvmix(): check what other packages do:
+- pnvmix(): should work with d = 1 and with missing data
+- rename 'a' and 'b' to 'lower' and 'upper'; 'nu' to 'df'
+  => first arg should be 'upper' with default lower being '-Inf,...'
+- R should be 'scale' and we need a 'standardized = FALSE' argument;
+  if standardized = TRUE, loc = 0 and sigma = correlation matrix is assumed
+  ... or so)
+- 'swap' needs to be improved
+- 'func' not needed if 'base case' in pnvmix() is part of the loop
+  (only one call necessary then, so can be omitted)
+- more intuitive names for arguments concerning tolerance(s)
+
+
+### Misc #######################################################################
+
+- Other *multivariate t* packages (2018-06-21):
+  + monomvn (estimation under monotone pattern missing data; MLE & Bayesian)
+  + mvnfast (no pnvmix(), simulation, density, Mahalanobis distances)
+  + tmvtnorm (has ptmvt(), based on Gibbs sampler; see http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.26.6892)
+  + MVT (studentFit(); for fixed nu (= eta here), estimates location and scale; paper mentions EM Algorithm)
+  + mvtnorm (clear; no fitting, no non-integer dof, qmvt() [equicoordinate quantile function])
+  + QRM (fit.mst())

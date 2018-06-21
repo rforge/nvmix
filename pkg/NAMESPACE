@@ -1,0 +1,15 @@
+useDynLib(nvmix, .registration = TRUE)
+
+
+### Imports ####################################################################
+
+importFrom("stats",
+           "rnorm", "pt", "qt", "rgamma",
+           "sd")
+importFrom("qrng", "sobol")
+
+
+### Exports ####################################################################
+
+export("dnvmix", "pnvmix", "rnvmix")
+export("factorize")
