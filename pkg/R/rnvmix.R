@@ -21,9 +21,13 @@
 ##'        mixing distributions when 'mix' is a 'character' string
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Marius Hofert
-##' @note For the Student t distribution, W ~ df/rchisq(n, df = df) but
-##'       rchisq() simply calls rgamma(); see ./src/nmath/rchisq.c
-##'       => W ~ 1/rgamma(n, shape = df/2, rate = df/2)
+##' @note - For the Student t distribution, W ~ df/rchisq(n, df = df) but
+##'         rchisq() simply calls rgamma(); see ./src/nmath/rchisq.c
+##'         => W ~ 1/rgamma(n, shape = df/2, rate = df/2)
+##'       - For a generalized inverse Gaussian distribution one could use:
+##'         + "Runuran": faster if n large and parameters fixed; based on density
+##'         + "GIGrvg":  faster if n small and often called with several parameters
+##'         see examples of 'GIGrvg' for both methods
 rnvmix <- function(n, mix, loc = rep(0, d), scale, factor = factorize(scale), ...)
 {
     ## Checks
