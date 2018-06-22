@@ -36,34 +36,34 @@ rnvmix <- function(n, mix, loc = rep(0, d), scale, factor = factorize(scale), ..
     ## Generate W (do that first, so that results are reproducible when user
     ## provides realizations of W; see examples on ?rnvmix)
     W <- if(is.character(mix)) { # 'mix' is a character vector specifying supported mixture distributions (utilizing '...')
-        mix <- match.arg(mix, choices = c("constant", "inverse.gamma"))
-        switch(mix,
-        "constant" = {
-            rep(1, n)
-        },
-        "inverse.gamma" = {
-            if(hasArg(df)) df <- list(...)$df else stop("'mix = \"inverse.gamma\"' requires 'df' to be provided.")
-            ## Still allow df = Inf (normal distribution)
-            stopifnot(is.numeric(df), length(df) == 1, df > 0)
-            if(is.finite(df)) {
-                df2 <- df/2
-                1 / rgamma(n, shape = df2, rate = df2)
-            } else {
-                rep(1, n)
-            }
-        },
-        stop("Currently unsupported 'mix'"))
-    } else if(is.list(mix)) { # 'mix' is a list of the form (<character string>, <parameters>)
-        stopifnot(length(mix) >= 1, is.character(distr <- mix[[1]]))
-        rmix <- paste0("r", distr)
-        if(!existsFunction(rmix))
-            stop("No function named '", rmix, "'.")
-        do.call(rmix, c(n, mix[-1]))
-    } else if(is.function(mix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
-        mix(runif(n))
-    } else if(is.numeric(mix) && length(mix) == n && all(mix >= 0)) { # 'mix' is the vector of realizations of W
-        mix
-    } else stop("'mix' must be a character string, list, quantile function or n-vector of non-negative random variates.")
+             mix <- match.arg(mix, choices = c("constant", "inverse.gamma"))
+             switch(mix,
+                    "constant" = {
+                        rep(1, n)
+                    },
+                    "inverse.gamma" = {
+                        if(hasArg(df)) df <- list(...)$df else stop("'mix = \"inverse.gamma\"' requires 'df' to be provided.")
+                        ## Still allow df = Inf (normal distribution)
+                        stopifnot(is.numeric(df), length(df) == 1, df > 0)
+                        if(is.finite(df)) {
+                            df2 <- df/2
+                            1 / rgamma(n, shape = df2, rate = df2)
+                        } else {
+                            rep(1, n)
+                        }
+                    },
+                    stop("Currently unsupported 'mix'"))
+         } else if(is.list(mix)) { # 'mix' is a list of the form (<character string>, <parameters>)
+             stopifnot(length(mix) >= 1, is.character(distr <- mix[[1]]))
+             rmix <- paste0("r", distr)
+             if(!existsFunction(rmix))
+                 stop("No function named '", rmix, "'.")
+             do.call(rmix, c(n, mix[-1]))
+         } else if(is.function(mix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
+             mix(runif(n))
+         } else if(is.numeric(mix) && length(mix) == n && all(mix >= 0)) { # 'mix' is the vector of realizations of W
+             mix
+         } else stop("'mix' must be a character string, list, quantile function or n-vector of non-negative random variates.")
     ## Generate Z ~ N(0, I)
     Z <- matrix(rnorm(n * d), ncol = d) # (n, d)-matrix of N(0, 1)
     ## Generate Y ~ N(0, scale)
