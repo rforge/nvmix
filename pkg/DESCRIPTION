@@ -12,7 +12,7 @@ Authors@R: c(person(given = "Marius", family = "Hofert", role = c("aut", "cre"),
 Author: Marius Hofert [aut, cre], Erik Hintz [aut], Christiane Lemieux [aut]
 Maintainer: Marius Hofert <marius.hofert@uwaterloo.ca>
 Depends: R (>= 3.2.0)
-Imports: stats, qrng
+Imports: stats, methods, qrng
 Suggests: knitr, crop
 Enhances:
 License: GPL (>= 3) | file LICENCE

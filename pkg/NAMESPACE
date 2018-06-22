@@ -4,9 +4,12 @@ useDynLib(nvmix, .registration = TRUE)
 ### Imports ####################################################################
 
 importFrom("stats",
-           "rnorm", "pt", "qt", "rgamma",
+           "runif", "rnorm", "pt", "qt", "rgamma",
            "sd")
-importFrom("qrng", "sobol")
+importFrom("methods",
+           "existsFunction", "hasArg")
+importFrom("qrng",
+           "sobol")
 
 
 ### Exports ####################################################################
