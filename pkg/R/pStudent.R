@@ -1,5 +1,4 @@
-### pnvmix() ###################################################################
-### This is currently exactly the same function as pStudent. Will extend it to the general case soon. 
+### pStudent() ###################################################################
 
 ##' @title Re-order Variables According to their Expected Integration Limits
 ##'        (Precondition) for the case of a multivariate t distribution. See [genzbretz2002, p. 957].
@@ -15,7 +14,7 @@
 precond_t <- function(a, b, R, C, q, nu)
 {
   y <- rep(0, q-1)
-  
+
   Rbar <- sqrt(nu) * gamma(nu / 2 ) / ( sqrt(2) * gamma( (nu+1) / 2 ) ) 
   
   ## Find i = argmin_j { <expected length of interval> }
@@ -37,7 +36,7 @@ precond_t <- function(a, b, R, C, q, nu)
   C[2:q,1] <- as.matrix( R[2:q,1] / C[1,1] )
   
   for(j in 2:(q-1)){
-    
+
     denom <- sqrt( diag(R)[j:q] - rowSums( as.matrix( C[j:q,1:(j-1)] )^2 ) )
     c <- as.matrix( C[j:q,1:j-1] ) %*% y[1:(j-1)]
     
@@ -137,9 +136,9 @@ int_pStudent <- function(n, skip, a, b, C, q, df, ONE, ZERO, method){
 ##'         - "ghalton" for a generalized Halton sequence.
 ##'         - "prng" for a pure Monte Carlo approach. 
 ##' @author Erik Hintz
-pnvmix <- function(upper, lower = rep(-Inf, length(upper)), scale, df, gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^5, precond = TRUE, method = "sobol")
+pStudent <- function(upper, lower = rep(-Inf, length(upper)), scale, df, gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^5, precond = TRUE, method = "sobol")
 {
-  
+
   if(!is.matrix(scale)) scale <- as.matrix(scale)
   q <- dim(scale)[1] # dimension of the problem
   
@@ -206,7 +205,7 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), scale, df, gam = 3.3
       T.[l] <- ( T.[l] + int_pStudent(n = n., skip = n.,  a = lower, b = upper, C = C, q = q, df = df, ONE = ONE, ZERO = ZERO, method = method) )/2
       # note that T.[l] and int_pStudent(...) both depend on n. evaluations; hence we can just average them
     }
-    
+
     N. <- N. + 2 * N * n. # update number of function evaluations. 
     n. <- 2 * n.
     sig <- sd(T.)
@@ -217,4 +216,7 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), scale, df, gam = 3.3
   var <- (sig/sqrt(N))^2
   list(Prob = T, N = N., i = i., ErrEst = err, Var = var)
 }
+
+
+
 

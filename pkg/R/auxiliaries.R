@@ -40,6 +40,7 @@ factorize <- function(x, method = c("chol", "chol.pivot", "eigen", "svd"),
     stop("Wrong 'method'"))
 }
 
+
 ##' @title Swap Variables i and j in a, b and R
 ##' @param a vector
 ##' @param b vector

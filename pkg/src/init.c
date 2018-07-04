@@ -5,16 +5,14 @@
 #include <Rinternals.h>
 #include <R_ext/Rdynload.h>
 
-#include "evalf.h"
-#include "evalfbonly.h"
+#include "eval_int_t.h"
 
 static const R_CallMethodDef callMethods[] = {
-	{"evalf_",      (DL_FUNC) &evalf_, 9},
-	{"evalfbonly_", (DL_FUNC) &evalfbonly_, 8},
+	{"eval_int_t_", (DL_FUNC) &eval_int_t_, 9},
 	{NULL, NULL, 0}
 };
 
-void R_init_student(DllInfo *dll)
+void R_init_nvmix(DllInfo *dll)
 {
 	R_useDynamicSymbols(dll, FALSE);
 	R_registerRoutines(dll, NULL, callMethods, NULL, NULL); /* s. WRE (2015, Section 5.4) */

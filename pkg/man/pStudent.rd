@@ -1,12 +1,12 @@
-\name{pnvmix}
-\alias{pnvmix}
-\title{Distribution Function of Multivariate Normal Variance Mixtures}
+\name{pStudent}
+\alias{pStudent}
+\title{Distribution Function of the Multivariate t Distribution}
 \description{
   Evaluating multivariate normal variance mixture distribution functions
   (including normal and Student \emph{t} for non-integer degrees of freedom).
 }
 \usage{
-pnvmix(upper, lower = rep(-Inf, length(upper)), scale, df, gam = 3.3, abserr = 0.001, 
+pStudent(upper, lower = rep(-Inf, length(upper)), scale, df, gam = 3.3, abserr = 0.001, 
        Nmax = 1e8, N = 12, n_init = 2^5, precond = TRUE, method = "sobol")
 }
 \arguments{
@@ -57,7 +57,7 @@ P <- cov2cor(A \%*\% t(A))
 ## Evaluate t_{3.5} distribution function
 a <- runif(d) * sqrt(d) * (-3) # random lower limit
 b <- runif(d) * sqrt(d) * 3 # random upper limit
-pt <- pnvmix(upper = b, lower = a, scale = P, df = 3.5)
+pt <- pStudent(upper = b, lower = a, scale = P, df = 3.5)
 stopifnot(all.equal(pt$Prob, 0.8061, tol = 5e-4))
 }
 \keyword{distribution}
