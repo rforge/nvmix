@@ -30,12 +30,14 @@ factorize <- function(x, method = c("chol", "chol.pivot", "eigen", "svd"),
         R[, order(attr(R, "pivot"))] # t(L) for L the Cholesky factor; upper triangular
     },
     "eigen" = { # eigendecomposition; in general not upper triangular
-        ev <- eigen(x, symmetric = TRUE, ...)
+        ev <- eigen(x, ...) # uses 'isSymmetric()' to determine whether symmetric
+        ## Note: eigen() *normalizes* the eigenvectors to unit length
+        ##       (only then Q^{-1} = Q^T and thus AA\T = Sigma for A = Q\Lambda^{1/2})
         t(ev$vectors %*% (t(ev$vectors) * sqrt(pmax(ev$values, 0))))
     },
     "svd" = { # singular-value decomposition; in general not upper triangular
         sv <- svd(x, ...)
-        t(sv$v %*% (t(sv$u) * sqrt(pmax(sv$d, 0))))
+        sv$u %*% sqrt(diag(pmax(sv$d, 0))) %*% t(sv$v) # or t(sv$v %*% (t(sv$u) * sqrt(pmax(sv$d, 0))))
     },
     stop("Wrong 'method'"))
 }
