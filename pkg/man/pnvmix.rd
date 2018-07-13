@@ -6,14 +6,46 @@
   (including normal and Student \emph{t} for non-integer degrees of freedom).
 }
 \usage{
-pnvmix(upper, lower = rep(-Inf, length(upper)), scale, df, gam = 3.3, abserr = 0.001, 
-       Nmax = 1e8, N = 12, n_init = 2^5, precond = TRUE, method = "sobol")
+pnvmix(upper, lower = rep(-Inf, length(upper)), shift = rep(0, length(upper)), 
+      scale, mix, meansqrtmix = NA, standardized = FALSE, gam = 3.3, abserr = 0.001, 
+      Nmax = 1e8, N = 12, n_init = 2^5, precond = TRUE, method = "sobol", ...) 
 }
 \arguments{
   \item{upper}{vector of length \eqn{d}.}
   \item{lower}{vector of length \eqn{d}.}
+  \item{shift}{shift vector of length \eqn{d}. If \code{mix} has a mean, this is the mean of the normal variance mixture distribution.}
   \item{scale}{positive definite \eqn{(d,d)}-covariance matrix.}
-  \item{df}{degress of freedom (positive real or Inf in which case the cdf of a N(0, scale) is returned.}
+    \item{mix}{specification of the mixing variable \eqn{W}; see McNeil et
+    al. (2015). Supported are the following types of specification (see
+    also the examples below):
+    \describe{
+      \item{\code{\link{character}}:}{a \code{\link{character}} string
+	specifying a supported distribution; currently available are
+        \code{"constant"} (in which case \eqn{W = 1} and thus the cdf of
+        the multivariate normal distribution with mean vector
+	 \code{loc} and covariance matrix \code{scale} results) and
+	 \code{"inverse.gamma"} (in which case \eqn{W} is an inverse gamma distribution with shape and rate parameters
+	 \code{df}/2 resulting in the cdf the multivariate
+	 Student \emph{t} distribution with degrees of freedom
+	 \code{df}; note that \code{df} needs to be provided via
+	 the ellipsis argument then; see the examples below).}
+      \item{\code{\link{list}}:}{a \code{\link{list}} of length at least
+	one, where the first component is a \code{\link{character}}
+	string specifying the base name of a distribution which has a quantile function
+	accessible via prefix \code{"q"}; an example is \code{"exp"}
+        for which \code{"qexp"} exists. If the list is
+        of length larger than one, the remaining elements contain
+        additional parameters of the distribution; for \code{"exp"},
+        this can be the parameter \code{rate}.}
+      \item{\code{\link{function}}:}{a \code{\link{function}}
+	interpreted as the quantile function of the mixing
+	variable \eqn{W}; internally, sampling is then done with the
+	inversion method by applying this function to U(0,1) random variates.}
+    }
+  }
+  \item{meansqrtmix}{Mean of \code{sqrt(W)}, where \eqn{W} is the mixing variable. If not provided, it will be estimated. This is only needed for reordering, hence a rather 
+  crude approximation is fine.}
+  \item{standardized}{\code{logical}. If \code{TRUE}, \code{scale} is assumed to be a correlation matrix; if \code{FALSE} (default), lower, upper and scale will be normalized.}
   \item{abserr}{numeric and non-negative. Absolute precision required. If abserr = 0, algorithm will run 
         until total number of function evaluations exceeds Nmax (see also Nmax).}
   \item{gam}{Monte Carlo confidence multiplier. Algorithm runs until  \eqn{estimated standard error < gam * abserr}. 
@@ -27,9 +59,12 @@ pnvmix(upper, lower = rep(-Inf, length(upper)), scale, df, gam = 3.3, abserr = 0
   \item{precond}{\code{\link{logical}} indicating if preconditioning
     is applied, that is, reordering the variables.}
   \item{method}{Character string indicating method to be used. Allowed are "sobol", "ghalton" and "prng".}
+  \item{\dots}{additional arguments containing parameters of
+    mixing distributions when \code{mix} is a \code{\link{character}}
+    string.}
 }
 \value{
-  \code{pStudent()} returns a list of length five, containing the
+  \code{pnvmix()} returns a list of length five, containing the
   the estimated probabilities, the number of iterations, the total
   number of function evaluations, an error estimate and the estimated variance of the randomized Quasi Monte Carlo estimator. 
 }
@@ -57,7 +92,5 @@ P <- cov2cor(A \%*\% t(A))
 ## Evaluate t_{3.5} distribution function
 a <- runif(d) * sqrt(d) * (-3) # random lower limit
 b <- runif(d) * sqrt(d) * 3 # random upper limit
-pt <- pnvmix(upper = b, lower = a, scale = P, df = 3.5)
-stopifnot(all.equal(pt$Prob, 0.8061, tol = 5e-4))
 }
 \keyword{distribution}

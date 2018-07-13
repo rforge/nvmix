@@ -6,12 +6,13 @@
 #include <R_ext/Rdynload.h>
 
 #include "eval_int_t.h"
-
 #include "eval_int_normal.h"
+#include "eval_int_mix.h"
 
 static const R_CallMethodDef callMethods[] = {
 	{"eval_int_t_", (DL_FUNC) &eval_int_t_, 9},
     {"eval_int_normal_", (DL_FUNC) &eval_int_normal_, 8},
+    {"eval_int_mix_", (DL_FUNC) &eval_int_normal_, 8},
 	{NULL, NULL, 0}
 };
 

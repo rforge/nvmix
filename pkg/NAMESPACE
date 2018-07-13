@@ -4,7 +4,7 @@ useDynLib(nvmix, .registration = TRUE)
 
 importFrom("stats",
            "runif", "rnorm", "pt", "qt", "rgamma", "pnorm", 
-           "sd", qchisq, "qnorm", "dnorm")
+           "sd", qchisq, "qnorm", "dnorm", "qgamma")
 importFrom("methods",
            "existsFunction", "hasArg")
 importFrom("qrng",
