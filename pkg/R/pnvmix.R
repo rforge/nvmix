@@ -44,7 +44,7 @@ precond <- function(a, b, R, C, q, meansqrtmix)
     
     if(i != j){
       ## Swap i and j
-      tmp <- swap(a = a, b = b,R = R,i = i, j =j)
+      tmp <- swap(a = a, b = b, R = R, i = i, j =j)
       a <- tmp$a
       b <- tmp$b
       R <- tmp$R
@@ -106,48 +106,51 @@ precond <- function(a, b, R, C, q, meansqrtmix)
 ##'         - "prng" for a pure Monte Carlo approach. 
 ##' @author Erik Hintz
 pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, length(upper)), scale, mix, meansqrtmix = NA, standardized = FALSE, 
-                     gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^5, precond = TRUE, method = "sobol", ... )
+                     gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^5, precond = TRUE, method = "sobol", checkArgs = TRUE, ... )
 {
   
-  if(!is.matrix(scale)) scale <- as.matrix(scale)
-  q <- dim(scale)[1] # dimension of the problem
-  
-  ## Checks
-  if( method != "sobol" && method != "ghalton" && method != "prng") stop("Only sobol, ghalton and prng are allowed as methods")
-  if( length(lower) != length(upper) ) stop("Lenghts of lower and upper differ")
-  if( any(lower > upper) ) stop("lower needs to be smaller than upper (componentwise)")
-  if( q != length(lower) ) stop("Dimension of scale does not match dimension of lower")
-  if( q != length(shift) ) stop("Dimension of shift does not match dimension of scale")
-  
-  ## Find infinite limits
-  infina  <-  (lower == -Inf)
-  infinb  <-  (upper == Inf)
-  infinab <-  infina * infinb
-  
-  ## Remove double infinities
-  if( sum(infinab) >0 )
-  {
-    whichdoubleinf <- which( infinab == TRUE)
-    lower <- lower[ -whichdoubleinf ]
-    lower <- lower[ -whichdoubleinf ]
-    scale <- scale[ -whichdoubleinf, -whichdoubleinf ]
-    ## Update dimension
-    q <- dim(scale)[1]
+  if(!checkArgs){
+    if(!is.matrix(scale)) scale <- as.matrix(scale)
+    q <- dim(scale)[1] # dimension of the problem
+    
+    ## Checks
+    if( method != "sobol" && method != "ghalton" && method != "prng") stop("Only sobol, ghalton and prng are allowed as methods")
+    if( length(lower) != length(upper) ) stop("Lenghts of lower and upper differ")
+    if( any(lower >= upper) ) stop("lower needs to be smaller than upper (componentwise)")
+    if( q != length(lower) ) stop("Dimension of scale does not match dimension of lower")
+    if( q != length(shift) ) stop("Dimension of shift does not match dimension of scale")
+    
+    ## Find infinite limits
+    infina  <-  (lower == -Inf)
+    infinb  <-  (upper == Inf)
+    infinab <-  infina * infinb
+    
+    ## Remove double infinities
+    if( sum(infinab) >0 )
+    {
+      whichdoubleinf <- which( infinab == TRUE)
+      lower <- lower[ -whichdoubleinf ]
+      upper <- upper[ -whichdoubleinf ]
+      scale <- scale[ -whichdoubleinf, -whichdoubleinf ]
+      ## Update dimension
+      q <- dim(scale)[1]
+    }
+    
+    ## Subtract shift if necessary: 
+    if(any(shift != 0)){
+      lower <- lower - shift
+      upper <- upper - shift
+    }
+    
+    ## Standardize if necessary:
+    if(!standardized){
+      Dinv <- diag(1/sqrt(diag(scale)))
+      scale <- Dinv %*% scale %*% Dinv
+      lower <- as.vector(Dinv %*% lower)
+      upper <- as.vector(Dinv %*% upper)
+    }
   }
   
-  ## Subtract shift if necessary: 
-  if(any(shift != 0)){
-    lower <- lower - shift
-    upper <- upper - shift
-  }
-  
-  ## Standardize if necessary:
-  if(!standardized){
-    Dinv <- diag(1/sqrt(diag(scale)))
-    scale <- Dinv %*% scale %*% Dinv
-    lower <- as.vector(Dinv %*% lower)
-    upper <- as.vector(Dinv %*% upper)
-  }
   
   const <- FALSE
   
@@ -168,7 +171,7 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
                df2 <- df / 2
                meansqrtmix <- sqrt(df) * gamma(df2) / ( sqrt(2) * gamma( (df+1) / 2 ) ) # mean of sqrt(W) in this case, will be used for preconditioning
                function(u){
-                 return(df / qchisq(u, df = df))
+                 return(1 / qgamma(u, shape = df2, rate = df2))
                }
              } else {
                const <- TRUE
@@ -210,7 +213,7 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
     temp <- precond(a = lower, b = upper, R = scale, C = C, q = q, meansqrtmix = meansqrtmix)
     lower <- temp$a
     upper <- temp$b
-    C <- temp$C
+    scale <- temp$R
   }
   
   gam <- gam / sqrt(N) # instead of dividing sigma by sqrt(N) each time
@@ -240,24 +243,27 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
       ## Get the pointset
       ## If const = TRUE, we only need q - 1 (quasi) random numbers
       if(const){
-        U <- switch(method,
-                    "sobol"   = {
-                      qrng::sobol(n = n., d = q - 1, randomize = TRUE, skip = useskip * n.)
-                    },
-                    "gHalton" = {
-                      qrng::ghalton(n = n., d = q - 1, method = "generalized")
-                    },
-                    "prng"    = {
-                      matrix(runif( n. * (q - 1)), ncol = q - 1)
-                    })
-        
-        ## First and last column contain 1s corresponding to simulated values from sqrt(mix) 
-        U <- cbind( rep(1, n.), U, rep(1, n.))
-        
+        if(q > 1){
+          U <- switch(method,
+                      "sobol"   = {
+                        qrng::sobol(n = n., d = q - 1, randomize = TRUE, skip = (useskip * n.))
+                      },
+                      "gHalton" = {
+                        qrng::ghalton(n = n., d = q - 1, method = "generalized")
+                      },
+                      "prng"    = {
+                        matrix(runif( n. * (q - 1)), ncol = q - 1)
+                      })
+          
+          ## First and last column contain 1s corresponding to simulated values from sqrt(mix) 
+          U <- cbind( rep(1, n.), U, rep(1, n.))
+        } else {
+          U <- cbind( rep(1, n.), rep(1, n.) )
+        }
       } else {
         U <- switch(method,
                     "sobol"   = {
-                      qrng::sobol(n = n., d = q, randomize = TRUE, skip = useskip * n.)
+                      qrng::sobol(n = n., d = q, randomize = TRUE, skip = (useskip * n.))
                     },
                     "gHalton" = {
                       qrng::ghalton(n = n., d = q, method = "generalized")
@@ -266,12 +272,15 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
                       matrix(runif( n. * q), ncol = q)
                     })
         
-        ## Transform first column to samples from sqrt(mix)
-        U[,1] <- sqrt( W(U[, 1]) )
-        
-        ## add another column at the end which will contain the antithetic value from mix:
-        U <- cbind(U, sqrt( W( 1 - U[, 1]) ))
+        ## Case q = 1 somewhat special again:
+        if( q == 1){
+          U <- cbind( sqrt( W(U) ), sqrt( W( 1 - U) ))
+        } else {
+          ## Column 1: sqrt(mix), Columns 2 - q: unchanged, column q+1: anitithetic realization of sqrt(mix)
+          U <- cbind(sqrt( W(U[, 1]) ), U[,2:q], sqrt( W( 1 - U[, 1]) ))
+        }
       }
+    
       
       ## Evaluate the integrand at the point-set and save it in T[] (calls C Code).
       ## Both, T.[l] and the new estimate are based on n. evaluations, so we can just average them unless we are in the first iteration.
@@ -298,14 +307,17 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
     } # end for(l in 1:N)
     
     ## Change denom and useksip. This is done exactly once, namely in the first iteration. 
-    if(denom == 1 && useskip == 0){
+    if(i. == 0){
       denom <- 2
       useskip <- 1
+      ## Increase sample size n. This is done in all iterations except for the first two. 
+    } else {
+      n. <- 2 * n.
     }
     
     sig <- sd(T.) # get standard deviation of the estimator 
     err <- gam * sig # update error. Note that this gam is actually gamma/sqrt(N)
-    N. <- 2 * N * n. # update the total number of function evaluations; mutliplied by 2 since antithetic variates are being used in eval_int_t_ 
+    N. <- N. + 2 * N * n. # update the total number of function evaluations; mutliplied by 2 since antithetic variates are being used in eval_int_t_ 
     i. <- i. + 1 # update counter
   }
   

@@ -30,27 +30,26 @@
 double eval_int_mix(int n, int q, double *U, double *a, double *b, double *C, double ONE, double ZERO)
 {
     double y[q-1], sqrtmix, d, f, cone, diff;
-	/* the following variables (ending in -a) are used to store the corresponding antithetic values */
+	/* The following variables (ending in "a") are used to store the corresponding antithetic values */
     double ya[q-1], sqrtmixa, da, fa, conea, diffa;
     
     double tmp;
 	double mean = 0;
 	int i, j, l;
 
-	/* now that .Call is being used, U and C are vectors. To access their elements, we use the rule
+	/* To access a matrix element, use the rule
 	   U[s,k] = U[k*numrows+s] */
 
-	/* note that in C, the first index of a vector is 0 (as opposed to 1 in R) */
-
-	/* for each row of U */
+	/* For each row of U */
 	for(j=0; j < n; j++){
         
-        /* grab the realization of sqrt(mix) */
+        /* Grab the realizations of sqrt(mix) */
         sqrtmix = U[j];
         sqrtmixa = U[q*n+j];
         
-		/* initialize d,f */
-        /* check if entry of a is -Inf (see note above) */
+
+		/* Initialize d,f */
+        /* Check if entry of a is -Inf (see note above) */
         if(a[0] == R_NegInf){
             d  = 0;
             da = 0;
@@ -58,7 +57,7 @@ double eval_int_mix(int n, int q, double *U, double *a, double *b, double *C, do
             d  = pnorm( a[0] / (C[0] * sqrtmix), 0, 1, 1, 0);
             da = pnorm( a[0] / (C[0] * sqrtmixa), 0, 1, 1, 0);
         }
-        /* check if entry of b is +Inf (see note above) */
+        /* Check if entry of b is +Inf (see note above) */
         if(b[0]==R_PosInf){
             diff  = 1 - d;
             diffa = 1 - da;
@@ -70,14 +69,14 @@ double eval_int_mix(int n, int q, double *U, double *a, double *b, double *C, do
         f = diff;
         fa = diffa;
         
-		/* and then go through all columns except for first and last, so q-1 in total */
-        /* for better readability, we start at i = 0 */
+		/* Go through all columns except for first and last, so q-1 in total */
+        /* For better readability, we start at i = 0 */
 		for(i=0; i< q-1; i++){
 
 			/* U[i*n+j] corresponds to U[j,i] in the orginal matrix */
 			tmp = d + U[(i+1)*n+j] * diff;
 
-			/* check if too close to 1 or 0 */
+			/* Check if too close to 1 or 0 */
 			if(tmp > ONE){
 				tmp = ONE;
 			}
@@ -86,7 +85,7 @@ double eval_int_mix(int n, int q, double *U, double *a, double *b, double *C, do
 			}
 			y[i] = qnorm(tmp, 0, 1, 1, 0);
 
-			/* now the same for the antithetic value */
+			/* Now the same for the antithetic value */
 			tmp = da+ (1-U[(i+1)*n+j]) * diffa;
 
 			if(tmp > ONE){
@@ -99,7 +98,7 @@ double eval_int_mix(int n, int q, double *U, double *a, double *b, double *C, do
             
         
 
-			/* calculate the scalar product sum C[i,j]y[j] for j=1 to (i-1) */
+			/* Calculate the scalar product sum C[i,j]y[j] for j=1 to (i-1) */
 			cone  = 0;
 			conea = 0;
 
@@ -109,7 +108,7 @@ double eval_int_mix(int n, int q, double *U, double *a, double *b, double *C, do
 				conea += ya[l] * C[l*q+i+1];
 			}
             
-            /* calculate new d and diff = e-d. */
+            /* Calculate new d and diff = e-d. */
             if(a[i+1] == R_NegInf){
                 d  = 0;
                 da = 0;

@@ -70,3 +70,5 @@ swap <- function(a, b, R, i, j)
     ## Return
     list(a = a, b = b, R = R)
 }
+
+
