@@ -1,5 +1,4 @@
 ### pnvmix() ###################################################################
-### NOTE: There are some issues that have not been taken care of yet.
 
 ##' @title Re-order Variables According to their Expected Integration Limits
 ##'        (Precondition) for the case of a multivariate t distribution. See [genzbretz2002, p. 957].
@@ -14,7 +13,7 @@
 
 precond <- function(a, b, R, C, q, meansqrtmix)
 {
-  y <- rep(0, q-1)
+  y <- rep(0, q - 1)
   
   ## Find i = argmin_j { <expected length of interval> }
   i <- which.min( apply( pnorm( cbind(a, b) / (meansqrtmix * sqrt(diag(R)) ) ), 1, diff) )
@@ -31,39 +30,39 @@ precond <- function(a, b, R, C, q, meansqrtmix)
   y[1] <- - ( dnorm(b[1]/meansqrtmix) - dnorm(a[1]/meansqrtmix)) / (pnorm(b[1]/meansqrtmix) - pnorm(a[1]/meansqrtmix))
   
   ## Update Cholesky
-  C[1,1] <- sqrt( R[1,1] )
-  C[2:q,1] <- as.matrix( R[2:q,1] / C[1,1] )
+  C[1, 1] <- sqrt( R[1, 1] )
+  C[2:q, 1] <- as.matrix( R[2:q, 1] / C[1, 1] )
   
   for(j in 2:(q-1)){
     
-    denom <- sqrt( diag(R)[j:q] - rowSums( as.matrix( C[j:q,1:(j-1)] )^2 ) )
-    c <- as.matrix( C[j:q,1:j-1] ) %*% y[1:(j-1)]
+    denom <- sqrt( diag(R)[j:q] - rowSums( as.matrix( C[j:q, 1:(j-1)] )^2 ) )
+    c <- as.matrix( C[j:q, 1:j-1] ) %*% y[1:(j-1)]
     
     # Find i = argmin { <expected length of interval j> }
-    i <- which.min( pnorm( (b[j:q]/meansqrtmix - c) / denom ) - pnorm( (a[j:q]/meansqrtmix - c) / denom ) ) + j - 1
+    i <- which.min( pnorm( (b[j:q] / meansqrtmix - c) / denom ) - pnorm( (a[j:q] / meansqrtmix - c) / denom ) ) + j - 1
     
     if(i != j){
       ## Swap i and j
-      tmp <- swap(a = a, b = b, R = R, i = i, j =j)
+      tmp <- swap(a = a, b = b, R = R, i = i, j = j)
       a <- tmp$a
       b <- tmp$b
       R <- tmp$R
       
-      C[c(i,j),]    <- as.matrix(C[c(j,i),])
-      C[j, (j+1):i] <- as.matrix(0, ncol = i-j, nrow = 1)
+      C[c(i,j), ]    <- as.matrix(C[c(j,i), ])
+      C[j, (j+1):i] <- as.matrix(0, ncol = i - j, nrow = 1)
     }
     
     ## Update Cholesky
-    C[j,j] <- sqrt(R[j,j] - sum( C[j,1:(j-1)]^2 ) )
-    if(j< (q-1)) C[(j+1):q,j] <- ( R[(j+1):q,j] - as.matrix( C[(j+1):q,1:(j-1)] ) %*% C[j,1:(j-1)] ) / C[j,j]
-    else C[(j+1):q,j] <- ( R[(j+1):q,j] - C[(j+1):q,1:(j-1)] %*% C[j,1:(j-1)] ) / C[j,j]
+    C[j,j] <- sqrt(R[j,j] - sum( C[j, 1:(j-1)]^2 ) )
+    if(j< (q-1)) C[(j+1):q, j] <- ( R[(j+1):q, j] - as.matrix( C[(j+1):q, 1:(j-1)] ) %*% C[j, 1:(j-1)] ) / C[j, j]
+    else C[(j+1):q, j] <- ( R[(j+1):q, j] - C[(j+1):q, 1:(j-1)] %*% C[j, 1:(j-1)] ) / C[j, j]
     
     ## Get yj
-    ajbj <-  c( (a[j] / meansqrtmix - C[j,1:(j-1)] %*% y[1:(j-1)] ) , (b[j] / meansqrtmix - C[j,1:(j-1)] %*% y[1:(j-1)]) ) / C[j,j]
+    ajbj <-  c( (a[j] / meansqrtmix - C[j, 1:(j-1)] %*% y[1:(j-1)] ) , (b[j] / meansqrtmix - C[j, 1:(j-1)] %*% y[1:(j-1)]) ) / C[j,j]
     y[j] <- ( dnorm(ajbj[1]) - dnorm(ajbj[2]) ) / ( pnorm(ajbj[2]) - pnorm(ajbj[1]) )
   }
   
-  C[q,q] <- sqrt(R[q,q] - sum(C[q,1:(q-1)]^2))
+  C[q,q] <- sqrt(R[q, q] - sum(C[q, 1:(q-1)]^2))
   list(a = a, b = b, R = R, C = C)
 }
 
@@ -106,54 +105,59 @@ precond <- function(a, b, R, C, q, meansqrtmix)
 ##'         - "prng" for a pure Monte Carlo approach. 
 ##' @author Erik Hintz
 pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, length(upper)), scale, mix, meansqrtmix = NA, standardized = FALSE, 
-                     gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^5, precond = TRUE, method = "sobol", checkArgs = TRUE, ... )
+                     gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^5, precond = TRUE, method = "sobol", ... )
 {
   
-  if(!checkArgs){
+
+  if(!is.matrix(scale)) scale <- as.matrix(scale)
+  q <- dim(scale)[1] # dimension of the problem
+  
+  ## Checks
+  if( method != "sobol" && method != "ghalton" && method != "prng") stop("Only sobol, ghalton and prng are allowed as methods")
+  if( length(lower) != length(upper) ) stop("Lenghts of lower and upper differ")
+  if( any(lower >= upper) ) stop("lower needs to be smaller than upper (componentwise)")
+  if( q != length(lower) ) stop("Dimension of scale does not match dimension of lower")
+  if( q != length(shift) ) stop("Dimension of shift does not match dimension of scale")
+  
+  ## Find infinite limits
+  infina  <-  (lower == -Inf)
+  infinb  <-  (upper == Inf)
+  infinab <-  infina * infinb
+  
+  ## Remove double infinities
+  if( sum(infinab) > 0 )
+  {
+    whichdoubleinf <- which( infinab == TRUE)
+    lower <- lower[ -whichdoubleinf ]
+    upper <- upper[ -whichdoubleinf ]
+    scale <- scale[ -whichdoubleinf, -whichdoubleinf ]
+    
+    ## If all but one element is deleted, still want scale to be a matrix
     if(!is.matrix(scale)) scale <- as.matrix(scale)
-    q <- dim(scale)[1] # dimension of the problem
     
-    ## Checks
-    if( method != "sobol" && method != "ghalton" && method != "prng") stop("Only sobol, ghalton and prng are allowed as methods")
-    if( length(lower) != length(upper) ) stop("Lenghts of lower and upper differ")
-    if( any(lower >= upper) ) stop("lower needs to be smaller than upper (componentwise)")
-    if( q != length(lower) ) stop("Dimension of scale does not match dimension of lower")
-    if( q != length(shift) ) stop("Dimension of shift does not match dimension of scale")
-    
-    ## Find infinite limits
-    infina  <-  (lower == -Inf)
-    infinb  <-  (upper == Inf)
-    infinab <-  infina * infinb
-    
-    ## Remove double infinities
-    if( sum(infinab) >0 )
-    {
-      whichdoubleinf <- which( infinab == TRUE)
-      lower <- lower[ -whichdoubleinf ]
-      upper <- upper[ -whichdoubleinf ]
-      scale <- scale[ -whichdoubleinf, -whichdoubleinf ]
-      ## Update dimension
-      q <- dim(scale)[1]
-    }
-    
-    ## Subtract shift if necessary: 
-    if(any(shift != 0)){
-      lower <- lower - shift
-      upper <- upper - shift
-    }
-    
-    ## Standardize if necessary:
-    if(!standardized){
-      Dinv <- diag(1/sqrt(diag(scale)))
-      scale <- Dinv %*% scale %*% Dinv
-      lower <- as.vector(Dinv %*% lower)
-      upper <- as.vector(Dinv %*% upper)
-    }
+    ## Update dimension
+    q <- dim(scale)[1]
   }
   
+  ## Subtract shift if necessary: 
+  if(any(shift != 0)){
+    lower <- lower - shift
+    upper <- upper - shift
+  }
   
+  ## Standardize if necessary:
+  if(!standardized){
+    Dinv <- diag(1/sqrt(diag(scale)))
+    scale <- Dinv %*% scale %*% Dinv
+    lower <- as.vector(Dinv %*% lower)
+    upper <- as.vector(Dinv %*% upper)
+  }
+  
+  ## Logicals if we are dealing with a multivariate normal or multivariate t
   const <- FALSE
+  inv.gam <- FALSE
   
+  ## Define the quantile function of the mixing variable:
   W <- if(is.character(mix)) { # 'mix' is a character vector specifying supported mixture distributions (utilizing '...')
     mix <- match.arg(mix, choices = c("constant", "inverse.gamma"))
     switch(mix,
@@ -168,6 +172,7 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
              ## Still allow df = Inf (normal distribution)
              stopifnot(is.numeric(df), length(df) == 1, df > 0)
              if(is.finite(df)) {
+               inv.gam <- TRUE
                df2 <- df / 2
                meansqrtmix <- sqrt(df) * gamma(df2) / ( sqrt(2) * gamma( (df+1) / 2 ) ) # mean of sqrt(W) in this case, will be used for preconditioning
                function(u){
@@ -197,23 +202,43 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
   } else stop("'mix' must be a character string, list or quantile function.")
   
   
+  ## If q = 1 and const or mvt is true, we are dealing with a univariate normal or t distribution
+  ## These cases can be dealt with pnorm() and pt()
+  
+  if(q == 1){
+    
+    if(const){
+      
+      Prob <- pnorm(upper) - pnorm(lower)
+      return(list(Prob = Prob, N = 0, i = 0, ErrEst = 0, Var = 0))
+    }
+    
+    if(inv.gam){
+      Prob <- pt(upper, df = df) - pt(lower, df = df)
+      return(list(Prob = Prob, N = 0, i = 0, ErrEst = 0, Var = 0))
+    }
+    
+  }
+  
   ## Get Cholesky factor (lower triangular)
   C <- t(chol(scale))
   
-  ## precondtioning (resorting the limits (cf precond_t); only for q > 2)
+  ## Precondtioning (resorting the limits (cf precond); only for q > 2)
   if(precond && q>2) {
     
     if(is.na(meansqrtmix)){
       ## If meansqrtmix was not supplied, we approximate it
-      meansqrtmix <- mean(sqrt(W(sobol(n = 1000, d = 1))))
+      meansqrtmix <- mean(sqrt(W(qrng::sobol(n = 1000, d = 1))))
+      
     } else if(meansqrtmix <= 0) {
+      
       stop("Meansqrtmix has to be positive.")
     }
     
     temp <- precond(a = lower, b = upper, R = scale, C = C, q = q, meansqrtmix = meansqrtmix)
     lower <- temp$a
     upper <- temp$b
-    scale <- temp$R
+    C <- temp$C
   }
   
   gam <- gam / sqrt(N) # instead of dividing sigma by sqrt(N) each time
@@ -242,25 +267,25 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
       
       ## Get the pointset
       ## If const = TRUE, we only need q - 1 (quasi) random numbers
+      ## The case const = TRUE and q = 1 has already been dealt with 
+      
       if(const){
-        if(q > 1){
-          U <- switch(method,
-                      "sobol"   = {
-                        qrng::sobol(n = n., d = q - 1, randomize = TRUE, skip = (useskip * n.))
-                      },
-                      "gHalton" = {
-                        qrng::ghalton(n = n., d = q - 1, method = "generalized")
-                      },
-                      "prng"    = {
-                        matrix(runif( n. * (q - 1)), ncol = q - 1)
-                      })
-          
-          ## First and last column contain 1s corresponding to simulated values from sqrt(mix) 
-          U <- cbind( rep(1, n.), U, rep(1, n.))
-        } else {
-          U <- cbind( rep(1, n.), rep(1, n.) )
-        }
+        U <- switch(method,
+                    "sobol"   = {
+                      qrng::sobol(n = n., d = q - 1, randomize = TRUE, skip = (useskip * n.))
+                    },
+                    "gHalton" = {
+                      qrng::ghalton(n = n., d = q - 1, method = "generalized")
+                    },
+                    "prng"    = {
+                      matrix(runif( n. * (q - 1)), ncol = q - 1)
+                    })
+        
+        ## First and last column contain 1s corresponding to simulated values from sqrt(mix) 
+        U <- cbind( rep(1, n.), U, rep(1, n.))
+        
       } else {
+        
         U <- switch(method,
                     "sobol"   = {
                       qrng::sobol(n = n., d = q, randomize = TRUE, skip = (useskip * n.))
@@ -273,22 +298,26 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
                     })
         
         ## Case q = 1 somewhat special again:
+        
         if( q == 1){
+          
           U <- cbind( sqrt( W(U) ), sqrt( W( 1 - U) ))
+          
         } else {
-          ## Column 1: sqrt(mix), Columns 2 - q: unchanged, column q+1: anitithetic realization of sqrt(mix)
+          
+          ## Column 1: sqrt(mix), Columns 2 - q: unchanged (still uniforms), Column q + 1: anitithetic realization of sqrt(mix)
+          
           U <- cbind(sqrt( W(U[, 1]) ), U[,2:q], sqrt( W( 1 - U[, 1]) ))
         }
       }
-    
       
       ## Evaluate the integrand at the point-set and save it in T[] (calls C Code).
       ## Both, T.[l] and the new estimate are based on n. evaluations, so we can just average them unless we are in the first iteration.
       ## In this case, denom = 1 and T.[l] = 0.
       
       if(q == 1){
-        
         ## Case of dimension 1 seperate: Here, we do not need to approximate the multivariate normal cdf and can just use pnorm 
+        ## The case of dimension 1 for a normal / t distribution has already been dealt with
         
         T.[l] <- (T.[l] + mean( ( pnorm( upper / U[,1]) - pnorm( lower / U[,1]) + pnorm( upper / U[, q + 1]) - pnorm( lower / U[, q + 1])) / 2) ) / denom
         
@@ -308,11 +337,15 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
     
     ## Change denom and useksip. This is done exactly once, namely in the first iteration. 
     if(i. == 0){
+      
       denom <- 2
       useskip <- 1
-      ## Increase sample size n. This is done in all iterations except for the first two. 
+      
     } else {
+      
+      ## Increase sample size n. This is done in all iterations except for the first two. 
       n. <- 2 * n.
+      
     }
     
     sig <- sd(T.) # get standard deviation of the estimator 

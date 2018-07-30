@@ -36,6 +36,9 @@ pmultinorm(upper, lower = rep(-Inf, length(upper)),mean = rep(0, length(upper)),
   number of function evaluations, an error estimate and the estimated variance of the randomized Quasi Monte Carlo estimator. 
 }
 \details{
+  \code{pmultinorm()} is a user-friendly wrapper and calls \code{pnvmix(..., mix = "constant")}. 
+  In the univariate case, this function calls \code{pnorm()}.
+  
   Note that this procedure calls underlying C code. Currently, the
   dimensions \eqn{d\ge 16510}{d >= 16510} are not supported for the default method sobol.
   
