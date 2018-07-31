@@ -23,6 +23,15 @@
 	DONE
 - incorporate the case of a singular scale matrix
 - consolidate pStudent, pmultinorm, pnvmix into one flexible function; pStudent and pmultinorm should then only be user friendly wrappers to call pnvmix with the corresponding arguments. This will leave us with only one C function and one big R function to maintain - the price to pay is a tiny loss in efficiency, shouldn't be a big deal though
+	DONE
+- look into quantile function of univariate (marginal) normal variance mixtures. If we have a function, say, qnvmix1 (for 1 dimensional normal variance mixtures), we have
+	# a way to sample from univariate normal variance mixtures using inversion, can then be used for quasi- Monte Carlo sampling
+	# everything we need to evaluate "normal variance mixture copulas"
+  Some more thoughts:
+	# pnvmix() does not work for multiple upper/lower, since the preconditioning heavily depends on the input parameters
+	# however, in dimension 1, since we have the function pnorm(), the integration problem is actually one-dimensional. In this case, no reordering needs to be done and we can implement a "vectorized" pnvmix1() (I use 1 to highlight that it works only for dimension 1). Indeed, we only need to sample from the mixture distribution, and then evaluate pnorm() with different upper/lower bounds. We can use common random numbers (i.e. simulate from R, use these simulations for all upper/lower) and evaluate the cdf efficiently at many points
+	# the above point is particularly useful to implement qnvmix1(), since pnvmix1() can evaluate at multiple "upper" at once. 
+	# still, pnvmix1() will only approximate the true cdf, numerically inverting that approximated cdf will inevitably lead to numerical inaccuracies.
 
 
 ### Misc #######################################################################
