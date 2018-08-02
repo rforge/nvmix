@@ -8,7 +8,7 @@
 \usage{
 pmultinorm(upper, lower = rep(-Inf, length(upper)),mean = rep(0, length(upper)), 
        scale, standardized = FALSE, gam = 3.3, abserr = 0.001, Nmax = 1e8, 
-       N = 12, n_init = 2^5, precond = TRUE, method = "sobol")
+       N = 12, n_init = 2^6, precond = TRUE, method = "sobol")
 }
 \arguments{
   \item{upper}{vector of length \eqn{d}.}
@@ -55,7 +55,7 @@ pmultinorm(upper, lower = rep(-Inf, length(upper)),mean = rep(0, length(upper)),
 }
 \examples{
 ## Generate a random correlation matrix in three dimensions
-d <- 3
+d <- 5
 set.seed(271)
 A <- matrix(runif(d * d), ncol = d)
 P <- cov2cor(A \%*\% t(A))
@@ -63,6 +63,6 @@ P <- cov2cor(A \%*\% t(A))
 a <- runif(d) * sqrt(d) * (-3) # random lower limit
 b <- runif(d) * sqrt(d) * 3 # random upper limit
 pn <- pmultinorm(upper = b, lower = a, scale = P)
-stopifnot(all.equal(pn$Prob, 0.8820, tol = 5e-4))
+stopifnot(all.equal(pn$Prob, 0.46884, tol = 5e-4))
 }
 \keyword{distribution}

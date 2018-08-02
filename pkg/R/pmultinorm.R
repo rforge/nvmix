@@ -18,7 +18,7 @@
 ##'         - "ghalton" for a generalized Halton sequence.
 ##'         - "prng" for a pure Monte Carlo approach. 
 ##' @author Erik Hintz
-pmultinorm <- function(upper, lower = rep(-Inf, length(upper)), mean = rep(0, length(upper)), scale, standardized = FALSE, gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^5, precond = TRUE, method = "sobol")
+pmultinorm <- function(upper, lower = rep(-Inf, length(upper)), mean = rep(0, length(upper)), scale, standardized = FALSE, gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^6, precond = TRUE, method = "sobol")
 {
   pnvmix(upper = upper, lower = lower, shift = mean, scale = scale, mix = "constant", standardized = standardized, gam = gam, abserr = abserr, Nmax = Nmax, N = N, n_init = n_init, precond = precond, method = method)
 }

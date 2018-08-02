@@ -16,7 +16,7 @@ precond <- function(a, b, R, C, q, meansqrtmix)
   y <- rep(0, q - 1)
   
   ## Find i = argmin_j { <expected length of interval> }
-  i <- which.min( apply( pnorm( cbind(a, b) / (meansqrtmix * sqrt(diag(R)) ) ), 1, diff) )
+  i <- which.min( apply( pnorm( cbind(b, a) / (meansqrtmix * sqrt(diag(R)) ) ), 1, diff) )
   
   if(i != 1) {
     ## Swap 1 and i
@@ -105,7 +105,7 @@ precond <- function(a, b, R, C, q, meansqrtmix)
 ##'         - "prng" for a pure Monte Carlo approach. 
 ##' @author Erik Hintz
 pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, length(upper)), scale, mix, meansqrtmix = NA, standardized = FALSE, 
-                     gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^5, precond = TRUE, method = "sobol", ... )
+                     gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^6, precond = TRUE, method = "sobol", ... )
 {
   
 
@@ -121,13 +121,15 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
   
   ## Find infinite limits
   infina  <-  (lower == -Inf)
+  whichfina <- which(!infina)
   infinb  <-  (upper == Inf)
+  whichfinb <- which(!infinb)
   infinab <-  infina * infinb
   
   ## Remove double infinities
   if( sum(infinab) > 0 )
   {
-    whichdoubleinf <- which( infinab == TRUE)
+    whichdoubleinf <- which(infinab == 1) # indicides with limits [-Inf, Inf]
     lower <- lower[ -whichdoubleinf ]
     upper <- upper[ -whichdoubleinf ]
     scale <- scale[ -whichdoubleinf, -whichdoubleinf ]
@@ -149,8 +151,8 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
   if(!standardized){
     Dinv <- diag(1/sqrt(diag(scale)))
     scale <- Dinv %*% scale %*% Dinv
-    lower <- as.vector(Dinv %*% lower)
-    upper <- as.vector(Dinv %*% upper)
+    lower[whichfina] <- as.vector(Dinv[whichfina, whichfina] %*% lower[whichfina]) # only works for those values which are not +/- Inf
+    upper[whichfinb] <- as.vector(Dinv[whichfinb, whichfinb] %*% upper[whichfinb])
   }
   
   ## Logicals if we are dealing with a multivariate normal or multivariate t

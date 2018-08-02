@@ -7,7 +7,7 @@
 }
 \usage{
 pStudent(upper, lower = rep(-Inf, length(upper)), shift = rep(0, length(upper)), scale, df, standardized = FALSE,  
-       gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^5, precond = TRUE, 
+       gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^6, precond = TRUE, 
        method = "sobol")
 }
 \arguments{

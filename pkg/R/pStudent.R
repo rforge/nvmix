@@ -21,7 +21,7 @@
 ##'         - "ghalton" for a generalized Halton sequence.
 ##'         - "prng" for a pure Monte Carlo approach. 
 ##' @author Erik Hintz
-pStudent <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, length(upper)), scale, df, standardized = FALSE, gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^5, precond = TRUE, method = "sobol")
+pStudent <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, length(upper)), scale, df, standardized = FALSE, gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^6, precond = TRUE, method = "sobol")
 {
   pnvmix(upper = upper, lower = lower, shift = shift, scale = scale, mix = "inverse.gamma", standardized = standardized, gam = gam, abserr = abserr, Nmax = Nmax, N = N, n_init = n_init, precond = precond, method = method, df = df)
 }
