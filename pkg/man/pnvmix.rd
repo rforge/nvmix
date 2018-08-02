@@ -40,7 +40,7 @@ pnvmix(upper, lower = rep(-Inf, length(upper)), shift = rep(0, length(upper)),
       \item{\code{\link{function}}:}{a \code{\link{function}}
 	interpreted as the quantile function of the mixing
 	variable \eqn{W}; internally, sampling is then done with the
-	inversion method by applying this function to U(0,1) random variates.}
+	inversion method by applying this function to U(0,1) random variates via \code{mix(u, ...)}. Additional arguments for \code{mix} can be passed via the ellipsis argument.}
     }
   }
   \item{meansqrtmix}{Mean of \code{sqrt(W)}, where \eqn{W} is the mixing variable. If not provided, it will be estimated. This is only needed for reordering, hence a rather 
@@ -61,7 +61,7 @@ pnvmix(upper, lower = rep(-Inf, length(upper)), shift = rep(0, length(upper)),
   \item{method}{Character string indicating method to be used. Allowed are "sobol", "ghalton" and "prng".}
   \item{\dots}{additional arguments containing parameters of
     mixing distributions when \code{mix} is a \code{\link{character}}
-    string.}
+    string or \code{\link{function}}.}
 }
 \value{
   \code{pnvmix()} returns a list of length five, containing the
@@ -76,6 +76,8 @@ pnvmix(upper, lower = rep(-Inf, length(upper)), shift = rep(0, length(upper)),
   
   If the absolute error tolerance \code{abserr} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned. 
   
+  For the case of a multivariate normal or multivariate t distributions, user-friendly wrappers are provided in \code{\link{pmultinorm}} and \code{\link{pStudent}}.
+  
 }
 \author{Marius Hofert, Erik Hintz and Christiane Lemieux}
 \references{
@@ -84,13 +86,36 @@ pnvmix(upper, lower = rep(-Inf, length(upper)), shift = rep(0, length(upper)),
   Princeton University Press.
 }
 \examples{
+## Example 1: Multivariate t distribution 
 ## Generate a random correlation matrix in three dimensions
 d <- 3
 set.seed(271)
 A <- matrix(runif(d * d), ncol = d)
 P <- cov2cor(A \%*\% t(A))
-## Evaluate t_{3.5} distribution function
+## Evaluate t_{0.5} distribution function
+df <- 0.5
 a <- runif(d) * sqrt(d) * (-3) # random lower limit
 b <- runif(d) * sqrt(d) * 3 # random upper limit
+## Using "inverse.gamma"
+set.seed(1) # result depends slightly on .random.seed
+pt1 <- pnvmix(upper = b, lower = a, scale = P, mix = "inverse.gamma", df = df)
+## The same can be achieved by defining a function:
+mix. <- function(u, df){
+  df2 <- df/2
+  return(1 / qgamma(u, shape = df2, rate = df2))
+}
+## In this case meansqrtmix is known:
+c <- sqrt(df) * gamma(df/2) / ( sqrt(2) * gamma( (df+1) / 2 ) )
+set.seed(1) 
+pt2 <- pnvmix(upper = b, lower = a, scale = P, mix = mix., meansqrtmix = c, df  = df)
+stopifnot(all.equal(pt1$Prob, pt2$Prob))
+## meansqrtmix will be approximated internally if not provided. 
+## This leads to slightly different results
+set.seed(1) 
+pt3 <- pnvmix(upper = b, lower = a, scale = P, mix = mix., meansqrtmix = c, df  = df)
+stopifnot(all.equal(pt2$Prob, pt3$Prob, tol = 5e-4))
+print(abs(pt3$Prob - pt2$Prob))
+
+
 }
 \keyword{distribution}

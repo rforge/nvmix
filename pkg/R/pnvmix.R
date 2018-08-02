@@ -228,7 +228,7 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
     
     if(is.na(meansqrtmix)){
       ## If meansqrtmix was not supplied, we approximate it
-      meansqrtmix <- mean(sqrt(W(qrng::sobol(n = 1000, d = 1))))
+      meansqrtmix <- mean(sqrt(W(qrng::sobol(n = 5000, d = 1, randomize = TRUE))))
       
     } else if(meansqrtmix <= 0) {
       
@@ -335,6 +335,9 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
       }
     } # end for(l in 1:N)
     
+    ## Update the total number of function evaluations; mutliplied by 2 since antithetic variates are being used in eval_int_t_ 
+    N. <- N. + 2 * N * n. 
+    
     ## Change denom and useksip. This is done exactly once, namely in the first iteration. 
     if(i. == 0){
       
@@ -350,7 +353,6 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
     
     sig <- sd(T.) # get standard deviation of the estimator 
     err <- gam * sig # update error. Note that this gam is actually gamma/sqrt(N)
-    N. <- N. + 2 * N * n. # update the total number of function evaluations; mutliplied by 2 since antithetic variates are being used in eval_int_t_ 
     i. <- i. + 1 # update counter
   }
   
@@ -359,6 +361,9 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
   
   ## Get the variance 
   var <- (sig/sqrt(N))^2
+  
+  ## Print a warning if precision level not reached:
+  if(err > abserr) warning("Precision level abserr not reached; consider increasing Nmax.")
   
   ## And return
   list(Prob = T, N = N., i = i., ErrEst = err, Var = var)
