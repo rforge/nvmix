@@ -112,7 +112,7 @@ stopifnot(all.equal(pt1$Prob, pt2$Prob))
 ## meansqrtmix will be approximated internally if not provided. 
 ## This leads to slightly different results
 set.seed(1) 
-pt3 <- pnvmix(upper = b, lower = a, scale = P, mix = mix., meansqrtmix = c, df  = df)
+pt3 <- pnvmix(upper = b, lower = a, scale = P, mix = mix., df  = df)
 stopifnot(all.equal(pt2$Prob, pt3$Prob, tol = 5e-4))
 print(abs(pt3$Prob - pt2$Prob))
 
