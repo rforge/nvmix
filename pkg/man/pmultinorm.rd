@@ -6,9 +6,9 @@
   (including normal and Student \emph{t} for non-integer degrees of freedom).
 }
 \usage{
-pmultinorm(upper, lower = rep(-Inf, length(upper)),mean = rep(0, length(upper)), 
+pmultinorm(upper, lower = rep(-Inf, length(upper)), mean = rep(0, length(upper)), 
        scale, standardized = FALSE, gam = 3.3, abserr = 0.001, Nmax = 1e8, 
-       N = 12, n_init = 2^6, precond = TRUE, method = "sobol")
+       B = 12, n_init = 2^6, precond = TRUE, method = "sobol")
 }
 \arguments{
   \item{upper}{vector of length \eqn{d}.}
@@ -22,7 +22,7 @@ pmultinorm(upper, lower = rep(-Inf, length(upper)),mean = rep(0, length(upper)),
       \code{gam = 3.3} (the default) means that one can expect that in 99.9 percent of the cases the actual absolute error is less than \code{abserr}.}
   \item{Nmax}{maximum number of function evaluations, can be used to
     control run time.}
-  \item{N}{number of repetitions to get an error estimate in the
+  \item{B}{number of repetitions to get an error estimate in the
     randomized quasi-Monte Carlo approach.}
   \item{n_init}{size of the first point set being used to estimate
     the probability. Any positive integer allowed, powers or at least multiples of 2 are recommended for \code{method = sobol}.}
@@ -36,13 +36,13 @@ pmultinorm(upper, lower = rep(-Inf, length(upper)),mean = rep(0, length(upper)),
   number of function evaluations, an error estimate and the estimated variance of the randomized Quasi Monte Carlo estimator. 
 }
 \details{
-  \code{pmultinorm()} is a user-friendly wrapper and calls \code{pnvmix(..., mix = "constant")}. 
-  In the univariate case, this function calls \code{pnorm()}.
+  \code{pmultinorm()} is a user-friendly wrapper and calls \code{pnvmix(..., mix = "constant")}, see \code{\code{\link{pnvmix}()}. 
+  In the univariate case, this function calls \code{\link{pnorm}()}.
   
   Note that this procedure calls underlying C code. Currently, the
   dimensions \eqn{d\ge 16510}{d >= 16510} are not supported for the default method sobol.
   
-  Care should be taken when changing the algorithm-specific parameters, notably \code{N}, \code{Nmax}, \code{method} and \code{precond}. Error estimates will not be reliable for too small \code{N} and the performance of the algorithm depends heavily on the (Quasi-) Monte Carlo point-set used. 
+  Care should be taken when changing the algorithm-specific parameters, notably \code{B}, \code{Nmax}, \code{method} and \code{precond}. Error estimates will not be reliable for too small \code{B} and the performance of the algorithm depends heavily on the (Quasi-) Monte Carlo point-set used. 
   
   If the absolute error tolerance \code{abserr} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned. 
   

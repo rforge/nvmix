@@ -77,7 +77,7 @@ precond <- function(a, b, R, C, q, meansqrtmix)
 ##' @title Distribution Function of the Multivariate t Distribution
 ##' @param upper vector of upper limits
 ##' @param lower vector of lower limits
-##' @param shift shift vector (corresponds to mu in the paper)
+##' @param loc location vector (corresponds to mu in the paper)
 ##' @param scale covariance matrix of dimension (q, q)
 ##' @param mix specification of the (mixture) distribution of W. This can be:
 ##'        1) a character string specifying a supported distribution (additional
@@ -95,7 +95,7 @@ precond <- function(a, b, R, C, q, meansqrtmix)
 ##' @param gam Monte Carlo confidence multiplier. Algorithm runs until gam * (estimated standard error) < abserr. gam = 3.3 means that one can expect
 ##'        that in 99.9% of the cases the actual absolute error is less than abserr.
 ##' @param Nmax Total number of function evaluations allowed.
-##' @param N Number of randomizations to get error estimate.
+##' @param B Number of randomizations to get error estimate.
 ##' @param n_init First loop uses n_init function evaluations. Any positive integer allowed, powers or at least multiples of 2 are recommended.
 ##' @param precond Logical. If TRUE (recommended), variable reordering as described in [genzbretz2002] pp. 955-956 is performed. Variable reordering can lead to a significant variance
 ##'        reduction and decrease in computational time.
@@ -104,8 +104,8 @@ precond <- function(a, b, R, C, q, meansqrtmix)
 ##'         - "ghalton" for a generalized Halton sequence.
 ##'         - "prng" for a pure Monte Carlo approach.
 ##' @author Erik Hintz
-pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, length(upper)), scale, mix, meansqrtmix = NA, standardized = FALSE,
-                     gam = 3.3, abserr = 0.001, Nmax = 1e8, N = 12, n_init = 2^6, precond = TRUE, method = "sobol", ... )
+pnvmix <- function(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)), scale, mix, meansqrtmix = NA, standardized = FALSE,
+                     gam = 3.3, abserr = 0.001, Nmax = 1e8, B = 12, n_init = 2^6, precond = TRUE, method = "sobol", ... )
 {
 
 
@@ -117,7 +117,7 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
   if( length(lower) != length(upper) ) stop("Lenghts of lower and upper differ")
   if( any(lower >= upper) ) stop("lower needs to be smaller than upper (componentwise)")
   if( q != length(lower) ) stop("Dimension of scale does not match dimension of lower")
-  if( q != length(shift) ) stop("Dimension of shift does not match dimension of scale")
+  if( q != length(loc) ) stop("Dimension of loc does not match dimension of scale")
 
   ## Find infinite limits
   infina  <-  (lower == -Inf)
@@ -142,9 +142,9 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
   }
 
   ## Subtract shift if necessary:
-  if(any(shift != 0)){
-    lower <- lower - shift
-    upper <- upper - shift
+  if(any(loc != 0)){
+    lower <- lower - loc
+    upper <- upper - loc
   }
 
   ## Standardize if necessary:
@@ -243,17 +243,17 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
     C <- temp$C
   }
 
-  gam <- gam / sqrt(N) # instead of dividing sigma by sqrt(N) each time
+  gam <- gam / sqrt(B) # instead of dividing sigma by sqrt(B) each time
   n. <- n_init # initial n
-  T. <- rep(0, N) # vector to store RQMC estimates
+  T. <- rep(0, B) # vector to store RQMC estimates
 
   ONE <- 1-.Machine$double.neg.eps
   ZERO <- .Machine$double.eps
 
-    if(method == "sobol") {
-        if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
-        seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used.
-    }
+  if(method == "sobol") {
+      if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
+      seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used.
+  }
 
   err <- abserr + 42 # initialize err to something bigger than abserr so that we can enter the while loop
   N. <- 0 # N. will count the total number of function evaluations
@@ -268,7 +268,7 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
     if(method == "sobol") .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
 
     ## Get N RQCM estimates
-    for(l in 1:N){
+    for(l in 1:B){
 
       ## Get the pointset
       ## If const = TRUE, we only need q - 1 (quasi) random numbers
@@ -321,6 +321,7 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
       ## In this case, denom = 1 and T.[l] = 0.
 
       if(q == 1){
+        
         ## Case of dimension 1 seperate: Here, we do not need to approximate the multivariate normal cdf and can just use pnorm
         ## The case of dimension 1 for a normal / t distribution has already been dealt with
 
@@ -341,7 +342,7 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
     } # end for(l in 1:N)
 
     ## Update the total number of function evaluations; mutliplied by 2 since antithetic variates are being used in eval_int_t_
-    N. <- N. + 2 * N * n.
+    N. <- N. + 2 * B * n.
 
     ## Change denom and useksip. This is done exactly once, namely in the first iteration.
     if(i. == 0){
@@ -365,7 +366,7 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), shift = rep(0, lengt
   T <- mean(T.)
 
   ## Get the variance
-  var <- (sig/sqrt(N))^2
+  var <- (sig/sqrt(B))^2
 
   ## Print a warning if precision level not reached:
   if(err > abserr) warning("Precision level abserr not reached; consider increasing Nmax.")
