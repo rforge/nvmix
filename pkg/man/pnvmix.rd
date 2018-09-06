@@ -86,7 +86,7 @@ pnvmix(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)),
   Princeton University Press.
 }
 \seealso{
-  \code{\code{\link{dnvmix}()},\code{\link{pmultinorm}}(),\code{\link{pStudent}}
+  \code{\link{dnvmix}()}, \code{\link{pmultinorm}}(), \code{\link{pStudent}()}
 }
 \examples{
 ## Example 1: Multivariate t distribution 

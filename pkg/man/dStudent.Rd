@@ -29,9 +29,9 @@ dStudent(x, df, loc = rep(0, d), scale,
     of the density is to be computed.}
 }
 \value{
-  \code{dnvmix()} returns an \eqn{n}-\code{\link{vector}} with the
+  \code{dStudent()} returns an \eqn{n}-\code{\link{vector}} with the
   density values (default) or log-density values (if \code{log})
-  of the multivariate t distribution with
+  of the multivariate Student \emph{t} distribution with
   location vector \code{loc}, scale matrix \code{scale}
   (a covariance matrix) and degrees of freedom \code{df}.
 }
@@ -42,7 +42,7 @@ dStudent(x, df, loc = rep(0, d), scale,
   The default factorization used is the Cholesky decomposition.
   To this end, \code{scale} needs to have full rank.
   
-  This is a user-friendly wrapper for \code{dnvmix(x, mix = "inverse.gamma",...)}.
+  This is a user-friendly wrapper for \code{dnvmix(x, mix = "inverse.gamma",...)}, see \code{\link{dnvmix}()}.
 }
 \author{Marius Hofert and Erik Hintz}
 \references{

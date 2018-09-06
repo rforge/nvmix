@@ -6,13 +6,13 @@
   (including normal and Student \emph{t}).
 }
 \usage{
-dmultinorm(x, loc = rep(0, d), scale, 
+dmultinorm(x, mean = rep(0, d), scale, 
        factor = tryCatch(factorize(scale), error = function(e) e),
        log = FALSE)
 }
 \arguments{
   \item{x}{\eqn{(n, d)}-\code{\link{matrix}} of evaluation points.}
-  \item{loc}{location vector of dimension \eqn{d} (the number of columns
+  \item{mean}{mean vector of dimension \eqn{d} (the number of columns
     of \code{x}).}
   \item{scale}{covariance matrix of dimension \eqn{(d, d)}.}
   \item{factor}{factorization matrix of the covariance matrix
@@ -28,10 +28,10 @@ dmultinorm(x, loc = rep(0, d), scale,
     of the density is to be computed.}
 }
 \value{
-  \code{dnvmix()} returns an \eqn{n}-\code{\link{vector}} with the
+  \code{dmultinorm()} returns an \eqn{n}-\code{\link{vector}} with the
   density values (default) or log-density values (if \code{log})
   of the mutlivariate normal distribution with
-  location vector \code{loc} and scale matrix \code{scale}
+  mean vector \code{mean} and scale matrix \code{scale}
   (a covariance matrix).
 }
 \details{

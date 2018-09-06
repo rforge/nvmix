@@ -28,6 +28,6 @@ dStudent <- function(x, df, loc = rep(0, d), scale,
   if(!is.matrix(x)) x <- rbind(x)
   d <- ncol(x)
   
-  dnvmix(x = x, loc = loc, scale = scale, mix = "inverse.gamma", factor = factor, log = log, df = df)
+  as.numeric(dnvmix(x = x, loc = loc, scale = scale, mix = "inverse.gamma", factor = factor, log = log, df = df)$Density)
 }
 

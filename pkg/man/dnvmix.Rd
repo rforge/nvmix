@@ -54,16 +54,16 @@ dnvmix(x, loc = rep(0, d), scale, mix,
     Also note that \code{factor} can be \code{NULL} or inherit from
     \code{"error"} in which case the degenerate density is computed
     as \code{Inf} at \code{loc} and 0 everywhere else.}
-  \item{abserr}{numeric and non-negative. Absolute precision required. If abserr = 0, algorithm will run 
-        until total number of function evaluations exceeds Nmax (see also Nmax).}
+  \item{abserr}{numeric and non-negative. Absolute precision required. If \code{abserr = 0}, algorithm will run 
+        until total number of function evaluations exceeds Nmax (see also \code{Nmax}). If \eqn{n > 1}, algorithm runs until precision is reached for all \eqn{n} estimates for the         density.}
   \item{gam}{Monte Carlo confidence multiplier. Algorithm runs until  \eqn{estimated standard error < gam * abserr}. 
-      gam = 3.3 (the default) means that one can expect that in 99.9 percent of the cases the actual absolute error is less than \eqn{abserr}.}
+      \code{gam = 3.3} (the default) means that one can expect that in 99.9 percent of the cases the actual absolute error is less than \code{abserr}.}
   \item{Nmax}{maximum number of function evaluations, can be used to
     control run time.}
   \item{B}{number of repetitions to get an error estimate in the
     randomized quasi-Monte Carlo approach.}
   \item{n_init}{size of the first point set being used to estimate
-    the probability. Any positive integer allowed, powers or at least multiples of 2 are recommended for method = sobol}
+    the densities. Any positive integer allowed, powers or at least multiples of 2 are recommended for \code{method = sobol}.}
   \item{method}{Character string indicating method to be used. Allowed are "sobol", "ghalton" and "prng".}
   \item{log}{\code{\link{logical}} indicating whether the logarithm
     of the density is to be computed.}
@@ -72,11 +72,13 @@ dnvmix(x, loc = rep(0, d), scale, mix,
     string or \code{\link{function}}.}    
 }
 \value{
-  \code{dnvmix()} returns an \eqn{n}-\code{\link{vector}} with the
+  \code{dnvmix()} returns a list of length five: The first element is a \eqn{n}-\code{\link{vector}} with the (estimated)
   density values (default) or log-density values (if \code{log})
   of the specified multivariate normal variance mixture with
   location vector \code{loc} and scale matrix \code{scale}
-  (a covariance matrix).
+  (a covariance matrix). The other elements are the number of iterations, the total
+  number of function evaluations, an error estimate and the estimated variance of the randomized Quasi Monte Carlo estimator. If \eqn{n > 1}, the error estimate and the variance    reported is the largest error estimate and variance among the \eqn{n} estimates. 
+  
 }
 \details{
   Internally used is \code{factor}, so \code{scale} is not required
@@ -85,7 +87,7 @@ dnvmix(x, loc = rep(0, d), scale, mix,
   The default factorization used is the Cholesky decomposition.
   To this end, \code{scale} needs to have full rank.
   
-  Care should be taken when changing the algorithm-specific parameters, notably \code{B}, \code{Nmax}, \code{method} and \code{precond}. Error estimates will not be reliable for too small \code{N} and the performance of the algorithm depends heavily on the (Quasi-) Monte Carlo point-set used. 
+  Care should be taken when changing the algorithm-specific parameters, notably \code{B} and \code{Nmax}. Error estimates will not be reliable for too small \code{B}.
   
   If the absolute error tolerance \code{abserr} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned. 
   
@@ -109,7 +111,7 @@ P <- cov2cor(A \%*\% t(A))
 ## Evaluate t_{3.5} density
 df <- 3.5
 x <- matrix(1:12/12, ncol = d) # evaluation points
-dt <- dnvmix(x, mix = "inverse.gamma", df = df, scale = P)
+dt <- dnvmix(x, mix = "inverse.gamma", df = df, scale = P)$Density
 stopifnot(all.equal(dt, c(0.013266542, 0.011967156, 0.010760575, 0.009648682),
                     tol = 1e-7))
                     
@@ -118,23 +120,23 @@ mix. <- function(u, df){
   df2 <- df/2
   return(1 / qgamma(u, shape = df2, rate = df2))
 }
-dt2 <-dnvmix(x, mix = mix., df = df, scale = P)
+dt2 <-dnvmix(x, mix = mix., df = df, scale = P)$Density
 stopifnot(all.equal(dt, dt2, tol = 5e-4))
 
 ## Evaluate normal density
-dn <- dnvmix(x, mix = "constant", scale = P)
+dn <- dnvmix(x, mix = "constant", scale = P)$Density
 stopifnot(all.equal(dn, c(0.013083858, 0.011141923, 0.009389987, 0.007831596),
                     tol = 1e-7))
 
 ## Missing data
 x[3,2] <- NA
 x[4,3] <- NA
-dt <- dnvmix(x, mix = "inverse.gamma", df = df, scale = P)
+dt <- dnvmix(x, mix = "inverse.gamma", df = df, scale = P)$Density
 stopifnot(is.na(dt) == rep(c(FALSE, TRUE), each = 2))
 
 ## Univariate case
 x <- matrix(1:10/10, ncol = 1)
-dt <- dnvmix(x, mix = "inverse.gamma", df = df, factor = 1)
+dt <- dnvmix(x, mix = "inverse.gamma", df = df, factor = 1)$Density
 dt. <- dt(as.vector(x), df = df)
 stopifnot(all.equal(dt, dt.))
 }

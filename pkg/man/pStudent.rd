@@ -37,7 +37,7 @@ pStudent(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)), s
   number of function evaluations, an error estimate and the estimated variance of the randomized Quasi Monte Carlo estimator. 
 }
 \details{
-  \code{pStudent()} is a user-friendly wrapper and calls \code{pnvmix(..., mix = "inverse.gamma", df = df)}, see \code{\code{\link{pnvmix}()}. 
+  \code{pStudent()} is a user-friendly wrapper and calls \code{pnvmix(..., mix = "inverse.gamma", df = df)}, see \code{\link{pnvmix}()}. 
   In the univariate case, this function calls \code{\link{pt}()}.
   
   Note that this procedure calls underlying C code. Currently, the

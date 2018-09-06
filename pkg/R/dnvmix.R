@@ -41,6 +41,7 @@ dnvmix <- function(x, loc = rep(0, d), scale, mix,
   ## Define the quantile function of the mixing variable.
   ## If mix is either "constant" or "inverse.gamma", we don't need the quantile function as there is a closed
   ## formula for the density in these cases.
+  
   if(is.character(mix)){
     mix <- match.arg(mix, choices = c("constant", "inverse.gamma"))
     switch(mix,
@@ -59,7 +60,7 @@ dnvmix <- function(x, loc = rep(0, d), scale, mix,
            },
            stop("Currently unsupported 'mix'"))
   } else {
-    ## In all the other cases we do need a quantile function, which we define now:
+    ## In all the other cases, we do need a quantile function, which we define now:
     W <- if(is.list(mix)) { # 'mix' is a list of the form (<character string>, <parameters>)
       stopifnot(length(mix) >= 1, is.character(distr <- mix[[1]]))
       qmix <- paste0("q", distr)
@@ -80,7 +81,7 @@ dnvmix <- function(x, loc = rep(0, d), scale, mix,
   d <- ncol(x)
   stopifnot(length(loc) == d)
   notNA <- apply(!is.na(x), 1, all)
-  lres <- rep(-Inf, n)
+  lres <- rep(-Inf, n) # vector to store reults
   lres[!notNA] <- NA
   x <- x[notNA,] # available points
   tx <- t(x) # (d, n)-matrix
@@ -184,10 +185,17 @@ dnvmix <- function(x, loc = rep(0, d), scale, mix,
         err <- gam * sig # update error. Note that this gam is actually gamma/sqrt(N)
         i. <- i. + 1 # update counter 
       }
+      
+      var <- (sig/sqrt(B))^2
+      
+      if(err > abserr) warning("Precision level abserr not reached; consider increasing Nmax.")
+      
       lres[notNA] <- apply(T., 2, mean)
     }
   }
-  if(log) lres else exp(lres) # also works with NA, -Inf, Inf
+  
+  ## And return
+  if(log) list(Density = lres, N = N., i = i., ErrEst = err, Var = var) else list(Density = exp(lres), N = N., i = i., ErrEst = err, Var = var) # also works with NA, -Inf, Inf
 }
 
 

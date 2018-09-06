@@ -1,8 +1,8 @@
 ### dmultinorm() ###################################################################
 
-##' @title Density of the Multivariate t distribution
+##' @title Density of the Multivariate Normal Distribution
 ##' @param x (n, d)-matrix of evaluation points
-##' @param loc location vector of dimension d
+##' @param mean mean vector of dimension d
 ##' @param scale covariance matrix of dimension (d, d)
 ##' @param factor factorization matrix of the covariance matrix scale;
 ##'        caution: this has to be an *upper triangular* matrix R
@@ -20,14 +20,14 @@
 ##' @return n-vector with N(loc, scale) density values
 ##' @author Marius Hofert and Erik Hintz
 
-dmultinorm <- function(x, loc = rep(0, d), scale,
+dmultinorm <- function(x, mean = rep(0, d), scale,
                      factor = tryCatch(factorize(scale), error = function(e) e), # needs to be triangular!
                      log = FALSE){
   
   if(!is.matrix(x)) x <- rbind(x)
   d <- ncol(x)
   
-  dnvmix(x = x, loc = loc, scale = scale, mix = "constant", factor = factor, log = log)
+  as.numeric(dnvmix(x = x, loc = mean, scale = scale, mix = "constant", factor = factor, log = log)$Density)
   
 }
 
