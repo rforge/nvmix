@@ -259,8 +259,8 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(
   N. <- 0 # N. will count the total number of function evaluations
   i. <- 0 # initialize counter; this will count the number of iterations in the while loop
 
-  useskip <- 0 # will need that because the first iteration is a little different from all the others
-  denom <- 1
+  # useskip <- 0 # will need that because the first iteration is a little different from all the others
+  # denom <- 1
 
   while(err > abserr && N. < Nmax)
   {
@@ -277,9 +277,10 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(
       if(const){
         U <- switch(method,
                     "sobol"   = {
-                      qrng::sobol(n = n., d = q - 1, randomize = TRUE, skip = (useskip * n.))
+                      # qrng::sobol(n = n., d = q - 1, randomize = TRUE, skip = (useskip * n.))
+                      qrng::sobol(n = n., d = q - 1, randomize = TRUE, skip = (i. * n.) )
                     },
-                    "gHalton" = {
+                    "ghalton" = {
                       qrng::ghalton(n = n., d = q - 1, method = "generalized")
                     },
                     "prng"    = {
@@ -293,9 +294,10 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(
 
         U <- switch(method,
                     "sobol"   = {
-                      qrng::sobol(n = n., d = q, randomize = TRUE, skip = (useskip * n.))
+                      # qrng::sobol(n = n., d = q, randomize = TRUE, skip = (useskip * n.))
+                      qrng::sobol(n = n., d = q, randomize = TRUE, skip = (i. * n.))
                     },
-                    "gHalton" = {
+                    "ghalton" = {
                       qrng::ghalton(n = n., d = q, method = "generalized")
                     },
                     "prng"    = {
@@ -325,37 +327,49 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(
         ## Case of dimension 1 seperate: Here, we do not need to approximate the multivariate normal cdf and can just use pnorm
         ## The case of dimension 1 for a normal / t distribution has already been dealt with
 
-        T.[l] <- (T.[l] + mean( ( pnorm( upper / U[,1]) - pnorm( lower / U[,1]) + pnorm( upper / U[, q + 1]) - pnorm( lower / U[, q + 1])) / 2) ) / denom
-
+        #T.[l] <- (T.[l] + mean( ( pnorm( upper / U[,1]) - pnorm( lower / U[,1]) + pnorm( upper / U[, q + 1]) - pnorm( lower / U[, q + 1])) / 2) ) / denom
+        T.[l] <- (i. * T.[l] + mean( ( pnorm( upper / U[,1]) - pnorm( lower / U[,1]) + pnorm( upper / U[, q + 1]) - pnorm( lower / U[, q + 1])) / 2) ) / (i. + 1)
+        
       } else {
 
-        T.[l] <- (T.[l] + .Call("eval_int_mix_",
-                       n    = as.integer(n.),
-                       q    = as.integer(q),
-                       U    = as.double(U),
-                       a    = as.double(lower),
-                       b    = as.double(upper),
-                       C    = as.double(C),
-                       ONE  = as.double(ONE),
-                       ZERO = as.double(ZERO)) )/denom
+        # T.[l] <- (T.[l] + .Call("eval_int_mix_",
+        #                n    = as.integer(n.),
+        #                q    = as.integer(q),
+        #                U    = as.double(U),
+        #                a    = as.double(lower),
+        #                b    = as.double(upper),
+        #                C    = as.double(C),
+        #                ONE  = as.double(ONE),
+        #                ZERO = as.double(ZERO)) )/denom
+        
+        T.[l] <- (i. * T.[l] + .Call("eval_int_mix_",
+                                n    = as.integer(n.),
+                                q    = as.integer(q),
+                                U    = as.double(U),
+                                a    = as.double(lower),
+                                b    = as.double(upper),
+                                C    = as.double(C),
+                                ONE  = as.double(ONE),
+                                ZERO = as.double(ZERO)) ) / (i. + 1)
+        
       }
     } # end for(l in 1:N)
 
-    ## Update the total number of function evaluations; mutliplied by 2 since antithetic variates are being used in eval_int_t_
+    ## Update the total number of function evaluations; mutliplied by 2 since antithetic variates are being used in eval_int_mix
     N. <- N. + 2 * B * n.
 
-    ## Change denom and useksip. This is done exactly once, namely in the first iteration.
-    if(i. == 0){
-
-      denom <- 2
-      useskip <- 1
-
-    } else {
-
-      ## Increase sample size n. This is done in all iterations except for the first two.
-      n. <- 2 * n.
-
-    }
+    # ## Change denom and useksip. This is done exactly once, namely in the first iteration.
+    # if(i. == 0){
+    # 
+    #   denom <- 2
+    #   useskip <- 1
+    # 
+    # } else {
+    # 
+    #   ## Increase sample size n. This is done in all iterations except for the first two.
+    #   n. <- 2 * n.
+    # 
+    # }
 
     sig <- sd(T.) # get standard deviation of the estimator
     err <- gam * sig # update error. Note that this gam is actually gamma/sqrt(N)

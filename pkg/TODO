@@ -1,6 +1,8 @@
 ### TODO #######################################################################
 
 - Need fitnvmix(): check what other packages do:
+- implement dnvmix() as well as wrappers for normal/t case.
+	DONE
 - pnvmix(): should work with d = 1 and with missing data
 	d = 1 is DONE, what to do with missing data? Error?
 - Do we want a function that has multiple lower and upper as input?
