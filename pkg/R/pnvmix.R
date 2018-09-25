@@ -323,25 +323,26 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(
 
       } else {
 
-        # T.[l] <- (T.[l] + .Call("eval_nvmix_integral",
-        #                n    = as.integer(n.),
-        #                q    = as.integer(q),
-        #                U    = as.double(U),
-        #                a    = as.double(lower),
-        #                b    = as.double(upper),
-        #                C    = as.double(C),
-        #                ONE  = as.double(ONE),
-        #                ZERO = as.double(ZERO)) )/denom
+        ## TODO: why keep this code? give a reason
+        ## T.[l] <- (T.[l] + .Call("eval_nvmix_integral",
+        ##                a    = as.double(lower),
+        ##                b    = as.double(upper),
+        ##                U    = as.double(U),
+        ##                n    = as.integer(n.),
+        ##                q    = as.integer(q),
+        ##                C    = as.double(C),
+        ##                ZERO = as.double(ZERO),
+        ##                ONE  = as.double(ONE)) )/denom
 
-        T.[l] <- (i. * T.[l] + .Call("eval_nvmix_integral",
-                                n    = as.integer(n.),
-                                q    = as.integer(q),
-                                U    = as.double(U),
+          T.[l] <- (i. * T.[l] + .Call("eval_nvmix_integral",
                                 a    = as.double(lower),
                                 b    = as.double(upper),
+                                U    = as.double(U),
+                                n    = as.integer(n.),
+                                q    = as.integer(q),
                                 C    = as.double(C),
-                                ONE  = as.double(ONE),
-                                ZERO = as.double(ZERO)) ) / (i. + 1)
+                                ZERO = as.double(ZERO),
+                                ONE  = as.double(ONE)) ) / (i. + 1)
 
       }
     } # end for(l in 1:N)
@@ -349,18 +350,19 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(
     ## Update the total number of function evaluations; mutliplied by 2 since antithetic variates are being used in eval_nvmix_integral
     N. <- N. + 2 * B * n.
 
-    # ## Change denom and useksip. This is done exactly once, namely in the first iteration.
-    # if(i. == 0){
-    #
-    #   denom <- 2
-    #   useskip <- 1
-    #
-    # } else {
-    #
-    #   ## Increase sample size n. This is done in all iterations except for the first two.
-    #   n. <- 2 * n.
-    #
-    # }
+    ## TODO why keep this code? give a reason
+    ## ## Change denom and useksip. This is done exactly once, namely in the first iteration.
+    ## if(i. == 0){
+    ##
+    ##   denom <- 2
+    ##   useskip <- 1
+    ##
+    ## } else {
+    ##
+    ##   ## Increase sample size n. This is done in all iterations except for the first two.
+    ##   n. <- 2 * n.
+    ##
+    ## }
 
     sig <- sd(T.) # get standard deviation of the estimator
     err <- gam * sig # update error. Note that this gam is actually gamma/sqrt(N)

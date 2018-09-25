@@ -6,9 +6,9 @@
 #include <Rmath.h>
 
 
-double eval_nvmix_integral_c(int n, int q, double *U, double *a, double *b,
-			     double *C, double ONE, double ZERO);
-SEXP eval_nvmix_integral(SEXP n, SEXP q, SEXP U, SEXP a, SEXP b, SEXP C,
-			 SEXP ONE, SEXP ZERO);
+double eval_nvmix_integral_c(double *a, double *b, double *U, int n, int q,
+			     double *C, double ZERO, double ONE);
+SEXP eval_nvmix_integral(SEXP a, SEXP b, SEXP U, SEXP n, SEXP q, SEXP C,
+			 SEXP ZERO, SEXP ONE);
 
 #endif /* eval_nvmix_integral_h */
