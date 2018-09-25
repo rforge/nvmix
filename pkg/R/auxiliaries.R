@@ -11,6 +11,8 @@
 ##' @param ... additional arguments passed to the underlying functions
 ##' @return factor (factorized matrix)
 ##' @author Marius Hofert
+##' @note Could be called with tryCatch(factorize(x), error = function(e) e)
+##'       but probably not necessary
 factorize <- function(x, method = c("chol", "chol.pivot", "eigen", "svd"),
                       ...)
 {
@@ -43,33 +45,3 @@ factorize <- function(x, method = c("chol", "chol.pivot", "eigen", "svd"),
            stop("Wrong 'method'"))
 }
 
-##' @title Swap Variables i and j in a, b and R
-##' @param i variable to be switched with j
-##' @param j variable to be switched with i
-##' @param a vector
-##' @param b vector
-##' @param Sigma matrix
-##' @return list a, b, P after components/rows/columns i and j have been switched
-##' @author Erik Hintz
-swap <- function(i, j, a, b, Sigma)
-{
-    ## Build vector
-    ij <- c(i,j)
-    ji <- c(j,i)
-    ## Reorder a, b
-    a[ij] <- a[ji]
-    b[ij] <- b[ji]
-    ## Reorder Sigma
-    wo.ij <- setdiff(seq_len(nrow(Sigma)), ij)
-    temp_i <- as.matrix(Sigma[wo.ij,i])
-    temp_j <- as.matrix(Sigma[wo.ij,j])
-    temp_ii <- Sigma[i,i]
-    Sigma[wo.ij,i] <- temp_j
-    Sigma[wo.ij,j] <- temp_i
-    Sigma[i,wo.ij] <- temp_j
-    Sigma[j,wo.ij] <- temp_i
-    Sigma[i,i] <- Sigma[j,j]
-    Sigma[j,j] <- temp_ii
-    ## Return
-    list(a = a, b = b, Sigma = Sigma)
-}

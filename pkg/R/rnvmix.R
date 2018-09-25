@@ -11,12 +11,11 @@
 ##'           passed to this "rmix" random number generator.
 ##'        3) a function being interpreted as the quantile function F_W^-.
 ##'        4) an n-vector containing a random sample from W.
-##' @param loc location vector of dimension d
-##' @param scale covariance matrix of dimension (d, d)
-##' @param factor factorization matrix of the covariance matrix scale; a matrix
-##'        R such that R^T R = scale. R is multiplied to the (n, d)-matrix of
-##'        independent N(0,1) random variates in the construction from the *right*
-##'        (hence the notation).
+##' @param loc d-vector (location != mean vector here)
+##' @param scale (d, d)-covariance matrix (scale != covariance matrix here)
+##' @param factor *upper triangular* factor R of the covariance matrix 'scale'
+##'        such that R^T R = 'scale' here (otherwise det(scale) not computed
+##'        correctly!)
 ##' @param ... additional arguments containing parameters of
 ##'        mixing distributions when 'mix' is a 'character' string
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
@@ -28,7 +27,9 @@
 ##'         + "Runuran": faster if n large and parameters fixed; based on density
 ##'         + "GIGrvg":  faster if n small and often called with several parameters
 ##'         see examples of 'GIGrvg' for both methods
-rnvmix <- function(n, mix, loc = rep(0, d), scale, factor = factorize(scale), ...)
+rnvmix <- function(n, mix, loc = rep(0, d), scale = diag(d),
+                   factor = factorize(scale), # needs to be triangular!
+                   ...)
 {
     ## Checks
     d <- nrow(as.matrix(factor))

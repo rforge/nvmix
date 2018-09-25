@@ -7,7 +7,7 @@
 }
 \usage{
 pNorm(upper, lower = rep(-Inf, length(upper)), mean = rep(0, length(upper)),
-       scale, standardized = FALSE, gam = 3.3, abserr = 0.001, Nmax = 1e8,
+       scale, standardized = FALSE, gam = 3.3, abstol = 0.001, Nmax = 1e8,
        B = 12, n_init = 2^6, precond = TRUE, method = "sobol")
 }
 \arguments{
@@ -16,10 +16,10 @@ pNorm(upper, lower = rep(-Inf, length(upper)), mean = rep(0, length(upper)),
   \item{mean}{mean vector of length \eqn{d}}
   \item{scale}{positive definite \eqn{(d,d)}-covariance matrix.}
   \item{standardized}{\code{logical}. If \code{TRUE}, \code{scale} is assumed to be a correlation matrix; if \code{FALSE} (default), lower, upper and scale will be normalized.}
-  \item{abserr}{numeric and non-negative. Absolute precision required. If \code{abserr = 0}, algorithm will run
+  \item{abstol}{numeric and non-negative. Absolute precision required. If \code{abstol = 0}, algorithm will run
         until total number of function evaluations exceeds \code{Nmax}.}
-  \item{gam}{Monte Carlo confidence multiplier. Algorithm runs until  \eqn{estimated standard error < gam * abserr}.
-      \code{gam = 3.3} (the default) means that one can expect that in 99.9 percent of the cases the actual absolute error is less than \code{abserr}.}
+  \item{gam}{Monte Carlo confidence multiplier. Algorithm runs until  \eqn{estimated standard error < gam * abstol}.
+      \code{gam = 3.3} (the default) means that one can expect that in 99.9 percent of the cases the actual absolute error is less than \code{abstol}.}
   \item{Nmax}{maximum number of function evaluations, can be used to
     control run time.}
   \item{B}{number of repetitions to get an error estimate in the
@@ -44,7 +44,7 @@ pNorm(upper, lower = rep(-Inf, length(upper)), mean = rep(0, length(upper)),
 
   Care should be taken when changing the algorithm-specific parameters, notably \code{B}, \code{Nmax}, \code{method} and \code{precond}. Error estimates will not be reliable for too small \code{B} and the performance of the algorithm depends heavily on the (Quasi-) Monte Carlo point-set used.
 
-  If the absolute error tolerance \code{abserr} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned.
+  If the absolute error tolerance \code{abstol} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned.
 
 }
 \author{Marius Hofert, Erik Hintz and Christiane Lemieux}

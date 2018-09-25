@@ -8,7 +8,7 @@
 \usage{
 dnvmix(x, loc = rep(0, d), scale, mix,
        factor = tryCatch(factorize(scale), error = function(e) e),
-       abserr = 0.001, gam = 3.3, Nmax = 1e8, B = 12, n_init = 2^6, method = "sobol",
+       abstol = 0.001, gam = 3.3, Nmax = 1e8, B = 12, n_init = 2^6, method = "sobol",
        log = FALSE, ...)
 }
 \arguments{
@@ -54,10 +54,10 @@ dnvmix(x, loc = rep(0, d), scale, mix,
     Also note that \code{factor} can be \code{NULL} or inherit from
     \code{"error"} in which case the degenerate density is computed
     as \code{Inf} at \code{loc} and 0 everywhere else.}
-  \item{abserr}{numeric and non-negative. Absolute precision required. If \code{abserr = 0}, algorithm will run
+  \item{abstol}{numeric and non-negative. Absolute precision required. If \code{abstol = 0}, algorithm will run
         until total number of function evaluations exceeds Nmax (see also \code{Nmax}). If \eqn{n > 1}, algorithm runs until precision is reached for all \eqn{n} estimates for the         density.}
-  \item{gam}{Monte Carlo confidence multiplier. Algorithm runs until  \eqn{estimated standard error < gam * abserr}.
-      \code{gam = 3.3} (the default) means that one can expect that in 99.9 percent of the cases the actual absolute error is less than \code{abserr}.}
+  \item{gam}{Monte Carlo confidence multiplier. Algorithm runs until  \eqn{estimated standard error < gam * abstol}.
+      \code{gam = 3.3} (the default) means that one can expect that in 99.9 percent of the cases the actual absolute error is less than \code{abstol}.}
   \item{Nmax}{maximum number of function evaluations, can be used to
     control run time.}
   \item{B}{number of repetitions to get an error estimate in the
@@ -89,7 +89,7 @@ dnvmix(x, loc = rep(0, d), scale, mix,
 
   Care should be taken when changing the algorithm-specific parameters, notably \code{B} and \code{Nmax}. Error estimates will not be reliable for too small \code{B}.
 
-  If the absolute error tolerance \code{abserr} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned.
+  If the absolute error tolerance \code{abstol} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned.
 
   For the case of a multivariate normal or multivariate t distributions, user-friendly wrappers are provided in \code{\link{dNorm}} and \code{\link{dStudent}}. Note that in these cases, \code{dnvmix} uses the closed formulas for the density of a multivariate normal / t distribution.
 }

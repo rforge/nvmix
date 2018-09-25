@@ -1,19 +1,28 @@
 ### For next release ###########################################################
 
-- Write vignette nvmix_functionality.Rmd
-- need rmultinorm
-- names: *multinorm long, also we don't mention 'multivariate' for the other
-  distributions either, '*mv*' already done by mvtnorm pkg.
-  => dNorm, pNorm, rNorm, fitNorm
-- introduce defaults 'scale = diag(d)' (or similar), put 'mix' before 'loc' (d*, p*...)
-- MH: check ./R
-- MH: check ./man
+## Important
+- if the same, rename 'a', 'b' (in swap() and precond()) to 'lower'/'upper'
+- C code:
+  + a,b should be lower and upper
+  + use 'd' instead of 'q'
+1) MH: check ./R/dnvmix.R
+2) MH: check ./man
+
+- EH/MH: return value of pnvmix() has to be renamed (not informative); adapt also
+      documentation before function head and the return() calls inside pnvmix()
+- EH: why does 'q' need to be passed to precond()? simply determine it from 'scale'?
+- EH: TODOs inside pnvmix()
+
+## Moderately important
+- could allow pnvmix to be called with lower <= upper instead of lower < upper and return 0
+  if at least one component satisfies lower == upper
+- properly document 'mean.sqrt.mix' in pnvmix() and precond(); in particular, when to use NA
+  (when unknown or when not actually used or both?)
+- can't precond() start the for-loop from case j = 1?
 - 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 'mix' ('rmix'?)
   for passing a RNG
   => call other arguments 'mix' 'qmix' instead (check carefully)
-- need rNorm()
-- abserr should be abstol
-- put tryCatch() calls inside factorize?!
+- Write vignette nvmix_functionality.Rmd
 
 
 ### TODO #######################################################################

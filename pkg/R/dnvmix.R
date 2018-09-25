@@ -1,6 +1,6 @@
 ### dnvmix() ###################################################################
 
-##' @title Density of Multivariate Normal Variance Mixtures
+##' @title Density of a Multivariate Normal Variance Mixture
 ##' @param x (n, d)-matrix of evaluation points
 ##' @param loc location vector of dimension d
 ##' @param scale covariance matrix of dimension (d, d)
@@ -15,23 +15,17 @@
 ##' @param factor factorization matrix of the covariance matrix scale;
 ##'        caution: this has to be an *upper triangular* matrix R
 ##'        such that R^T R = scale here (otherwise det(scale) not computed correctly)
-##' @param abserr numeric and non-negative. Absolute precision required. If abserr = 0, algorithm will run until total number of function evaluations exceeds Nmax (see also Nmax)
-##' @param gam Monte Carlo confidence multiplier. Algorithm runs until gam * (estimated standard error) < abserr. gam = 3.3 means that one can expect
-##'        that in 99.9% of the cases the actual absolute error is less than abserr.
+##' @param abstol numeric and non-negative. Absolute precision required. If abstol = 0, algorithm will run until total number of function evaluations exceeds Nmax (see also Nmax)
+##' @param gam Monte Carlo confidence multiplier. Algorithm runs until gam * (estimated standard error) < abstol. gam = 3.3 means that one can expect
+##'        that in 99.9% of the cases the actual absolute error is less than abstol.
 ##' @param Nmax Total number of function evaluations allowed.
 ##' @param B Number of randomizations to get error estimate.
 ##' @param n_init First loop uses n_init function evaluations. Any positive integer allowed, powers or at least multiples of 2 are recommended.
-##' @param precond Logical. If TRUE (recommended), variable reordering as described in [genzbretz2002] pp. 955-956 is performed. Variable reordering can lead to a significant variance
-##'        reduction and decrease in computational time.
-##' @param method Character string indicating method to be used. Allowed are
-##'         - "sobol" for a Sobol sequence.
-##'         - "ghalton" for a generalized Halton sequence.
-##'         - "prng" for a pure Monte Carlo approach.
 ##' @return n-vector with NVM(loc,scale,mix) density values
 ##' @author Marius Hofert and Erik Hintz
-dnvmix <- function(x, loc = rep(0, d), scale, mix,
-                   factor = tryCatch(factorize(scale), error = function(e) e), # needs to be triangular!
-                   abserr = 0.001, gam = 3.3, Nmax = 1e8, B = 12, n_init = 2^6, method = "sobol",
+dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d),
+                   factor = factorize(scale), # needs to be triangular!
+                   abstol = 0.001, gam = 3.3, Nmax = 1e8, B = 12, n_init = 2^6, method = "sobol",
                    log = FALSE, ...)
 {
     ## Logicals if we are dealing with a multivariate normal or multivariate t
@@ -123,7 +117,7 @@ dnvmix <- function(x, loc = rep(0, d), scale, mix,
             gam <- gam / sqrt(B) # instead of dividing sigma by sqrt(B) each time
             n. <- n_init # initial n
             T. <- matrix(0, ncol = n, nrow = B) # matrix to store RQMC estimates
-            err <- abserr + 42 # initialize err to something bigger than abserr so that we can enter the while loop
+            err <- abstol + 42 # initialize err to something bigger than abstol so that we can enter the while loop
 
             useskip <- 0 # will need that because the first iteration is a little different from all the others
             denom <- 1
@@ -135,7 +129,7 @@ dnvmix <- function(x, loc = rep(0, d), scale, mix,
                 seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used.
             }
 
-            while(err > abserr && N. < Nmax)
+            while(err > abstol && N. < Nmax)
         {
 
             if(method == "sobol") .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
@@ -188,7 +182,7 @@ dnvmix <- function(x, loc = rep(0, d), scale, mix,
 
             var <- (sig/sqrt(B))^2
 
-            if(err > abserr) warning("Precision level abserr not reached; consider increasing Nmax.")
+            if(err > abstol) warning("Precision level abstol not reached; consider increasing Nmax.")
 
             lres[notNA] <- apply(T., 2, mean)
         }
@@ -197,8 +191,3 @@ dnvmix <- function(x, loc = rep(0, d), scale, mix,
     ## And return
     if(log) list(Density = lres, N = N., i = i., ErrEst = err, Var = var) else list(Density = exp(lres), N = N., i = i., ErrEst = err, Var = var) # also works with NA, -Inf, Inf
 }
-
-
-
-
-

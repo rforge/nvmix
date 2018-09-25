@@ -7,7 +7,7 @@
 }
 \usage{
 pnvmix(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)),
-      scale, mix, meansqrtmix = NA, standardized = FALSE, gam = 3.3, abserr = 0.001,
+      scale, mix, mean.sqrt.mix = NA, standardized = FALSE, gam = 3.3, abstol = 0.001,
       Nmax = 1e8, B = 12, n_init = 2^6, precond = TRUE, method = "sobol", ...)
 }
 \arguments{
@@ -43,13 +43,13 @@ pnvmix(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)),
 	inversion method by applying this function to U(0,1) random variates via \code{mix(u, ...)}. Additional arguments for \code{mix} can be passed via the ellipsis argument.}
     }
   }
-  \item{meansqrtmix}{Mean of \code{sqrt(W)}, where \eqn{W} is the mixing variable. If not provided, it will be estimated. This is only needed for reordering, hence a rather
+  \item{mean.sqrt.mix}{Mean of \code{sqrt(W)}, where \eqn{W} is the mixing variable. If not provided, it will be estimated. This is only needed for reordering, hence a rather
   crude approximation is fine.}
   \item{standardized}{\code{logical}. If \code{TRUE}, \code{scale} is assumed to be a correlation matrix; if \code{FALSE} (default), lower, upper and scale will be normalized.}
-  \item{abserr}{numeric and non-negative. Absolute precision required. If abserr = 0, algorithm will run
+  \item{abstol}{numeric and non-negative. Absolute precision required. If abstol = 0, algorithm will run
         until total number of function evaluations exceeds Nmax (see also Nmax).}
-  \item{gam}{Monte Carlo confidence multiplier. Algorithm runs until  \eqn{estimated standard error < gam * abserr}.
-      gam = 3.3 (the default) means that one can expect that in 99.9 percent of the cases the actual absolute error is less than \eqn{abserr}.}
+  \item{gam}{Monte Carlo confidence multiplier. Algorithm runs until  \eqn{estimated standard error < gam * abstol}.
+      gam = 3.3 (the default) means that one can expect that in 99.9 percent of the cases the actual absolute error is less than \eqn{abstol}.}
   \item{Nmax}{maximum number of function evaluations, can be used to
     control run time.}
   \item{B}{number of repetitions to get an error estimate in the
@@ -74,7 +74,7 @@ pnvmix(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)),
 
   Care should be taken when changing the algorithm-specific parameters, notably \code{B}, \code{Nmax}, \code{method} and \code{precond}. Error estimates will not be reliable for too small \code{B} and the performance of the algorithm depends heavily on the (Quasi-) Monte Carlo point-set used.
 
-  If the absolute error tolerance \code{abserr} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned.
+  If the absolute error tolerance \code{abstol} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned.
 
   For the case of a multivariate normal or multivariate t distributions, user-friendly wrappers are provided in \code{\link{pNorm}} and \code{\link{pStudent}}.
 
@@ -110,9 +110,9 @@ mix. <- function(u, df){
 ## In this case meansqrtmix is known:
 c <- sqrt(df) * gamma(df/2) / ( sqrt(2) * gamma( (df+1) / 2 ) )
 set.seed(1)
-pt2 <- pnvmix(upper = b, lower = a, scale = P, mix = mix., meansqrtmix = c, df  = df)
+pt2 <- pnvmix(upper = b, lower = a, scale = P, mix = mix., mean.sqrt.mix = c, df  = df)
 stopifnot(all.equal(pt1$Prob, pt2$Prob))
-## meansqrtmix will be approximated internally if not provided.
+## mean.sqrt.mix will be approximated internally if not provided.
 ## This leads to slightly different results
 set.seed(1)
 pt3 <- pnvmix(upper = b, lower = a, scale = P, mix = mix., df  = df)
