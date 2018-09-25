@@ -2,7 +2,7 @@
 
 - DONE Did 'eval_int_mix' stand for 'eval_integral_nvmix' (EH: fine for me)
 - DONE Please address TODO in code (./src at the moment)
-- Implement rStudent()
+- DONE Implement rStudent()
 - Write vignette nvmix_functionality.Rmd
 - MH: check ./R
 - MH: check ./man
@@ -10,6 +10,8 @@
 
 ### TODO #######################################################################
 
+- TODO in rnvmix(), maybe it would be nice if user could specify if random 
+       or quasi-random samples should be produced
 - TODO Need fitnvmix(): check what other packages do
 - DONE implement dnvmix() as well as wrappers for normal/t case.
 - DONE (d=1): pnvmix() should work with d = 1 and with missing data

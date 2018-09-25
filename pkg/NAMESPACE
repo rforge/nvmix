@@ -15,6 +15,6 @@ importFrom("qrng",
 ### Exports ####################################################################
 
 export("dnvmix", "pnvmix", "rnvmix",
-       "dStudent", "pStudent",
+       "dStudent", "pStudent", "rStudent",
        "pmultinorm", "dmultinorm",
        "qnvmix1", "factorize")
