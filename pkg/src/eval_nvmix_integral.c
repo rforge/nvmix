@@ -1,7 +1,4 @@
 #include "eval_nvmix_integral.h"
-#include <R.h>
-#include <Rmath.h>
-#include <Rinternals.h>
 
 
 /**

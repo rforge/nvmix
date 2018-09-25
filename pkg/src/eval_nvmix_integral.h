@@ -4,7 +4,6 @@
 #include <R.h>
 #include <Rinternals.h>
 #include <Rmath.h>
-#include <stdio.h>
 
 
 double eval_nvmix_integral(int n, int q, double *U, double *a, double *b,
