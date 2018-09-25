@@ -3,8 +3,8 @@
 
 /**
  * @title Evaluate Integrand for a Normal Variance Mixture
- * @param a vector of length q (lower limits)
- * @param b vector of length q (upper limits)
+ * @param lower q-vector of lower evaluation limits
+ * @param upper q-vector of upper evaluation limits
  * @param U vector representing '(n, q+1)-matrix' of uniforms
  *        (e.g. Sobol pointset) and realizations of sqrt(mix).
  *        The '(n, q+1)-matrix' is of the form [M1, U, M2], where the first
@@ -17,12 +17,12 @@
  * @param ZERO smallest number x > 0 such that x != 0
  * @param ONE   largest number x < 1 such that x != 1
  * @return mean estimate mean(f(U)) of E(f(U)) using antithetic variates
- * @note a and b can have -/+Inf entries. While pnorm() would give the correct
- *       result, it safes time to check each time if the argument is -/+Inf
+ * @note lower and upper can have -/+Inf entries. While pnorm() would give the
+         correct result, it safes time to check each time if the argument is -/+Inf
  *       and setting the value to 0/1 rather than calling pnorm().
- * @author Erik Hintz, Marius Hofert (polishing)
+ * @author Erik Hintz and Marius Hofert
  */
-double eval_nvmix_integral_c(double *a, double *b, double *U, int n, int q,
+double eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int q,
                              double *C, double ZERO, double ONE)
 {
     double y[q-1],  sqrtmix,  d,  diff,  f,  scprod;
@@ -44,22 +44,22 @@ double eval_nvmix_integral_c(double *a, double *b, double *U, int n, int q,
         sqrtmix  = U[j];
         sqrtmixa = U[q*n+j];
 
-        /* Check if entry of a is -Inf */
-        if(a[0] == R_NegInf){
+        /* Check if entry of lower is -Inf */
+        if(lower[0] == R_NegInf){
             d  = 0;
             da = 0;
         } else {
-            d  = pnorm(a[0] / (C[0] * sqrtmix),  0, 1, 1, 0);
-            da = pnorm(a[0] / (C[0] * sqrtmixa), 0, 1, 1, 0);
+            d  = pnorm(lower[0] / (C[0] * sqrtmix),  0, 1, 1, 0);
+            da = pnorm(lower[0] / (C[0] * sqrtmixa), 0, 1, 1, 0);
         }
 
         /* Check if entry of b is +Inf */
-        if(b[0] == R_PosInf){
+        if(upper[0] == R_PosInf){
             diff  = 1 - d;
             diffa = 1 - da;
         } else {
-            diff  = pnorm(b[0] / (C[0] * sqrtmix),  0, 1, 1, 0) - d;
-            diffa = pnorm(b[0] / (C[0] * sqrtmixa), 0, 1, 1, 0) - da;
+            diff  = pnorm(upper[0] / (C[0] * sqrtmix),  0, 1, 1, 0) - d;
+            diffa = pnorm(upper[0] / (C[0] * sqrtmixa), 0, 1, 1, 0) - da;
         }
 
         /* Go through all q-1 columns (without first and last) */
@@ -99,19 +99,19 @@ double eval_nvmix_integral_c(double *a, double *b, double *U, int n, int q,
             }
 
             /* Calculate new d and diff = e-d */
-            if(a[i+1] == R_NegInf){
+            if(lower[i+1] == R_NegInf){
                 d  = 0;
                 da = 0;
             } else {
-                d  = pnorm((a[i+1] / sqrtmix  - scprod)  / C[(i+1)*(q+1)], 0, 1, 1, 0);
-                da = pnorm((a[i+1] / sqrtmixa - scproda) / C[(i+1)*(q+1)], 0, 1, 1, 0);
+                d  = pnorm((lower[i+1] / sqrtmix  - scprod)  / C[(i+1)*(q+1)], 0, 1, 1, 0);
+                da = pnorm((lower[i+1] / sqrtmixa - scproda) / C[(i+1)*(q+1)], 0, 1, 1, 0);
             }
-            if(b[i+1] == R_PosInf){
+            if(upper[i+1] == R_PosInf){
                 diff  = 1 - d;
                 diffa = 1 - da;
             } else {
-                diff  = pnorm((b[i+1] / sqrtmix  - scprod)  / C[(i+1)*(q+1)], 0, 1, 1, 0) - d;
-                diffa = pnorm((b[i+1] / sqrtmixa - scproda) / C[(i+1)*(q+1)], 0, 1, 1, 0) - da;
+                diff  = pnorm((upper[i+1] / sqrtmix  - scprod)  / C[(i+1)*(q+1)], 0, 1, 1, 0) - d;
+                diffa = pnorm((upper[i+1] / sqrtmixa - scproda) / C[(i+1)*(q+1)], 0, 1, 1, 0) - da;
             }
             f  *= diff;
             fa *= diffa;
@@ -128,10 +128,10 @@ double eval_nvmix_integral_c(double *a, double *b, double *U, int n, int q,
  * @return mean(f(U)) where f is the integrand and U specifies the point-set
  * @author Erik Hintz, Marius Hofert (polishing)
  */
-SEXP eval_nvmix_integral(SEXP a, SEXP b, SEXP U, SEXP n, SEXP q, SEXP C,
+SEXP eval_nvmix_integral(SEXP lower, SEXP upper, SEXP U, SEXP n, SEXP q, SEXP C,
                          SEXP ZERO, SEXP ONE)
 {
-    double res = eval_nvmix_integral_c(REAL(a), REAL(b), REAL(U), INTEGER(n)[0],
+    double res = eval_nvmix_integral_c(REAL(lower), REAL(upper), REAL(U), INTEGER(n)[0],
                                        INTEGER(q)[0], REAL(C), REAL(ZERO)[0],
                                        REAL(ONE)[0]);
     return ScalarReal(res);

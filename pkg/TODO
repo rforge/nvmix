@@ -1,27 +1,27 @@
 ### For next release ###########################################################
 
-## Important
-- if the same, rename 'a', 'b' (in swap() and precond()) to 'lower'/'upper'
-- C code:
-  + a,b should be lower and upper
-  + use 'd' instead of 'q'
 1) MH: check ./R/dnvmix.R
-2) MH: check ./man
+2) MH: check ./man/*.Rd
 
+## Important
+- C code + pnvmix.R
+  + use 'd' instead of 'q' (caution: 'd' is already a variable in the C code...)
+  + use 'chol.scale' instead of 'C'
+- Give variables internally in pnvmix() better names (than 'N.', 'i.', 'T.', n.', for example)
+- 'ZERO' and 'ONE' could be 'zero' and 'one', no? or 'machine0' and 'machine1' or so
 - EH/MH: return value of pnvmix() has to be renamed (not informative); adapt also
       documentation before function head and the return() calls inside pnvmix()
 - EH: why does 'q' need to be passed to precond()? simply determine it from 'scale'?
 - EH: TODOs inside pnvmix()
 
-## Moderately important
-- could allow pnvmix to be called with lower <= upper instead of lower < upper and return 0
-  if at least one component satisfies lower == upper
-- properly document 'mean.sqrt.mix' in pnvmix() and precond(); in particular, when to use NA
-  (when unknown or when not actually used or both?)
-- can't precond() start the for-loop from case j = 1?
 - 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 'mix' ('rmix'?)
   for passing a RNG
   => call other arguments 'mix' 'qmix' instead (check carefully)
+- properly document 'mean.sqrt.mix' in pnvmix() and precond(); in particular, when to use NA
+  (when unknown or when not actually used or both?)
+- can't precond() start the for-loop from case j = 1?
+- could allow pnvmix to be called with lower <= upper instead of lower < upper and return 0
+  if at least one component satisfies lower == upper
 - Write vignette nvmix_functionality.Rmd
 
 

@@ -3,19 +3,20 @@
 ##' @title Swap Variables i and j in a, b and R
 ##' @param i variable to be switched with j
 ##' @param j variable to be switched with i
-##' @param a vector
-##' @param b vector
-##' @param scale matrix
-##' @return list a, b, P after components/rows/columns i and j have been switched
-##' @author Erik Hintz
-swap <- function(i, j, a, b, scale)
+##' @param lower d-vector of lower evaluation limits
+##' @param upper d-vector of upper evaluation limits
+##' @param scale (d, d)-covariance matrix (scale matrix)
+##' @return list with lower, upper and scale after components/rows/columns
+##'         i and j have been switched
+##' @author Erik Hintz and Marius Hofert
+swap <- function(i, j, lower, upper, scale)
 {
     ## Build vector
     ij <- c(i,j)
     ji <- c(j,i)
-    ## Reorder a, b
-    a[ij] <- a[ji]
-    b[ij] <- b[ji]
+    ## Reorder lower, upper
+    lower[ij] <- lower[ji]
+    upper[ij] <- upper[ji]
     ## Reorder scale
     wo.ij <- setdiff(seq_len(nrow(scale)), ij)
     temp_i <- as.matrix(scale[wo.ij,i])
@@ -28,70 +29,70 @@ swap <- function(i, j, a, b, scale)
     scale[i,i] <- scale[j,j]
     scale[j,j] <- temp_ii
     ## Return
-    list(a = a, b = b, scale = scale)
+    list(lower = lower, upper = upper, scale = scale)
 }
 
 ##' @title Preconditioning (Reordering Variables According to their Expected Integration Limits)
-##' @param a vector
-##' @param b vector
-##' @param scale matrix
+##' @param lower d-vector of lower evaluation limits
+##' @param upper d-vector of upper evaluation limits
+##' @param scale (d, d)-covariance matrix (scale matrix)
 ##' @param chol.scale Cholesky factor (lower triangular matrix) of 'scale'
 ##' @param mean.sqrt.mix E(sqrt(W))
 ##' @return list with reordered integration limits, scale matrix and Cholesky factor
 ##' @author Erik Hintz and Marius Hofert
 ##' @note See Genz and Bretz (2002, p. 957)
-precond <- function(a, b, scale, chol.scale, mean.sqrt.mix)
+precond <- function(lower, upper, scale, chol.scale, mean.sqrt.mix)
 {
-    q <- length(a)
-    y <- rep(0, q - 1)
+    d <- length(lower)
+    y <- rep(0, d - 1)
 
     ## Find i = argmin_j { <expected length of interval> }
-    i <- which.min(apply(pnorm(cbind(b, a) / (mean.sqrt.mix * sqrt(diag(scale)))), 1, diff))
+    i <- which.min(apply(pnorm(cbind(upper, lower) / (mean.sqrt.mix * sqrt(diag(scale)))), 1, diff))
     if(i != 1) {
-        ## Swap 1 and i
-        tmp <- swap(i = 1, j = i, a = a, b = b, scale = scale)
-        a <- tmp$a
-        b <- tmp$b
+        ## Swap 1 and i in 'lower', 'upper' and 'scale'
+        tmp <- swap(i = 1, j = i, lower = lower, upper = upper, scale = scale)
+        lower <- tmp$lower
+        upper <- tmp$upper
         scale <- tmp$scale
     }
 
     ## Store y1
-    y[1] <- -(dnorm(b[1]/mean.sqrt.mix) - dnorm(a[1]/mean.sqrt.mix)) /
-        (pnorm(b[1]/mean.sqrt.mix) - pnorm(a[1]/mean.sqrt.mix))
+    y[1] <- -(dnorm(upper[1]/mean.sqrt.mix) - dnorm(lower[1]/mean.sqrt.mix)) /
+        (pnorm(upper[1]/mean.sqrt.mix) - pnorm(lower[1]/mean.sqrt.mix))
 
     ## Update the Cholesky factor
     chol.scale[1, 1] <- sqrt(scale[1, 1])
-    chol.scale[2:q, 1] <- as.matrix(scale[2:q, 1] / chol.scale[1, 1])
-    for(j in 2:(q-1)) {
-        denom <- sqrt(diag(scale)[j:q] - rowSums(as.matrix(chol.scale[j:q, 1:(j-1)])^2))
-        c <- as.matrix(chol.scale[j:q, 1:j-1]) %*% y[1:(j-1)]
+    chol.scale[2:d, 1] <- as.matrix(scale[2:d, 1] / chol.scale[1, 1])
+    for(j in 2:(d-1)) {
+        denom <- sqrt(diag(scale)[j:d] - rowSums(as.matrix(chol.scale[j:d, 1:(j-1)])^2))
+        c <- as.matrix(chol.scale[j:d, 1:j-1]) %*% y[1:(j-1)]
         ## Find i = argmin { <expected length of interval j> }
-        i <- which.min(pnorm((b[j:q] / mean.sqrt.mix - c) / denom) -
-                       pnorm((a[j:q] / mean.sqrt.mix - c) / denom)) + j - 1
+        i <- which.min(pnorm((upper[j:d] / mean.sqrt.mix - c) / denom) -
+                       pnorm((lower[j:d] / mean.sqrt.mix - c) / denom)) + j - 1
         if(i != j){ # swap i and j
-            tmp <- swap(i = i, j = j, a = a, b = b, scale = scale)
-            a <- tmp$a
-            b <- tmp$b
+            tmp <- swap(i = i, j = j, lower = lower, upper = upper, scale = scale)
+            lower <- tmp$lower
+            upper <- tmp$upper
             scale <- tmp$scale
             chol.scale[c(i,j),]   <- as.matrix(chol.scale[c(j,i),])
             chol.scale[j,(j+1):i] <- as.matrix(0, ncol = i - j, nrow = 1)
         }
         ## Update Cholesky factor
         chol.scale[j,j] <- sqrt(scale[j,j] - sum(chol.scale[j,1:(j-1)]^2))
-        if(j < (q-1))
-            chol.scale[(j+1):q, j] <- (scale[(j+1):q, j] - as.matrix(chol.scale[(j+1):q, 1:(j-1)]) %*%
+        if(j < d-1)
+            chol.scale[(j+1):d, j] <- (scale[(j+1):d, j] - as.matrix(chol.scale[(j+1):d, 1:(j-1)]) %*%
                                        chol.scale[j, 1:(j-1)]) / chol.scale[j, j]
-        else chol.scale[(j+1):q, j] <- (scale[(j+1):q, j] - chol.scale[(j+1):q, 1:(j-1)] %*%
+        else chol.scale[(j+1):d, j] <- (scale[(j+1):d, j] - chol.scale[(j+1):d, 1:(j-1)] %*%
                                         chol.scale[j, 1:(j-1)]) / chol.scale[j, j]
         ## Get yj
-        ajbj <- c((a[j] / mean.sqrt.mix - chol.scale[j, 1:(j-1)] %*% y[1:(j-1)]),
-        (b[j] / mean.sqrt.mix - chol.scale[j, 1:(j-1)] %*% y[1:(j-1)])) / chol.scale[j, j]
-        y[j] <- (dnorm(ajbj[1]) - dnorm(ajbj[2])) / (pnorm(ajbj[2]) - pnorm(ajbj[1]))
+        low.j.up.j <- c(lower[j] / mean.sqrt.mix - chol.scale[j, 1:(j-1)] %*% y[1:(j-1)],
+                        upper[j] / mean.sqrt.mix - chol.scale[j, 1:(j-1)] %*% y[1:(j-1)]) / chol.scale[j, j]
+        y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) / (pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]))
     }
-    chol.scale[q,q] <- sqrt(scale[q, q] - sum(chol.scale[q, 1:(q-1)]^2))
+    chol.scale[d, d] <- sqrt(scale[d, d] - sum(chol.scale[d, 1:(d-1)]^2))
 
     ## Return
-    list(a = a, b = b, scale = scale, chol.scale = chol.scale)
+    list(lower = lower, upper = upper, scale = scale, chol.scale = chol.scale)
 }
 
 ##' @title Distribution Function of the Multivariate t Distribution
@@ -236,10 +237,10 @@ pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
             mean.sqrt.mix <- mean(sqrt(W(qrng::sobol(n = 5000, d = 1, randomize = TRUE))))
         if(any(mean.sqrt.mix <= 0))
             stop("'mean.sqrt.mix' has to be positive (possibly after being generated in pnvmix())")
-        temp <- precond(a = lower, b = upper, scale = scale,
+        temp <- precond(lower = lower, upper = upper, scale = scale,
                         chol.scale = chol.scale, mean.sqrt.mix = mean.sqrt.mix)
-        lower <- temp$a
-        upper <- temp$b
+        lower <- temp$lower
+        upper <- temp$upper
         chol.scale <- temp$chol.scale
     }
 
@@ -248,7 +249,7 @@ pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
     n. <- fun.eval[1] # initial n
     T. <- rep(0, B) # vector to store RQMC estimates
 
-    ZERO <- .Machine$double.eps
+    ZERO <- .Machine$double.eps # TODO: shouldn't this be double.xmin? see ?.Machine
     ONE <- 1-.Machine$double.neg.eps
 
     if(method == "sobol") {
@@ -305,7 +306,7 @@ pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
                      if(d == 1){
                          cbind(sqrt(W(U.)), sqrt(W(1 - U.)))
                      } else {
-                         ## Column 1: sqrt(mix), columns 2--d: unchanged (still uniforms),
+                         ## Column 1:sqrt(mix), columns 2--d: unchanged (still uniforms),
                          ## column d + 1: antithetic realization of sqrt(mix)
                          cbind(sqrt(W(U.[, 1])), U.[, 2:d], sqrt(W(1 - U.[, 1])))
                      }
@@ -328,23 +329,23 @@ pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
             } else {
                 ## TODO: why keep this code? give a reason
                 ## T.[l] <- (T.[l] + .Call("eval_nvmix_integral",
-                ##                a    = as.double(lower),
-                ##                b    = as.double(upper),
-                ##                U    = as.double(U),
-                ##                n    = as.integer(n.),
-                ##                q    = as.integer(d),
-                ##                C    = as.double(C),
-                ##                ZERO = as.double(ZERO),
-                ##                ONE  = as.double(ONE)) )/denom
+                ##                lower = as.double(lower),
+                ##                upper = as.double(upper),
+                ##                U     = as.double(U),
+                ##                n     = as.integer(n.),
+                ##                d     = as.integer(d),
+                ##                C     = as.double(C),
+                ##                ZERO  = as.double(ZERO),
+                ##                ONE   = as.double(ONE)) )/denom
                 T.[l] <- (i. * T.[l] + .Call("eval_nvmix_integral",
-                                             a    = as.double(lower),
-                                             b    = as.double(upper),
-                                             U    = as.double(U),
-                                             n    = as.integer(n.),
-                                             q    = as.integer(d),
-                                             C    = as.double(chol.scale),
-                                             ZERO = as.double(ZERO),
-                                             ONE  = as.double(ONE)) ) / (i. + 1)
+                                             lower = as.double(lower),
+                                             upper = as.double(upper),
+                                             U     = as.double(U),
+                                             n     = as.integer(n.),
+                                             d     = as.integer(d),
+                                             C     = as.double(chol.scale),
+                                             ZERO  = as.double(ZERO),
+                                             ONE   = as.double(ONE)) ) / (i. + 1)
             }
         } # end for(l in 1:B)
 
