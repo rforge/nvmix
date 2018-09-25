@@ -1,16 +1,20 @@
 ### For next release ###########################################################
 
-- DONE Did 'eval_int_mix' stand for 'eval_integral_nvmix' (EH: fine for me)
-- DONE Please address TODO in code (./src at the moment)
-- DONE Implement rStudent()
 - Write vignette nvmix_functionality.Rmd
+- need rmultinorm
+- names: *multinorm long, also we don't mention 'multivariate' for the other
+  distributions either, '*mv*' already done by mvtnorm pkg.
+  => dNorm, pNorm, rNorm, fitNorm
+     [could go with dGauss, pGauss, rGauss?]
+     [or dNorm, pNorm, rNorm, fitNorm]
+     [((and?) dT, pT, rT, fitT)]
 - MH: check ./R
 - MH: check ./man
 
 
 ### TODO #######################################################################
 
-- TODO in rnvmix(), maybe it would be nice if user could specify if random 
+- TODO in rnvmix(), maybe it would be nice if user could specify if random
        or quasi-random samples should be produced
 - TODO Need fitnvmix(): check what other packages do
 - DONE implement dnvmix() as well as wrappers for normal/t case.
