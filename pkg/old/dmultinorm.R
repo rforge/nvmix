@@ -10,7 +10,7 @@
 ##' @param log logical indicating whether the logarithmic density is computed
 ##' @return n-vector with N(loc, scale) density values
 ##' @author Marius Hofert and Erik Hintz
-dmultinorm <- function(x, loc = rep(0, d), scale,
+dmultinorm <- function(x, loc = rep(0, d), scale = diag(d),
                        factor = tryCatch(factorize(scale), error = function(e) e), # needs to be triangular!
                        log = FALSE)
 {

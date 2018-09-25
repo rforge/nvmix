@@ -42,7 +42,8 @@ rnvmix <- function(n, mix, loc = rep(0, d), scale, factor = factorize(scale), ..
                         rep(1, n)
                     },
                     "inverse.gamma" = {
-                        if(hasArg(df)) df <- list(...)$df else stop("'mix = \"inverse.gamma\"' requires 'df' to be provided.")
+                        if(hasArg(df)) df <- list(...)$df else
+                            stop("'mix = \"inverse.gamma\"' requires 'df' to be provided.")
                         ## Still allow df = Inf (normal distribution)
                         stopifnot(is.numeric(df), length(df) == 1, df > 0)
                         if(is.finite(df)) {

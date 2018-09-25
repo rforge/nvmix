@@ -34,168 +34,168 @@ dnvmix <- function(x, loc = rep(0, d), scale, mix,
                    abserr = 0.001, gam = 3.3, Nmax = 1e8, B = 12, n_init = 2^6, method = "sobol",
                    log = FALSE, ...)
 {
-  ## Logicals if we are dealing with a multivariate normal or multivariate t
-  const <- FALSE
-  inv.gam <- FALSE
-  
-  ## Define the quantile function of the mixing variable.
-  ## If mix is either "constant" or "inverse.gamma", we don't need the quantile function as there is a closed
-  ## formula for the density in these cases.
-  
-  if(is.character(mix)){
-    mix <- match.arg(mix, choices = c("constant", "inverse.gamma"))
-    switch(mix,
-           "constant" = {
-             const <- TRUE
-           },
-           "inverse.gamma" = {
-             if(hasArg(df)) df <- list(...)$df else stop("'mix = \"inverse.gamma\"' requires 'df' to be provided.")
-             ## Still allow df = Inf (normal distribution)
-             stopifnot(is.numeric(df), length(df) == 1, df > 0)
-             if(is.finite(df)) {
-               inv.gam <- TRUE
-             } else {
-               const <- TRUE
-             }
-           },
-           stop("Currently unsupported 'mix'"))
-  } else {
-    ## In all the other cases, we do need a quantile function, which we define now:
-    W <- if(is.list(mix)) { # 'mix' is a list of the form (<character string>, <parameters>)
-      stopifnot(length(mix) >= 1, is.character(distr <- mix[[1]]))
-      qmix <- paste0("q", distr)
-      if(!existsFunction(qmix))
-        stop("No function named '", qmix, "'.")
-      function(u){
-        return(  do.call(qmix, c(u, mix[-1])))
-      }
-    } else if(is.function(mix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
-      function(u){
-        return(mix(u, ...))
-      }
-    } else stop("'mix' must be a character string, list or quantile function.")
-  }
-  
-  if(!is.matrix(x)) x <- rbind(x)
-  n <- nrow(x)
-  d <- ncol(x)
-  stopifnot(length(loc) == d)
-  notNA <- apply(!is.na(x), 1, all)
-  lres <- rep(-Inf, n) # vector to store reults
-  lres[!notNA] <- NA
-  x <- x[notNA,] # available points
-  tx <- t(x) # (d, n)-matrix
-  if(inherits(factor, "error") || is.null(factor)) {
-    lres[notNA & (colSums(tx == loc) == d)] <- Inf
-  } else {
-    ## Solve R^T * z = x - mu for z, so z = (R^T)^{-1} * (x - mu) (a (d, d)-matrix)
-    ## => z^2 (=> componentwise) = z^T z = (x - mu)^T * ((R^T)^{-1})^T (R^T)^{-1} (x - mu)
-    ##                           = z^T z = (x - mu)^T * R^{-1} (R^T)^{-1} (x - mu)
-    ##                           = (x - mu)^T * (R^T R)^{-1} * (x - mu)
-    ##                           = (x - mu)^T * scale^{-1} * (x - mu) = quadratic form
-    z <- backsolve(factor, tx - loc, transpose = TRUE)
-    maha2 <- colSums(z^2) # = sum(z^T z); squared Mahalanobis distance from x to mu w.r.t. scale
-    ## log(sqrt(det(scale))) = log(det(scale))/2 = log(det(R^T R))/2 = log(det(R)^2)/2
-    ## = log(prod(diag(R))) = sum(log(diag(R)))
-    lrdet <- sum(log(diag(factor)))
-    
-    N. <- 0 # N. will count the total number of function evaluations
-    i. <- 0 # initialize counter; this will count the number of iterations in the while loop
-    
-    ## First we catch the case of a mulitvariate t/multivariate normal
-    if(inv.gam){
-      df.d.2 <- (df + d) / 2
-      lres[notNA] <- lgamma(df.d.2) - lgamma(df/2) - (d/2) * log(df * pi) - lrdet - df.d.2 * log1p(maha2 / df)
-      
-      err <- 0
-      var <- 0
-      
-    } else if(const){
-      lres[notNA] <- -(d/2) * log(2 * pi) - lrdet - maha2/2
-      
-      err <- 0
-      var <- 0
-      
-    } else{
-      
-      ## If we are not dealing with a multivariate t/normal, we use a RQMC procedure as in pnvmix
-      
-      gam <- gam / sqrt(B) # instead of dividing sigma by sqrt(B) each time
-      n. <- n_init # initial n
-      T. <- matrix(0, ncol = n, nrow = B) # matrix to store RQMC estimates
-      err <- abserr + 42 # initialize err to something bigger than abserr so that we can enter the while loop
-      
-      useskip <- 0 # will need that because the first iteration is a little different from all the others
-      denom <- 1
-      
-      maha2 <- as.matrix(maha2, nrow = 1, ncol = n) # 1 x n matrix 
-      
-      if(method == "sobol") {
-        if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
-        seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used.
-      }
-      
-      while(err > abserr && N. < Nmax)
-      {
-        
-        if(method == "sobol") .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
-        
-        ## Get B RQCM estimates
-        for(l in 1:B){
-          
-          # Get the pointset
-          U <- switch(method,
-                      "sobol"   = {
-                        qrng::sobol(n = n., d = 1, randomize = TRUE, skip = (useskip * n.))
-                      },
-                      "gHalton" = {
-                        qrng::ghalton(n = n., d = 1, method = "generalized")
-                      },
-                      "prng"    = {
-                        matrix(runif( n. ), ncol = 1)
-                      })
+    ## Logicals if we are dealing with a multivariate normal or multivariate t
+    const <- FALSE
+    inv.gam <- FALSE
 
+    ## Define the quantile function of the mixing variable.
+    ## If mix is either "constant" or "inverse.gamma", we don't need the quantile function as there is a closed
+    ## formula for the density in these cases.
 
-          U <- as.matrix( W(U), ncol = 1, nrow = n.)
-
-          b <- - (d/2) * matrix(log(2 * pi * U), nrow = n., ncol = n) - lrdet - (1/U) %*% t(maha2) / 2 #n. x n matrix, each column corresponds to "one x"
-          
-          bmax <- apply(b, 2, max) # n vector
-          
-          T.[l,] <- ( T.[l,] - log(n.) + bmax + log( colSums( exp (b - matrix(bmax, ncol = n, nrow = n., byrow = TRUE) ) ) ) )/denom
-        }
-          
-        ## Update the total number of function evaluations
-        N. <- N. + B * n.
-        
-        ## Change denom and useksip. This is done exactly once, namely in the first iteration.
-        if(i. == 0){
-          
-          denom <- 2
-          useskip <- 1
-          
-        } else {
-          
-          ## Increase sample size n. This is done in all iterations except for the first two.
-          n. <- 2 * n.
-          
-        }  
-        
-        sig <- max( apply(T., 2, sd)) # get standard deviation of the column with the largest standard deviation
-        err <- gam * sig # update error. Note that this gam is actually gamma/sqrt(N)
-        i. <- i. + 1 # update counter 
-      }
-      
-      var <- (sig/sqrt(B))^2
-      
-      if(err > abserr) warning("Precision level abserr not reached; consider increasing Nmax.")
-      
-      lres[notNA] <- apply(T., 2, mean)
+    if(is.character(mix)){
+        mix <- match.arg(mix, choices = c("constant", "inverse.gamma"))
+        switch(mix,
+               "constant" = {
+                   const <- TRUE
+               },
+               "inverse.gamma" = {
+                   if(hasArg(df)) df <- list(...)$df else stop("'mix = \"inverse.gamma\"' requires 'df' to be provided.")
+                   ## Still allow df = Inf (normal distribution)
+                   stopifnot(is.numeric(df), length(df) == 1, df > 0)
+                   if(is.finite(df)) {
+                       inv.gam <- TRUE
+                   } else {
+                       const <- TRUE
+                   }
+               },
+               stop("Currently unsupported 'mix'"))
+    } else {
+        ## In all the other cases, we do need a quantile function, which we define now:
+        W <- if(is.list(mix)) { # 'mix' is a list of the form (<character string>, <parameters>)
+                 stopifnot(length(mix) >= 1, is.character(distr <- mix[[1]]))
+                 qmix <- paste0("q", distr)
+                 if(!existsFunction(qmix))
+                     stop("No function named '", qmix, "'.")
+                 function(u){
+                     return(  do.call(qmix, c(u, mix[-1])))
+                 }
+             } else if(is.function(mix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
+                 function(u){
+                     return(mix(u, ...))
+                 }
+             } else stop("'mix' must be a character string, list or quantile function.")
     }
-  }
-  
-  ## And return
-  if(log) list(Density = lres, N = N., i = i., ErrEst = err, Var = var) else list(Density = exp(lres), N = N., i = i., ErrEst = err, Var = var) # also works with NA, -Inf, Inf
+
+    if(!is.matrix(x)) x <- rbind(x)
+    n <- nrow(x)
+    d <- ncol(x)
+    stopifnot(length(loc) == d)
+    notNA <- apply(!is.na(x), 1, all)
+    lres <- rep(-Inf, n) # vector to store reults
+    lres[!notNA] <- NA
+    x <- x[notNA,] # available points
+    tx <- t(x) # (d, n)-matrix
+    if(inherits(factor, "error") || is.null(factor)) {
+        lres[notNA & (colSums(tx == loc) == d)] <- Inf
+    } else {
+        ## Solve R^T * z = x - mu for z, so z = (R^T)^{-1} * (x - mu) (a (d, d)-matrix)
+        ## => z^2 (=> componentwise) = z^T z = (x - mu)^T * ((R^T)^{-1})^T (R^T)^{-1} (x - mu)
+        ##                           = z^T z = (x - mu)^T * R^{-1} (R^T)^{-1} (x - mu)
+        ##                           = (x - mu)^T * (R^T R)^{-1} * (x - mu)
+        ##                           = (x - mu)^T * scale^{-1} * (x - mu) = quadratic form
+        z <- backsolve(factor, tx - loc, transpose = TRUE)
+        maha2 <- colSums(z^2) # = sum(z^T z); squared Mahalanobis distance from x to mu w.r.t. scale
+        ## log(sqrt(det(scale))) = log(det(scale))/2 = log(det(R^T R))/2 = log(det(R)^2)/2
+        ## = log(prod(diag(R))) = sum(log(diag(R)))
+        lrdet <- sum(log(diag(factor)))
+
+        N. <- 0 # N. will count the total number of function evaluations
+        i. <- 0 # initialize counter; this will count the number of iterations in the while loop
+
+        ## First we catch the case of a mulitvariate t/multivariate normal
+        if(inv.gam){
+            df.d.2 <- (df + d) / 2
+            lres[notNA] <- lgamma(df.d.2) - lgamma(df/2) - (d/2) * log(df * pi) - lrdet - df.d.2 * log1p(maha2 / df)
+
+            err <- 0
+            var <- 0
+
+        } else if(const){
+            lres[notNA] <- -(d/2) * log(2 * pi) - lrdet - maha2/2
+
+            err <- 0
+            var <- 0
+
+        } else{
+
+            ## If we are not dealing with a multivariate t/normal, we use a RQMC procedure as in pnvmix
+
+            gam <- gam / sqrt(B) # instead of dividing sigma by sqrt(B) each time
+            n. <- n_init # initial n
+            T. <- matrix(0, ncol = n, nrow = B) # matrix to store RQMC estimates
+            err <- abserr + 42 # initialize err to something bigger than abserr so that we can enter the while loop
+
+            useskip <- 0 # will need that because the first iteration is a little different from all the others
+            denom <- 1
+
+            maha2 <- as.matrix(maha2, nrow = 1, ncol = n) # 1 x n matrix
+
+            if(method == "sobol") {
+                if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
+                seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used.
+            }
+
+            while(err > abserr && N. < Nmax)
+        {
+
+            if(method == "sobol") .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
+
+            ## Get B RQCM estimates
+            for(l in 1:B){
+
+                                        # Get the pointset
+                U <- switch(method,
+                            "sobol"   = {
+                                qrng::sobol(n = n., d = 1, randomize = TRUE, skip = (useskip * n.))
+                            },
+                            "gHalton" = {
+                                qrng::ghalton(n = n., d = 1, method = "generalized")
+                            },
+                            "prng"    = {
+                                matrix(runif( n. ), ncol = 1)
+                            })
+
+
+                U <- as.matrix( W(U), ncol = 1, nrow = n.)
+
+                b <- - (d/2) * matrix(log(2 * pi * U), nrow = n., ncol = n) - lrdet - (1/U) %*% t(maha2) / 2 #n. x n matrix, each column corresponds to "one x"
+
+                bmax <- apply(b, 2, max) # n vector
+
+                T.[l,] <- ( T.[l,] - log(n.) + bmax + log( colSums( exp (b - matrix(bmax, ncol = n, nrow = n., byrow = TRUE) ) ) ) )/denom
+            }
+
+            ## Update the total number of function evaluations
+            N. <- N. + B * n.
+
+            ## Change denom and useksip. This is done exactly once, namely in the first iteration.
+            if(i. == 0){
+
+                denom <- 2
+                useskip <- 1
+
+            } else {
+
+                ## Increase sample size n. This is done in all iterations except for the first two.
+                n. <- 2 * n.
+
+            }
+
+            sig <- max( apply(T., 2, sd)) # get standard deviation of the column with the largest standard deviation
+            err <- gam * sig # update error. Note that this gam is actually gamma/sqrt(N)
+            i. <- i. + 1 # update counter
+        }
+
+            var <- (sig/sqrt(B))^2
+
+            if(err > abserr) warning("Precision level abserr not reached; consider increasing Nmax.")
+
+            lres[notNA] <- apply(T., 2, mean)
+        }
+    }
+
+    ## And return
+    if(log) list(Density = lres, N = N., i = i., ErrEst = err, Var = var) else list(Density = exp(lres), N = N., i = i., ErrEst = err, Var = var) # also works with NA, -Inf, Inf
 }
 
 

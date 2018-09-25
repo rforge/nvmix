@@ -11,7 +11,7 @@
 ##' @param log logical indicating whether the logarithmic density is computed
 ##' @return n-vector with t_nu(loc, scale) density values
 ##' @author Marius Hofert and Erik Hintz
-dStudent <- function(x, df, loc = rep(0, d), scale,
+dStudent <- function(x, df, loc = rep(0, d), scale = diag(d),
                      factor = tryCatch(factorize(scale), error = function(e) e), # needs to be triangular!
                      log = FALSE)
 {

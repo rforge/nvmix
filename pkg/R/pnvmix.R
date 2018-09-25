@@ -12,57 +12,57 @@
 ##' @author Erik Hintz
 precond <- function(a, b, R, C, q, meansqrtmix)
 {
-  y <- rep(0, q - 1)
+    y <- rep(0, q - 1)
 
-  ## Find i = argmin_j { <expected length of interval> }
-  i <- which.min( apply( pnorm( cbind(b, a) / (meansqrtmix * sqrt(diag(R)) ) ), 1, diff) )
+    ## Find i = argmin_j { <expected length of interval> }
+    i <- which.min( apply( pnorm( cbind(b, a) / (meansqrtmix * sqrt(diag(R)) ) ), 1, diff) )
 
-  if(i != 1) {
-    ## Swap 1 and i
-    tmp <- swap(i = 1, j = i, a = a, b = b, Sigma = R)
-    a <- tmp$a
-    b <- tmp$b
-    R <- tmp$Sigma
-  }
-
-  ## Store y1
-  y[1] <- - ( dnorm(b[1]/meansqrtmix) - dnorm(a[1]/meansqrtmix)) / (pnorm(b[1]/meansqrtmix) - pnorm(a[1]/meansqrtmix))
-
-  ## Update Cholesky
-  C[1, 1] <- sqrt( R[1, 1] )
-  C[2:q, 1] <- as.matrix( R[2:q, 1] / C[1, 1] )
-
-  for(j in 2:(q-1)){
-
-    denom <- sqrt( diag(R)[j:q] - rowSums( as.matrix( C[j:q, 1:(j-1)] )^2 ) )
-    c <- as.matrix( C[j:q, 1:j-1] ) %*% y[1:(j-1)]
-
-    # Find i = argmin { <expected length of interval j> }
-    i <- which.min( pnorm( (b[j:q] / meansqrtmix - c) / denom ) - pnorm( (a[j:q] / meansqrtmix - c) / denom ) ) + j - 1
-
-    if(i != j){
-      ## Swap i and j
-      tmp <- swap(i = i, j = j, a = a, b = b, Sigma = R)
-      a <- tmp$a
-      b <- tmp$b
-      R <- tmp$Sigma
-
-      C[c(i,j), ]    <- as.matrix(C[c(j,i), ])
-      C[j, (j+1):i] <- as.matrix(0, ncol = i - j, nrow = 1)
+    if(i != 1) {
+        ## Swap 1 and i
+        tmp <- swap(i = 1, j = i, a = a, b = b, Sigma = R)
+        a <- tmp$a
+        b <- tmp$b
+        R <- tmp$Sigma
     }
 
+    ## Store y1
+    y[1] <- - ( dnorm(b[1]/meansqrtmix) - dnorm(a[1]/meansqrtmix)) / (pnorm(b[1]/meansqrtmix) - pnorm(a[1]/meansqrtmix))
+
     ## Update Cholesky
-    C[j,j] <- sqrt(R[j,j] - sum( C[j, 1:(j-1)]^2 ) )
-    if(j< (q-1)) C[(j+1):q, j] <- ( R[(j+1):q, j] - as.matrix( C[(j+1):q, 1:(j-1)] ) %*% C[j, 1:(j-1)] ) / C[j, j]
-    else C[(j+1):q, j] <- ( R[(j+1):q, j] - C[(j+1):q, 1:(j-1)] %*% C[j, 1:(j-1)] ) / C[j, j]
+    C[1, 1] <- sqrt( R[1, 1] )
+    C[2:q, 1] <- as.matrix( R[2:q, 1] / C[1, 1] )
 
-    ## Get yj
-    ajbj <-  c( (a[j] / meansqrtmix - C[j, 1:(j-1)] %*% y[1:(j-1)] ) , (b[j] / meansqrtmix - C[j, 1:(j-1)] %*% y[1:(j-1)]) ) / C[j,j]
-    y[j] <- ( dnorm(ajbj[1]) - dnorm(ajbj[2]) ) / ( pnorm(ajbj[2]) - pnorm(ajbj[1]) )
-  }
+    for(j in 2:(q-1)){
 
-  C[q,q] <- sqrt(R[q, q] - sum(C[q, 1:(q-1)]^2))
-  list(a = a, b = b, R = R, C = C)
+        denom <- sqrt( diag(R)[j:q] - rowSums( as.matrix( C[j:q, 1:(j-1)] )^2 ) )
+        c <- as.matrix( C[j:q, 1:j-1] ) %*% y[1:(j-1)]
+
+                                        # Find i = argmin { <expected length of interval j> }
+        i <- which.min( pnorm( (b[j:q] / meansqrtmix - c) / denom ) - pnorm( (a[j:q] / meansqrtmix - c) / denom ) ) + j - 1
+
+        if(i != j){
+            ## Swap i and j
+            tmp <- swap(i = i, j = j, a = a, b = b, Sigma = R)
+            a <- tmp$a
+            b <- tmp$b
+            R <- tmp$Sigma
+
+            C[c(i,j), ]    <- as.matrix(C[c(j,i), ])
+            C[j, (j+1):i] <- as.matrix(0, ncol = i - j, nrow = 1)
+        }
+
+        ## Update Cholesky
+        C[j,j] <- sqrt(R[j,j] - sum( C[j, 1:(j-1)]^2 ) )
+        if(j< (q-1)) C[(j+1):q, j] <- ( R[(j+1):q, j] - as.matrix( C[(j+1):q, 1:(j-1)] ) %*% C[j, 1:(j-1)] ) / C[j, j]
+        else C[(j+1):q, j] <- ( R[(j+1):q, j] - C[(j+1):q, 1:(j-1)] %*% C[j, 1:(j-1)] ) / C[j, j]
+
+        ## Get yj
+        ajbj <-  c( (a[j] / meansqrtmix - C[j, 1:(j-1)] %*% y[1:(j-1)] ) , (b[j] / meansqrtmix - C[j, 1:(j-1)] %*% y[1:(j-1)]) ) / C[j,j]
+        y[j] <- ( dnorm(ajbj[1]) - dnorm(ajbj[2]) ) / ( pnorm(ajbj[2]) - pnorm(ajbj[1]) )
+    }
+
+    C[q,q] <- sqrt(R[q, q] - sum(C[q, 1:(q-1)]^2))
+    list(a = a, b = b, R = R, C = C)
 }
 
 ##' @title Distribution Function of the Multivariate t Distribution
@@ -93,12 +93,12 @@ precond <- function(a, b, R, C, q, meansqrtmix)
 ##' @param B number of randomizations to get error estimates.
 ##' @param init.fun.eval number > 0 of function evaluations in first loop;
 ##'        powers or at least multiples of 2 are recommended.
+##' @param precond Logical. If TRUE (recommended), variable reordering as described in [genzbretz2002] pp. 955-956 is performed. Variable reordering can lead to a significant variance
+##'        reduction and decrease in computational time.
 ##' @param method character string indicating method to be used. Allowed are
 ##'         - "sobol" for a Sobol sequence.
 ##'         - "ghalton" for a generalized Halton sequence.
 ##'         - "prng" for a pure Monte Carlo approach.
-##' @param precond Logical. If TRUE (recommended), variable reordering as described in [genzbretz2002] pp. 955-956 is performed. Variable reordering can lead to a significant variance
-##'        reduction and decrease in computational time.
 ##' @author Erik Hintz
 pnvmix <- function(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)), scale, mix, meansqrtmix = NA, standardized = FALSE,
                    gam = 3.3, abserr = 0.001, Nmax = 1e8, B = 12, n_init = 2^6, precond = TRUE,

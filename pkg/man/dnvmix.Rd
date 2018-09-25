@@ -7,7 +7,7 @@
 }
 \usage{
 dnvmix(x, loc = rep(0, d), scale, mix,
-       factor = tryCatch(factorize(scale), error = function(e) e), 
+       factor = tryCatch(factorize(scale), error = function(e) e),
        abserr = 0.001, gam = 3.3, Nmax = 1e8, B = 12, n_init = 2^6, method = "sobol",
        log = FALSE, ...)
 }
@@ -54,9 +54,9 @@ dnvmix(x, loc = rep(0, d), scale, mix,
     Also note that \code{factor} can be \code{NULL} or inherit from
     \code{"error"} in which case the degenerate density is computed
     as \code{Inf} at \code{loc} and 0 everywhere else.}
-  \item{abserr}{numeric and non-negative. Absolute precision required. If \code{abserr = 0}, algorithm will run 
+  \item{abserr}{numeric and non-negative. Absolute precision required. If \code{abserr = 0}, algorithm will run
         until total number of function evaluations exceeds Nmax (see also \code{Nmax}). If \eqn{n > 1}, algorithm runs until precision is reached for all \eqn{n} estimates for the         density.}
-  \item{gam}{Monte Carlo confidence multiplier. Algorithm runs until  \eqn{estimated standard error < gam * abserr}. 
+  \item{gam}{Monte Carlo confidence multiplier. Algorithm runs until  \eqn{estimated standard error < gam * abserr}.
       \code{gam = 3.3} (the default) means that one can expect that in 99.9 percent of the cases the actual absolute error is less than \code{abserr}.}
   \item{Nmax}{maximum number of function evaluations, can be used to
     control run time.}
@@ -69,7 +69,7 @@ dnvmix(x, loc = rep(0, d), scale, mix,
     of the density is to be computed.}
   \item{\dots}{additional arguments containing parameters of
     mixing distributions when \code{mix} is a \code{\link{character}}
-    string or \code{\link{function}}.}    
+    string or \code{\link{function}}.}
 }
 \value{
   \code{dnvmix()} returns a list of length five: The first element is a \eqn{n}-\code{\link{vector}} with the (estimated)
@@ -77,8 +77,8 @@ dnvmix(x, loc = rep(0, d), scale, mix,
   of the specified multivariate normal variance mixture with
   location vector \code{loc} and scale matrix \code{scale}
   (a covariance matrix). The other elements are the number of iterations, the total
-  number of function evaluations, an error estimate and the estimated variance of the randomized Quasi Monte Carlo estimator. If \eqn{n > 1}, the error estimate and the variance    reported is the largest error estimate and variance among the \eqn{n} estimates. 
-  
+  number of function evaluations, an error estimate and the estimated variance of the randomized Quasi Monte Carlo estimator. If \eqn{n > 1}, the error estimate and the variance    reported is the largest error estimate and variance among the \eqn{n} estimates.
+
 }
 \details{
   Internally used is \code{factor}, so \code{scale} is not required
@@ -86,12 +86,12 @@ dnvmix(x, loc = rep(0, d), scale, mix,
 
   The default factorization used is the Cholesky decomposition.
   To this end, \code{scale} needs to have full rank.
-  
+
   Care should be taken when changing the algorithm-specific parameters, notably \code{B} and \code{Nmax}. Error estimates will not be reliable for too small \code{B}.
-  
-  If the absolute error tolerance \code{abserr} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned. 
-  
-  For the case of a multivariate normal or multivariate t distributions, user-friendly wrappers are provided in \code{\link{dmultinorm}} and \code{\link{dStudent}}. Note that in these cases, \code{dnvmix} uses the closed formulas for the density of a multivariate normal / t distribution. 
+
+  If the absolute error tolerance \code{abserr} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned.
+
+  For the case of a multivariate normal or multivariate t distributions, user-friendly wrappers are provided in \code{\link{dNorm}} and \code{\link{dStudent}}. Note that in these cases, \code{dnvmix} uses the closed formulas for the density of a multivariate normal / t distribution.
 }
 \author{Marius Hofert and Erik Hintz}
 \references{
@@ -100,7 +100,7 @@ dnvmix(x, loc = rep(0, d), scale, mix,
   Princeton University Press.
 }
 \seealso{
-  \code{\link{pnvmix}()}, \code{\link{rnvmix}()}, \code{\link{dmultinorm}()}, \code{\link{dStudent}()}
+  \code{\link{pnvmix}()}, \code{\link{rnvmix}()}, \code{\link{dNorm}()}, \code{\link{dStudent}()}
 }
 \examples{
 ## Generate a random correlation matrix in three dimensions
@@ -114,7 +114,7 @@ x <- matrix(1:12/12, ncol = d) # evaluation points
 dt <- dnvmix(x, mix = "inverse.gamma", df = df, scale = P)$Density
 stopifnot(all.equal(dt, c(0.013266542, 0.011967156, 0.010760575, 0.009648682),
                     tol = 1e-7))
-                    
+
 ## The same can be achieved by defining a function for mix:
 mix. <- function(u, df){
   df2 <- df/2

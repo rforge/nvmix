@@ -1,12 +1,12 @@
-\name{dmultinorm}
-\alias{dmultinorm}
+\name{dNorm}
+\alias{dNorm}
 \title{Density of the Multivariate Normal Distribution}
 \description{
   Evaluating multivariate normal variance mixture distribution functions
   (including normal and Student \emph{t}).
 }
 \usage{
-dmultinorm(x, mean = rep(0, d), scale, 
+dNorm(x, mean = rep(0, d), scale,
        factor = tryCatch(factorize(scale), error = function(e) e),
        log = FALSE)
 }
@@ -28,7 +28,7 @@ dmultinorm(x, mean = rep(0, d), scale,
     of the density is to be computed.}
 }
 \value{
-  \code{dmultinorm()} returns an \eqn{n}-\code{\link{vector}} with the
+  \code{dNorm()} returns an \eqn{n}-\code{\link{vector}} with the
   density values (default) or log-density values (if \code{log})
   of the mutlivariate normal distribution with
   mean vector \code{mean} and scale matrix \code{scale}
@@ -40,7 +40,7 @@ dmultinorm(x, mean = rep(0, d), scale,
 
   The default factorization used is the Cholesky decomposition.
   To this end, \code{scale} needs to have full rank.
-  
+
   This is a user-friendly wrapper for \code{dnvmix(x, mix = "constant",...)}.
 }
 \author{Marius Hofert and Erik Hintz}
@@ -61,7 +61,7 @@ P <- cov2cor(A \%*\% t(A))
 x <- matrix(1:12/12, ncol = d) # evaluation points
 
 ## Evaluate normal density
-dn <- dmultinorm(x, scale = P)
+dn <- dNorm(x, scale = P)
 stopifnot(all.equal(dn, c(0.013083858, 0.011141923, 0.009389987, 0.007831596),
                     tol = 1e-7))
 }

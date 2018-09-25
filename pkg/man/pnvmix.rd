@@ -6,9 +6,9 @@
   (including normal and Student \emph{t} for non-integer degrees of freedom).
 }
 \usage{
-pnvmix(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)), 
-      scale, mix, meansqrtmix = NA, standardized = FALSE, gam = 3.3, abserr = 0.001, 
-      Nmax = 1e8, B = 12, n_init = 2^6, precond = TRUE, method = "sobol", ...) 
+pnvmix(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)),
+      scale, mix, meansqrtmix = NA, standardized = FALSE, gam = 3.3, abserr = 0.001,
+      Nmax = 1e8, B = 12, n_init = 2^6, precond = TRUE, method = "sobol", ...)
 }
 \arguments{
   \item{upper}{vector of length \eqn{d}.}
@@ -43,12 +43,12 @@ pnvmix(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)),
 	inversion method by applying this function to U(0,1) random variates via \code{mix(u, ...)}. Additional arguments for \code{mix} can be passed via the ellipsis argument.}
     }
   }
-  \item{meansqrtmix}{Mean of \code{sqrt(W)}, where \eqn{W} is the mixing variable. If not provided, it will be estimated. This is only needed for reordering, hence a rather 
+  \item{meansqrtmix}{Mean of \code{sqrt(W)}, where \eqn{W} is the mixing variable. If not provided, it will be estimated. This is only needed for reordering, hence a rather
   crude approximation is fine.}
   \item{standardized}{\code{logical}. If \code{TRUE}, \code{scale} is assumed to be a correlation matrix; if \code{FALSE} (default), lower, upper and scale will be normalized.}
-  \item{abserr}{numeric and non-negative. Absolute precision required. If abserr = 0, algorithm will run 
+  \item{abserr}{numeric and non-negative. Absolute precision required. If abserr = 0, algorithm will run
         until total number of function evaluations exceeds Nmax (see also Nmax).}
-  \item{gam}{Monte Carlo confidence multiplier. Algorithm runs until  \eqn{estimated standard error < gam * abserr}. 
+  \item{gam}{Monte Carlo confidence multiplier. Algorithm runs until  \eqn{estimated standard error < gam * abserr}.
       gam = 3.3 (the default) means that one can expect that in 99.9 percent of the cases the actual absolute error is less than \eqn{abserr}.}
   \item{Nmax}{maximum number of function evaluations, can be used to
     control run time.}
@@ -66,18 +66,18 @@ pnvmix(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)),
 \value{
   \code{pnvmix()} returns a list of length five, containing the
   the estimated probabilities, the number of iterations, the total
-  number of function evaluations, an error estimate and the estimated variance of the randomized Quasi Monte Carlo estimator. 
+  number of function evaluations, an error estimate and the estimated variance of the randomized Quasi Monte Carlo estimator.
 }
 \details{
   Note that this procedure calls underlying C code. Currently, the
   dimensions \eqn{d\ge 16510}{d >= 16510} are not supported for the default method sobol.
-  
-  Care should be taken when changing the algorithm-specific parameters, notably \code{B}, \code{Nmax}, \code{method} and \code{precond}. Error estimates will not be reliable for too small \code{B} and the performance of the algorithm depends heavily on the (Quasi-) Monte Carlo point-set used. 
-  
-  If the absolute error tolerance \code{abserr} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned. 
-  
-  For the case of a multivariate normal or multivariate t distributions, user-friendly wrappers are provided in \code{\link{pmultinorm}} and \code{\link{pStudent}}.
-  
+
+  Care should be taken when changing the algorithm-specific parameters, notably \code{B}, \code{Nmax}, \code{method} and \code{precond}. Error estimates will not be reliable for too small \code{B} and the performance of the algorithm depends heavily on the (Quasi-) Monte Carlo point-set used.
+
+  If the absolute error tolerance \code{abserr} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned.
+
+  For the case of a multivariate normal or multivariate t distributions, user-friendly wrappers are provided in \code{\link{pNorm}} and \code{\link{pStudent}}.
+
 }
 \author{Marius Hofert, Erik Hintz and Christiane Lemieux}
 \references{
@@ -86,10 +86,10 @@ pnvmix(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)),
   Princeton University Press.
 }
 \seealso{
-  \code{\link{dnvmix}()}, \code{\link{pmultinorm}}(), \code{\link{pStudent}()}
+  \code{\link{dnvmix}()}, \code{\link{pNorm}}(), \code{\link{pStudent}()}
 }
 \examples{
-## Example 1: Multivariate t distribution 
+## Example 1: Multivariate t distribution
 ## Generate a random correlation matrix in three dimensions
 d <- 3
 set.seed(271)
@@ -109,12 +109,12 @@ mix. <- function(u, df){
 }
 ## In this case meansqrtmix is known:
 c <- sqrt(df) * gamma(df/2) / ( sqrt(2) * gamma( (df+1) / 2 ) )
-set.seed(1) 
+set.seed(1)
 pt2 <- pnvmix(upper = b, lower = a, scale = P, mix = mix., meansqrtmix = c, df  = df)
 stopifnot(all.equal(pt1$Prob, pt2$Prob))
-## meansqrtmix will be approximated internally if not provided. 
+## meansqrtmix will be approximated internally if not provided.
 ## This leads to slightly different results
-set.seed(1) 
+set.seed(1)
 pt3 <- pnvmix(upper = b, lower = a, scale = P, mix = mix., df  = df)
 print(abs(pt3$Prob - pt2$Prob))
 
