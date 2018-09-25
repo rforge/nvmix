@@ -1,3 +1,11 @@
+### For next release ###########################################################
+
+- Implement rStudent
+- Write vignette nvmix_functionality.Rmd
+- Did 'eval_int_mix' stand for 'eval_integral_nvmix'?
+- MH: check ./R, ./man, ./src
+
+
 ### TODO #######################################################################
 
 - TODO Need fitnvmix(): check what other packages do
@@ -7,30 +15,36 @@
 - TODO Do we want a function that has multiple lower and upper as input?
 - DONE pStudent should work with df = Inf
 - DONE implement multivariate normal distribution
-- rename 'a' and 'b' to 'lower' and 'upper'; 'nu' to 'df'
-  => first arg should be 'upper' with default lower being '-Inf,...'
-	DONE
-- R should be 'scale' and we need a 'standardized = FALSE' argument;
-  if standardized = TRUE, loc = 0 and sigma = correlation matrix is assumed
-  ... or so)
-	DONE
-- 'swap' needs to be improved
-- 'func' not needed if 'base case' in pnvmix() is part of the loop
-  (only one call necessary then, so can be omitted)
-	DONE
-- more intuitive names for arguments concerning tolerance(s)
-	DONE
-- incorporate the case of a singular scale matrix
-- consolidate pStudent, pmultinorm, pnvmix into one flexible function; pStudent and pmultinorm should then only be user friendly wrappers to call pnvmix with the corresponding arguments. This will leave us with only one C function and one big R function to maintain - the price to pay is a tiny loss in efficiency, shouldn't be a big deal though
-	DONE
-- look into quantile function of univariate (marginal) normal variance mixtures. If we have a function, say, qnvmix1 (for 1 dimensional normal variance mixtures), we have
-	# a way to sample from univariate normal variance mixtures using inversion, can then be used for quasi- Monte Carlo sampling
-	# everything we need to evaluate "normal variance mixture copulas"
-  Some more thoughts:
-	# pnvmix() does not work for multiple upper/lower, since the preconditioning heavily depends on the input parameters
-	# however, in dimension 1, since we have the function pnorm(), the integration problem is actually one-dimensional. In this case, no reordering needs to be done and we can implement a "vectorized" pnvmix1() (I use 1 to highlight that it works only for dimension 1). Indeed, we only need to sample from the mixture distribution, and then evaluate pnorm() with different upper/lower bounds. We can use common random numbers (i.e. simulate from R, use these simulations for all upper/lower) and evaluate the cdf efficiently at many points
-	# the above point is particularly useful to implement qnvmix1(), since pnvmix1() can evaluate at multiple "upper" at once.
-	# still, pnvmix1() will only approximate the true cdf, numerically inverting that approximated cdf will inevitably lead to numerical inaccuracies.
+- DONE rename 'a' and 'b' to 'lower' and 'upper'; 'nu' to 'df'
+       (first arg should be 'upper' with default lower being '-Inf,...')
+- DONE 'R' should be 'scale' and we need a 'standardized = FALSE' argument;
+       if standardized = TRUE, loc = 0 and sigma = correlation matrix is assumed
+       ... or so)
+- TODO 'swap' needs to be improved
+- DONE 'func' not needed if 'base case' in pnvmix() is part of the loop
+       (only one call necessary then, so can be omitted)
+- DONE more intuitive names for arguments concerning tolerance(s)
+- TODO incorporate the case of a singular scale matrix
+- TODO look into quantile functions of univariate (marginal) normal variance mixtures.
+       If we have a function, say, qnvmix1 (for 1 dimensional normal variance mixtures),
+       we have a way to sample from univariate normal variance mixtures using inversion,
+       which can then be used for quasi-Monte Carlo sampling
+
+
+### More thoughts ##############################################################
+
+pnvmix() does not work for multiple upper/lower input vectors, since the
+preconditioning heavily depends on the input parameters. However, in d = 1,
+since we have the function pnorm(), the integration problem is actually
+one-dimensional. In this case, no reordering needs to be done and we can implement
+a "vectorized" pnvmix1() (I use 1 to highlight that it works only for d = 1).
+Indeed, we only need to sample from the mixture distribution and then evaluate
+pnorm() with different upper/lower bounds. We can use common random numbers
+(i.e. simulate from R, use these simulations for all upper/lower) and evaluate
+the df efficiently at many points. This is particularly useful for
+implementing qnvmix1(), since pnvmix1() can evaluate at multiple "upper" at once.
+Still, pnvmix1() will only approximate the true df, numerically inverting that
+approximated df will inevitably lead to numerical inaccuracies.
 
 
 ### Packages dealing with multivariate Student's t distribution ################

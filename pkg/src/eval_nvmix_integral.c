@@ -1,6 +1,4 @@
-/* eval_int_mix.c ********************************************************************/
-
-#include "eval_int_mix.h"
+#include "eval_nvmix_integral.h"
 #include <R.h>
 #include <Rmath.h>
 #include <Rinternals.h>
@@ -27,12 +25,12 @@
  *
  * @author Erik Hintz
  */
-double eval_int_mix(int n, int q, double *U, double *a, double *b, double *C, double ONE, double ZERO)
+double eval_nvmix_integral(int n, int q, double *U, double *a, double *b, double *C, double ONE, double ZERO)
 {
     double y[q-1], sqrtmix, d, f, cone, diff;
 	/* The following variables (ending in "a") are used to store the corresponding antithetic values */
     double ya[q-1], sqrtmixa, da, fa, conea, diffa;
-    
+
     double tmp;
 	double mean = 0;
 	int i, j, l;
@@ -42,11 +40,11 @@ double eval_int_mix(int n, int q, double *U, double *a, double *b, double *C, do
 
 	/* For each row of U */
 	for(j=0; j < n; j++){
-        
+
         /* Grab the realizations of sqrt(mix) */
         sqrtmix = U[j];
         sqrtmixa = U[q*n+j];
-        
+
 
 		/* Initialize d,f */
         /* Check if entry of a is -Inf (see note above) */
@@ -65,10 +63,10 @@ double eval_int_mix(int n, int q, double *U, double *a, double *b, double *C, do
             diff  = pnorm( b[0] / (C[0] * sqrtmix), 0, 1, 1, 0) - d;
             diffa = pnorm( b[0] / (C[0] * sqrtmixa), 0, 1, 1, 0) - da;
         }
-        
+
         f = diff;
         fa = diffa;
-        
+
 		/* Go through all columns except for first and last, so q-1 in total */
         /* For better readability, we start at i = 0 */
 		for(i=0; i< q-1; i++){
@@ -95,8 +93,8 @@ double eval_int_mix(int n, int q, double *U, double *a, double *b, double *C, do
 				tmp = ZERO;
 			}
             ya[i] = qnorm(tmp, 0, 1, 1, 0);
-            
-        
+
+
 
 			/* Calculate the scalar product sum C[i,j]y[j] for j=1 to (i-1) */
 			cone  = 0;
@@ -107,7 +105,7 @@ double eval_int_mix(int n, int q, double *U, double *a, double *b, double *C, do
 				cone  += y[l]  * C[l*q+i+1];
 				conea += ya[l] * C[l*q+i+1];
 			}
-            
+
             /* Calculate new d and diff = e-d. */
             if(a[i+1] == R_NegInf){
                 d  = 0;
@@ -123,7 +121,7 @@ double eval_int_mix(int n, int q, double *U, double *a, double *b, double *C, do
                 diff  = pnorm( (b[i+1] / sqrtmix - cone) /C[(i+1)*(q+1)], 0, 1, 1, 0) - d;
                 diffa = pnorm( (b[i+1] / sqrtmixa - conea)/C[(i+1)*(q+1)], 0, 1, 1, 0) - da;
             }
-            
+
 			f  *= diff;
 			fa *= diffa;
 		}
@@ -134,13 +132,13 @@ double eval_int_mix(int n, int q, double *U, double *a, double *b, double *C, do
 }
 
 /**
- * @title R Interface for eval_int_mix
- * @param ...same parameters as in eval_int_mix above
- * @return mean( f(U) ) where f is the integrand and U is the point-set
+ * @title R Interface for eval_nvmix_integral
+ * @param ...same parameters as in eval_nvmix_integral()
+ * @return mean(f(U)) where f is the integrand and U is the point-set
  * @author Erik Hintz
  */
-SEXP eval_int_mix_(SEXP n, SEXP q, SEXP U, SEXP a, SEXP b, SEXP C, SEXP ONE, SEXP ZERO)
+SEXP eval_nvmix_integral_(SEXP n, SEXP q, SEXP U, SEXP a, SEXP b, SEXP C, SEXP ONE, SEXP ZERO)
 {
-	double res = eval_int_mix(INTEGER(n)[0], INTEGER(q)[0], REAL(U), REAL(a), REAL(b), REAL(C),REAL(ONE)[0], REAL(ZERO)[0]);
+	double res = eval_nvmix_integral(INTEGER(n)[0], INTEGER(q)[0], REAL(U), REAL(a), REAL(b), REAL(C),REAL(ONE)[0], REAL(ZERO)[0]);
 	return ScalarReal(res);
 }

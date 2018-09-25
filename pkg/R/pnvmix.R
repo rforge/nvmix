@@ -10,7 +10,6 @@
 ##' @param meansqrtmix mean of sqrt(W)
 ##' @return list a, b, R, C of integration limits/scale matrix and Cholesky factor after reordering has been performed
 ##' @author Erik Hintz
-
 precond <- function(a, b, R, C, q, meansqrtmix)
 {
   y <- rep(0, q - 1)
@@ -65,14 +64,6 @@ precond <- function(a, b, R, C, q, meansqrtmix)
   C[q,q] <- sqrt(R[q, q] - sum(C[q, 1:(q-1)]^2))
   list(a = a, b = b, R = R, C = C)
 }
-
-
-
-
-
-
-
-
 
 ##' @title Distribution Function of the Multivariate t Distribution
 ##' @param upper vector of upper limits
@@ -323,16 +314,16 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(
       ## In this case, denom = 1 and T.[l] = 0.
 
       if(q == 1){
-        
+
         ## Case of dimension 1 seperate: Here, we do not need to approximate the multivariate normal cdf and can just use pnorm
         ## The case of dimension 1 for a normal / t distribution has already been dealt with
 
         #T.[l] <- (T.[l] + mean( ( pnorm( upper / U[,1]) - pnorm( lower / U[,1]) + pnorm( upper / U[, q + 1]) - pnorm( lower / U[, q + 1])) / 2) ) / denom
         T.[l] <- (i. * T.[l] + mean( ( pnorm( upper / U[,1]) - pnorm( lower / U[,1]) + pnorm( upper / U[, q + 1]) - pnorm( lower / U[, q + 1])) / 2) ) / (i. + 1)
-        
+
       } else {
 
-        # T.[l] <- (T.[l] + .Call("eval_int_mix_",
+        # T.[l] <- (T.[l] + .Call("eval_nvmix_integral_",
         #                n    = as.integer(n.),
         #                q    = as.integer(q),
         #                U    = as.double(U),
@@ -341,8 +332,8 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(
         #                C    = as.double(C),
         #                ONE  = as.double(ONE),
         #                ZERO = as.double(ZERO)) )/denom
-        
-        T.[l] <- (i. * T.[l] + .Call("eval_int_mix_",
+
+        T.[l] <- (i. * T.[l] + .Call("eval_nvmix_integral_",
                                 n    = as.integer(n.),
                                 q    = as.integer(q),
                                 U    = as.double(U),
@@ -351,24 +342,24 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(
                                 C    = as.double(C),
                                 ONE  = as.double(ONE),
                                 ZERO = as.double(ZERO)) ) / (i. + 1)
-        
+
       }
     } # end for(l in 1:N)
 
-    ## Update the total number of function evaluations; mutliplied by 2 since antithetic variates are being used in eval_int_mix
+    ## Update the total number of function evaluations; mutliplied by 2 since antithetic variates are being used in eval_nvmix_integral
     N. <- N. + 2 * B * n.
 
     # ## Change denom and useksip. This is done exactly once, namely in the first iteration.
     # if(i. == 0){
-    # 
+    #
     #   denom <- 2
     #   useskip <- 1
-    # 
+    #
     # } else {
-    # 
+    #
     #   ## Increase sample size n. This is done in all iterations except for the first two.
     #   n. <- 2 * n.
-    # 
+    #
     # }
 
     sig <- sd(T.) # get standard deviation of the estimator
