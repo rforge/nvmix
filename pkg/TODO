@@ -1,15 +1,12 @@
 ### TODO #######################################################################
 
-- Need fitnvmix(): check what other packages do:
-- implement dnvmix() as well as wrappers for normal/t case.
-	DONE
-- pnvmix(): should work with d = 1 and with missing data
-	d = 1 is DONE, what to do with missing data? Error?
-- Do we want a function that has multiple lower and upper as input?
-- pStudent should work with df = Inf
-	DONE
-- implement multivariate normal distribution 
-	DONE
+- TODO Need fitnvmix(): check what other packages do
+- DONE implement dnvmix() as well as wrappers for normal/t case.
+- DONE (d=1): pnvmix() should work with d = 1 and with missing data
+  TODO what to do with missing data? error?
+- TODO Do we want a function that has multiple lower and upper as input?
+- DONE pStudent should work with df = Inf
+- DONE implement multivariate normal distribution
 - rename 'a' and 'b' to 'lower' and 'upper'; 'nu' to 'df'
   => first arg should be 'upper' with default lower being '-Inf,...'
 	DONE
@@ -32,16 +29,16 @@
   Some more thoughts:
 	# pnvmix() does not work for multiple upper/lower, since the preconditioning heavily depends on the input parameters
 	# however, in dimension 1, since we have the function pnorm(), the integration problem is actually one-dimensional. In this case, no reordering needs to be done and we can implement a "vectorized" pnvmix1() (I use 1 to highlight that it works only for dimension 1). Indeed, we only need to sample from the mixture distribution, and then evaluate pnorm() with different upper/lower bounds. We can use common random numbers (i.e. simulate from R, use these simulations for all upper/lower) and evaluate the cdf efficiently at many points
-	# the above point is particularly useful to implement qnvmix1(), since pnvmix1() can evaluate at multiple "upper" at once. 
+	# the above point is particularly useful to implement qnvmix1(), since pnvmix1() can evaluate at multiple "upper" at once.
 	# still, pnvmix1() will only approximate the true cdf, numerically inverting that approximated cdf will inevitably lead to numerical inaccuracies.
 
 
-### Misc #######################################################################
+### Packages dealing with multivariate Student's t distribution ################
 
-- Other *multivariate t* packages (2018-06-21):
-  + monomvn (estimation under monotone pattern missing data; MLE & Bayesian)
-  + mvnfast (no pnvmix(), simulation, density, Mahalanobis distances)
-  + tmvtnorm (has ptmvt(), based on Gibbs sampler; see http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.26.6892)
-  + MVT (studentFit(); for fixed nu (= eta here), estimates location and scale; paper mentions EM Algorithm)
-  + mvtnorm (clear; no fitting, no non-integer dof, qmvt() [equicoordinate quantile function])
-  + QRM (fit.mst())
+2018-06-21:
+- monomvn (estimation under monotone pattern missing data; MLE & Bayesian)
+- mvnfast (no pnvmix(), simulation, density, Mahalanobis distances)
+- tmvtnorm (has ptmvt(), based on Gibbs sampler; see http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.26.6892)
+- MVT (studentFit(); for fixed nu (= eta here), estimates location and scale; paper mentions EM Algorithm)
+- mvtnorm (clear; no fitting, no non-integer dof, qmvt() [equicoordinate quantile function])
+- QRM (fit.mst())

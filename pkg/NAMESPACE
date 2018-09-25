@@ -1,9 +1,10 @@
 useDynLib(nvmix, .registration = TRUE)
 
+
 ### Imports ####################################################################
 
 importFrom("stats",
-           "runif", "rnorm", "pt", "qt", "rgamma", "pnorm", 
+           "runif", "rnorm", "pt", "qt", "rgamma", "pnorm",
            "sd", qchisq, "qnorm", "dnorm", "qgamma", "uniroot")
 importFrom("methods",
            "existsFunction", "hasArg")
@@ -13,6 +14,7 @@ importFrom("qrng",
 
 ### Exports ####################################################################
 
-export("dnvmix", "pnvmix", "rnvmix", "pStudent", "pmultinorm", "qnvmix1")
-export("dStudent", "dmultinorm")
-export("factorize")
+export("dnvmix", "pnvmix", "rnvmix",
+       "dStudent", "pStudent",
+       "pmultinorm", "dmultinorm",
+       "qnvmix1", "factorize")
