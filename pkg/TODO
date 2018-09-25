@@ -1,9 +1,11 @@
 ### For next release ###########################################################
 
-- Implement rStudent
-- Write vignette nvmix_functionality.Rmd
 - Did 'eval_int_mix' stand for 'eval_integral_nvmix'?
-- MH: check ./R, ./man, ./src
+- Implement rStudent()
+- Write vignette nvmix_functionality.Rmd
+- MH: polish ./src/eval_nvmix_integral.c
+- MH: check ./man
+- MH: check ./R
 
 
 ### TODO #######################################################################
