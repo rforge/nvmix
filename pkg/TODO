@@ -1,7 +1,7 @@
 ### For next release ###########################################################
 
-- EH: Did 'eval_int_mix' stand for 'eval_integral_nvmix'?
-- EH: Please address TODO in code (./src at the moment)
+- DONE Did 'eval_int_mix' stand for 'eval_integral_nvmix' (EH: fine for me)
+- DONE Please address TODO in code (./src at the moment)
 - Implement rStudent()
 - Write vignette nvmix_functionality.Rmd
 - MH: check ./R
