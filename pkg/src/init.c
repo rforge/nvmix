@@ -8,7 +8,7 @@
 #include "eval_nvmix_integral.h"
 
 static const R_CallMethodDef callMethods[] = {
-    {"eval_nvmix_integral_", (DL_FUNC) &eval_nvmix_integral_, 8},
+    {"eval_nvmix_integral", (DL_FUNC) &eval_nvmix_integral, 8},
     {NULL, NULL, 0}
 };
 

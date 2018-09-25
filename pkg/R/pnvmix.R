@@ -323,7 +323,7 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(
 
       } else {
 
-        # T.[l] <- (T.[l] + .Call("eval_nvmix_integral_",
+        # T.[l] <- (T.[l] + .Call("eval_nvmix_integral",
         #                n    = as.integer(n.),
         #                q    = as.integer(q),
         #                U    = as.double(U),
@@ -333,7 +333,7 @@ pnvmix <- function(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(
         #                ONE  = as.double(ONE),
         #                ZERO = as.double(ZERO)) )/denom
 
-        T.[l] <- (i. * T.[l] + .Call("eval_nvmix_integral_",
+        T.[l] <- (i. * T.[l] + .Call("eval_nvmix_integral",
                                 n    = as.integer(n.),
                                 q    = as.integer(q),
                                 U    = as.double(U),

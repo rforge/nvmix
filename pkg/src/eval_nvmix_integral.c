@@ -22,7 +22,7 @@
  *
  * @author Erik Hintz
  */
-double eval_nvmix_integral(int n, int q, double *U, double *a, double *b, double *C, double ONE, double ZERO)
+double eval_nvmix_integral_c(int n, int q, double *U, double *a, double *b, double *C, double ONE, double ZERO)
 {
     double y[q-1], sqrtmix, d, f, cone, diff;
 	/* The following variables (ending in "a") are used to store the corresponding antithetic values */
@@ -129,13 +129,13 @@ double eval_nvmix_integral(int n, int q, double *U, double *a, double *b, double
 }
 
 /**
- * @title R Interface for eval_nvmix_integral
- * @param ...same parameters as in eval_nvmix_integral()
+ * @title R Interface for eval_nvmix_integral_c()
+ * @param ...same parameters as in eval_nvmix_integral_c()
  * @return mean(f(U)) where f is the integrand and U is the point-set
  * @author Erik Hintz
  */
-SEXP eval_nvmix_integral_(SEXP n, SEXP q, SEXP U, SEXP a, SEXP b, SEXP C, SEXP ONE, SEXP ZERO)
+SEXP eval_nvmix_integral(SEXP n, SEXP q, SEXP U, SEXP a, SEXP b, SEXP C, SEXP ONE, SEXP ZERO)
 {
-	double res = eval_nvmix_integral(INTEGER(n)[0], INTEGER(q)[0], REAL(U), REAL(a), REAL(b), REAL(C),REAL(ONE)[0], REAL(ZERO)[0]);
+	double res = eval_nvmix_integral_c(INTEGER(n)[0], INTEGER(q)[0], REAL(U), REAL(a), REAL(b), REAL(C),REAL(ONE)[0], REAL(ZERO)[0]);
 	return ScalarReal(res);
 }
