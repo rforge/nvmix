@@ -83,16 +83,16 @@ double eval_nvmix_integral_c(double *a, double *b, double *U, int n, int q,
 	    }
             ya[i] = qnorm(tmp, 0, 1, 1, 0);
 
-	    /* Calculate the scalar product sum C[i,j]y[j] for j=1 to (i-1) */
+	    /* Calculate the scalar product sum C[i,j] y[j] for j = 1:(i-1) */
 	    cone  = 0;
 	    conea = 0;
-            for(l=0; l<(i+1); l++){
-		/* C[l*q+i+1] corresponds to C[i+1,l] in the original matrix */
-		cone  += y[l]  * C[l*q+i+1];
-		conea += ya[l] * C[l*q+i+1];
+            for(l = 0; l < (i+1); l++){
+		/* C[l * q + i+1] corresponds to C[i+1,l] in the original matrix */
+		cone  += y[l]  * C[l * q + i+1];
+		conea += ya[l] * C[l * q + i+1];
 	    }
 
-            /* Calculate new d and diff = e-d. */
+            /* Calculate new d and diff = e-d */
             if(a[i+1] == R_NegInf){
                 d  = 0;
                 da = 0;

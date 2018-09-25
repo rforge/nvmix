@@ -1,11 +1,11 @@
 ### For next release ###########################################################
 
-- Did 'eval_int_mix' stand for 'eval_integral_nvmix'?
+- EH: Did 'eval_int_mix' stand for 'eval_integral_nvmix'?
+- EH: Please address TODO in code (./src at the moment)
 - Implement rStudent()
 - Write vignette nvmix_functionality.Rmd
-- MH: polish ./src/eval_nvmix_integral.c: order arguments?
-- MH: check ./man
 - MH: check ./R
+- MH: check ./man
 
 
 ### TODO #######################################################################
@@ -31,6 +31,7 @@
        If we have a function, say, qnvmix1 (for 1 dimensional normal variance mixtures),
        we have a way to sample from univariate normal variance mixtures using inversion,
        which can then be used for quasi-Monte Carlo sampling
+- DONE polish ./src
 
 
 ### More thoughts ##############################################################
