@@ -36,12 +36,12 @@ swap <- function(i, j, lower, upper, scale)
 ##' @param lower d-vector of lower evaluation limits
 ##' @param upper d-vector of upper evaluation limits
 ##' @param scale (d, d)-covariance matrix (scale matrix)
-##' @param chol.scale Cholesky factor (lower triangular matrix) of 'scale'
+##' @param cholScale Cholesky factor (lower triangular matrix) of 'scale'
 ##' @param mean.sqrt.mix E(sqrt(W))
 ##' @return list with reordered integration limits, scale matrix and Cholesky factor
 ##' @author Erik Hintz and Marius Hofert
 ##' @note See Genz and Bretz (2002, p. 957)
-precond <- function(lower, upper, scale, chol.scale, mean.sqrt.mix)
+precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 {
     d <- length(lower)
     y <- rep(0, d - 1)
@@ -61,11 +61,11 @@ precond <- function(lower, upper, scale, chol.scale, mean.sqrt.mix)
         (pnorm(upper[1]/mean.sqrt.mix) - pnorm(lower[1]/mean.sqrt.mix))
 
     ## Update the Cholesky factor
-    chol.scale[1, 1] <- sqrt(scale[1, 1])
-    chol.scale[2:d, 1] <- as.matrix(scale[2:d, 1] / chol.scale[1, 1])
+    cholScale[1, 1] <- sqrt(scale[1, 1])
+    cholScale[2:d, 1] <- as.matrix(scale[2:d, 1] / cholScale[1, 1])
     for(j in 2:(d-1)) {
-        denom <- sqrt(diag(scale)[j:d] - rowSums(as.matrix(chol.scale[j:d, 1:(j-1)])^2))
-        c <- as.matrix(chol.scale[j:d, 1:j-1]) %*% y[1:(j-1)]
+        denom <- sqrt(diag(scale)[j:d] - rowSums(as.matrix(cholScale[j:d, 1:(j-1)])^2))
+        c <- as.matrix(cholScale[j:d, 1:j-1]) %*% y[1:(j-1)]
         ## Find i = argmin { <expected length of interval j> }
         i <- which.min(pnorm((upper[j:d] / mean.sqrt.mix - c) / denom) -
                        pnorm((lower[j:d] / mean.sqrt.mix - c) / denom)) + j - 1
@@ -74,25 +74,25 @@ precond <- function(lower, upper, scale, chol.scale, mean.sqrt.mix)
             lower <- tmp$lower
             upper <- tmp$upper
             scale <- tmp$scale
-            chol.scale[c(i,j),]   <- as.matrix(chol.scale[c(j,i),])
-            chol.scale[j,(j+1):i] <- as.matrix(0, ncol = i - j, nrow = 1)
+            cholScale[c(i,j),]   <- as.matrix(cholScale[c(j,i),])
+            cholScale[j,(j+1):i] <- as.matrix(0, ncol = i - j, nrow = 1)
         }
         ## Update Cholesky factor
-        chol.scale[j,j] <- sqrt(scale[j,j] - sum(chol.scale[j,1:(j-1)]^2))
+        cholScale[j,j] <- sqrt(scale[j,j] - sum(cholScale[j,1:(j-1)]^2))
         if(j < d-1)
-            chol.scale[(j+1):d, j] <- (scale[(j+1):d, j] - as.matrix(chol.scale[(j+1):d, 1:(j-1)]) %*%
-                                       chol.scale[j, 1:(j-1)]) / chol.scale[j, j]
-        else chol.scale[(j+1):d, j] <- (scale[(j+1):d, j] - chol.scale[(j+1):d, 1:(j-1)] %*%
-                                        chol.scale[j, 1:(j-1)]) / chol.scale[j, j]
+            cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - as.matrix(cholScale[(j+1):d, 1:(j-1)]) %*%
+                                       cholScale[j, 1:(j-1)]) / cholScale[j, j]
+        else cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1)] %*%
+                                        cholScale[j, 1:(j-1)]) / cholScale[j, j]
         ## Get yj
-        low.j.up.j <- c(lower[j] / mean.sqrt.mix - chol.scale[j, 1:(j-1)] %*% y[1:(j-1)],
-                        upper[j] / mean.sqrt.mix - chol.scale[j, 1:(j-1)] %*% y[1:(j-1)]) / chol.scale[j, j]
+        low.j.up.j <- c(lower[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)],
+                        upper[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)]) / cholScale[j, j]
         y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) / (pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]))
     }
-    chol.scale[d, d] <- sqrt(scale[d, d] - sum(chol.scale[d, 1:(d-1)]^2))
+    cholScale[d, d] <- sqrt(scale[d, d] - sum(cholScale[d, 1:(d-1)]^2))
 
     ## Return
-    list(lower = lower, upper = upper, scale = scale, chol.scale = chol.scale)
+    list(lower = lower, upper = upper, scale = scale, cholScale = cholScale)
 }
 
 ##' @title Distribution Function of the Multivariate t Distribution
@@ -231,17 +231,17 @@ pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
     }
 
     ## Preconditioning (resorting the limits; only for d > 2)
-    chol.scale <- t(chol(scale)) # get Cholesky factor (lower triangular)
+    cholScale <- t(chol(scale)) # get Cholesky factor (lower triangular)
     if(precond && d > 2) {
         if(is.null(mean.sqrt.mix)) # approximate E(sqrt(W))
             mean.sqrt.mix <- mean(sqrt(W(qrng::sobol(n = 5000, d = 1, randomize = TRUE))))
         if(any(mean.sqrt.mix <= 0))
             stop("'mean.sqrt.mix' has to be positive (possibly after being generated in pnvmix())")
         temp <- precond(lower = lower, upper = upper, scale = scale,
-                        chol.scale = chol.scale, mean.sqrt.mix = mean.sqrt.mix)
+                        cholScale = cholScale, mean.sqrt.mix = mean.sqrt.mix)
         lower <- temp$lower
         upper <- temp$upper
-        chol.scale <- temp$chol.scale
+        cholScale <- temp$cholScale
     }
 
     ## TODO: put meaningful header here (and in what follows)
@@ -329,23 +329,23 @@ pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
             } else {
                 ## TODO: why keep this code? give a reason
                 ## T.[l] <- (T.[l] + .Call("eval_nvmix_integral",
-                ##                lower = as.double(lower),
-                ##                upper = as.double(upper),
-                ##                U     = as.double(U),
-                ##                n     = as.integer(n.),
-                ##                d     = as.integer(d),
-                ##                C     = as.double(C),
-                ##                ZERO  = as.double(ZERO),
-                ##                ONE   = as.double(ONE)) )/denom
+                ##                lower     = as.double(lower),
+                ##                upper     = as.double(upper),
+                ##                U         = as.double(U),
+                ##                n         = as.integer(n.),
+                ##                d         = as.integer(d),
+                ##                cholScale = as.double(cholScale),
+                ##                ZERO      = as.double(ZERO),
+                ##                ONE       = as.double(ONE)) )/denom
                 T.[l] <- (i. * T.[l] + .Call("eval_nvmix_integral",
-                                             lower = as.double(lower),
-                                             upper = as.double(upper),
-                                             U     = as.double(U),
-                                             n     = as.integer(n.),
-                                             d     = as.integer(d),
-                                             C     = as.double(chol.scale),
-                                             ZERO  = as.double(ZERO),
-                                             ONE   = as.double(ONE)) ) / (i. + 1)
+                                             lower     = as.double(lower),
+                                             upper     = as.double(upper),
+                                             U         = as.double(U),
+                                             n         = as.integer(n.),
+                                             d         = as.integer(d),
+                                             cholScale = as.double(cholScale),
+                                             ZERO      = as.double(ZERO),
+                                             ONE       = as.double(ONE)) ) / (i. + 1)
             }
         } # end for(l in 1:B)
 

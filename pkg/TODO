@@ -4,16 +4,13 @@
 2) MH: check ./man/*.Rd
 
 ## Important
-- C code + pnvmix.R
-  + use 'd' instead of 'q' (caution: 'd' is already a variable in the C code...)
-  + use 'chol.scale' instead of 'C'
 - Give variables internally in pnvmix() better names (than 'N.', 'i.', 'T.', n.', for example)
+- C code: use 'd' instead of 'q' (caution: 'd' is already a variable in the C code...)
 - 'ZERO' and 'ONE' could be 'zero' and 'one', no? or 'machine0' and 'machine1' or so
 - EH/MH: return value of pnvmix() has to be renamed (not informative); adapt also
       documentation before function head and the return() calls inside pnvmix()
 - EH: why does 'q' need to be passed to precond()? simply determine it from 'scale'?
 - EH: TODOs inside pnvmix()
-
 - 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 'mix' ('rmix'?)
   for passing a RNG
   => call other arguments 'mix' 'qmix' instead (check carefully)
