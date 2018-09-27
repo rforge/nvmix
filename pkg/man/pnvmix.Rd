@@ -1,21 +1,33 @@
 \name{pnvmix}
 \alias{pnvmix}
+\alias{pStudent}
+\alias{pNorm}
 \title{Distribution Function of Multivariate Normal Variance Mixtures}
 \description{
   Evaluating multivariate normal variance mixture distribution functions
-  (including normal and Student \emph{t} for non-integer degrees of freedom).
+  (including Student \emph{t} and normal distributions).
 }
 \usage{
-pnvmix(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)),
-      scale, mix, mean.sqrt.mix = NA, standardized = FALSE, gam = 3.3, abstol = 0.001,
-      Nmax = 1e8, B = 12, n_init = 2^6, precond = TRUE, method = "sobol", ...)
+pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sqrt.mix = NULL,
+       loc = rep(0, d), scale = diag(d), standardized = FALSE,
+       method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
+       abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12, ...)
+
+pStudent(upper, lower = rep(-Inf, d),
+         df, loc = rep(0, d), scale = diag(d), standardized = FALSE,
+         method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
+         abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12)
+pNorm(upper, lower = rep(-Inf, d),
+      loc = rep(0, d), scale = diag(d), standardized = FALSE,
+      method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
+      abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12)
 }
 \arguments{
   \item{upper}{vector of length \eqn{d}.}
   \item{lower}{vector of length \eqn{d}.}
   \item{loc}{location vector of length \eqn{d}. If \code{mix} has a mean, this is the mean of the normal variance mixture distribution.}
   \item{scale}{positive definite \eqn{(d,d)}-covariance matrix.}
-    \item{mix}{specification of the mixing variable \eqn{W}; see McNeil et
+  \item{mix}{specification of the mixing variable \eqn{W}; see McNeil et
     al. (2015). Supported are the following types of specification (see
     also the examples below):
     \describe{
@@ -44,7 +56,10 @@ pnvmix(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)),
     }
   }
   \item{mean.sqrt.mix}{Mean of \code{sqrt(W)}, where \eqn{W} is the mixing variable. If not provided, it will be estimated. This is only needed for reordering, hence a rather
-  crude approximation is fine.}
+    crude approximation is fine.}
+  \item{df}{degress of freedom (positive real or Inf in which case a
+    sample from a multivariate normal with mean vector \code{loc}
+    and covariance matrix \code{scale} is generated).}
   \item{standardized}{\code{logical}. If \code{TRUE}, \code{scale} is assumed to be a correlation matrix; if \code{FALSE} (default), lower, upper and scale will be normalized.}
   \item{abstol}{numeric and non-negative. Absolute precision required. If abstol = 0, algorithm will run
         until total number of function evaluations exceeds Nmax (see also Nmax).}
@@ -64,31 +79,52 @@ pnvmix(upper, lower = rep(-Inf, length(upper)), loc = rep(0, length(upper)),
     string or \code{\link{function}}.}
 }
 \value{
-  \code{pnvmix()} returns a list of length five, containing the
-  the estimated probabilities, the number of iterations, the total
-  number of function evaluations, an error estimate and the estimated variance of the randomized Quasi Monte Carlo estimator.
+  \code{pnvmix()} returns a list of length five, containing the the
+  estimated probabilities, the number of iterations, the total number of
+  function evaluations, an error estimate and the estimated variance of
+  the randomized Quasi Monte Carlo estimator.
+
+  \code{pStudent()} returns a list of length five, containing the the
+  estimated probabilities, the number of iterations, the total number of
+  function evaluations, an error estimate and the estimated variance of
+  the randomized Quasi Monte Carlo estimator.
+
+  \code{pNorm()} returns a list of length five, containing the the
+  estimated probabilities, the number of iterations, the total number of
+  function evaluations, an error estimate and the estimated variance of
+  the randomized Quasi Monte Carlo estimator.
 }
 \details{
-  Note that this procedure calls underlying C code. Currently, the
-  dimensions \eqn{d\ge 16510}{d >= 16510} are not supported for the default method sobol.
+  Note that these procedures calls underlying C code. Currently,
+  dimensions \eqn{d\ge 16510}{d >= 16510} are not supported for the
+  default method \code{sobol}.
 
-  Care should be taken when changing the algorithm-specific parameters, notably \code{B}, \code{Nmax}, \code{method} and \code{precond}. Error estimates will not be reliable for too small \code{B} and the performance of the algorithm depends heavily on the (Quasi-) Monte Carlo point-set used.
+  Care should be taken when changing the algorithm-specific parameters,
+  notably \code{B}, \code{Nmax}, \code{method} and \code{precond}. Error
+  estimates will not be reliable for too small \code{B} and the
+  performance of the algorithm depends heavily on the (Quasi-) Monte
+  Carlo point-set used.
 
-  If the absolute error tolerance \code{abstol} cannot be achieved with \code{Nmax} function evaluations, an additional warning will be returned.
+  If the absolute error tolerance \code{abstol} cannot be achieved with
+  \code{Nmax} function evaluations, an additional warning will be
+  returned.
 
-  For the case of a multivariate normal or multivariate t distributions, user-friendly wrappers are provided in \code{\link{pNorm}} and \code{\link{pStudent}}.
-
+  \code{pStudent()} and \code{pNorm()} are wrappers of
+  \code{pnvmix(, mix = "inverse.gamma", df = df)} and
+  \code{pnvmix(, mix = "constant", df = df)}, respectively.
 }
-\author{Marius Hofert, Erik Hintz and Christiane Lemieux}
+\author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
   McNeil, A. J., Frey, R., and Embrechts, P. (2015).
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
   Princeton University Press.
 }
 \seealso{
-  \code{\link{dnvmix}()}, \code{\link{pNorm}}(), \code{\link{pStudent}()}
+  \code{\link{dnvmix}()}, \code{\link{rnvmix}()}
 }
 \examples{
+### Examples for pnvmix() ######################################################
+
 ## Example 1: Multivariate t distribution
 ## Generate a random correlation matrix in three dimensions
 d <- 3
@@ -117,5 +153,30 @@ stopifnot(all.equal(pt1, pt2, tol = 5e-4, check.attributes = FALSE))
 set.seed(1)
 pt3 <- pnvmix(upper = b, lower = a, scale = P, mix = mix., df  = df)
 print(abs(pt3 - pt2))
+
+
+### Examples for pStudent() and rNorm() ########################################
+
+## Generate a random correlation matrix in three dimensions
+d <- 3
+set.seed(271)
+A <- matrix(runif(d * d), ncol = d)
+P <- cov2cor(A \%*\% t(A))
+## Evaluate t_{3.5} distribution function
+a <- runif(d) * sqrt(d) * (-3) # random lower limit
+b <- runif(d) * sqrt(d) * 3 # random upper limit
+pt <- pStudent(upper = b, lower = a, scale = P, df = 3.5)
+stopifnot(all.equal(pt, 0.8059, tol = 1e-3, check.attributes = FALSE))
+
+## Generate a random correlation matrix in three dimensions
+d <- 5
+set.seed(271)
+A <- matrix(runif(d * d), ncol = d)
+P <- cov2cor(A \%*\% t(A))
+## Evaluate N(0,P) distribution function
+a <- runif(d) * sqrt(d) * (-3) # random lower limit
+b <- runif(d) * sqrt(d) * 3 # random upper limit
+pn <- pNorm(upper = b, lower = a, scale = P)
+stopifnot(all.equal(pn, 0.46884, tol = 5e-4, check.attributes = FALSE))
 }
 \keyword{distribution}

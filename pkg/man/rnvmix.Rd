@@ -106,7 +106,7 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = factorize(scale))
   Princeton University Press.
 }
 \seealso{
-  \code{\link{dnvmix}()}, \code{\link{pnvmix}()}, \code{\link{factorize}()}
+  \code{\link{dnvmix}()}, \code{\link{pnvmix}()}
 }
 \examples{
 ### Examples for rnvmix() ######################################################

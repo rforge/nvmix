@@ -3,11 +3,7 @@
 ## Important
 - MH: check + merge all ./man/*.Rd:
   + dnvmix.Rd
-  + dStudent.Rd
-  + dmultinorm.Rd
-  + pnvmix.rd
-  + pStudent.rd
-  + pmultinorm.rd
+  + pnvmix.Rd
 
 - EH: fix return value(s) of pnvmix[1](), also docu before function head and
       in explicit return() calls
