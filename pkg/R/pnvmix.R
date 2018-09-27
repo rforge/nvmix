@@ -157,7 +157,8 @@ pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
     method <- match.arg(method)
 
     ## Deal with trivial case
-    if(any(lower == upper)) return(list(0)) # TODO
+    if(any(lower == upper))
+        return(list(Prob = 0, N = 0, i = 0, ErrEst = 0, Var = NA))
 
     ## Deal with infinite limits
     lowFin <- is.finite(lower)

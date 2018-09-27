@@ -207,4 +207,3 @@ dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), # TODO: do we need 
         list(Density = exp(lres), N = N., i = i., ErrEst = err, Var = var)
     }
 }
-
