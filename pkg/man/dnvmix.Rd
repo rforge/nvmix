@@ -1,15 +1,22 @@
 \name{dnvmix}
 \alias{dnvmix}
+\alias{dStudent}
+\alias{dNorm}
 \title{Density of Multivariate Normal Variance Mixtures}
 \description{
   Evaluating multivariate normal variance mixture distribution functions
-  (including normal and Student \emph{t}).
+  (including Student \emph{t} and normal distributions).
 }
 \usage{
-dnvmix(x, loc = rep(0, d), scale, mix,
-       factor = tryCatch(factorize(scale), error = function(e) e),
-       abstol = 0.001, gam = 3.3, Nmax = 1e8, B = 12, n_init = 2^6, method = "sobol",
+dnvmix(x, mix, loc = rep(0, d), scale = diag(d), # TODO: do we need a 'standardized = FALSE' here? (see pnvmix())
+       factor = factorize(scale), method = c("sobol", "ghalton", "PRNG"),
+       abstol = 0.001, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
        log = FALSE, ...)
+
+dStudent(x, df, loc = rep(0, d), scale = diag(d),
+         factor = factorize(scale), log = FALSE)
+dNorm(x, loc = rep(0, d), scale = diag(d),
+      factor = factorize(scale), log = FALSE)
 }
 \arguments{
   \item{x}{\eqn{(n, d)}-\code{\link{matrix}} of evaluation points.}
@@ -45,6 +52,9 @@ dnvmix(x, loc = rep(0, d), scale, mix,
 	inversion method by applying this function to U(0,1) random variates via \code{mix(u, ...)}. Additional arguments for \code{mix} can be passed via the ellipsis argument.}
     }
   }
+  \item{df}{degress of freedom (positive real or \code{Inf} in which case
+    the distribution is interpreted as multivariate normal with mean
+    vector \code{loc} and covariance matrix \code{scale}).}
   \item{factor}{factorization matrix of the covariance matrix
     \code{scale}. A \code{\link{matrix}} \eqn{R} with \eqn{d} rows
     such that \eqn{R^T R} equals \code{scale}. Although not tested
@@ -100,9 +110,11 @@ dnvmix(x, loc = rep(0, d), scale, mix,
   Princeton University Press.
 }
 \seealso{
-  \code{\link{pnvmix}()}, \code{\link{rnvmix}()}, \code{\link{dNorm}()}, \code{\link{dStudent}()}
+  \code{\link{pnvmix}()}, \code{\link{rnvmix}()}
 }
 \examples{
+### Examples for dnvmix() ######################################################
+
 ## Generate a random correlation matrix in three dimensions
 d <- 3
 set.seed(271)
@@ -139,5 +151,32 @@ x <- cbind(1:10/10) # (n = 10, 1)-matrix; note: vectors are rows in dnvmix()
 dt <- dnvmix(x, mix = "inverse.gamma", df = df, factor = 1)
 dt. <- dt(as.vector(x), df = df)
 stopifnot(all.equal(dt, dt., check.attributes = FALSE))
+
+
+### Examples for dStudent() and dNorm() ########################################
+
+## Generate a random correlation matrix in three dimensions
+d <- 3
+set.seed(271)
+A <- matrix(runif(d * d), ncol = d)
+P <- cov2cor(A \%*\% t(A))
+## Evaluate t_{3.5} density
+df <- 3.5
+x <- matrix(1:12/12, ncol = d) # evaluation points
+dt <- dStudent(x, df = df, scale = P)
+stopifnot(all.equal(dt, c(0.013266542, 0.011967156, 0.010760575, 0.009648682),
+                    tol = 1e-7, check.attributes = FALSE))
+
+## Generate a random correlation matrix in three dimensions
+d <- 3
+set.seed(271)
+A <- matrix(runif(d * d), ncol = d)
+P <- cov2cor(A \%*\% t(A))
+x <- matrix(1:12/12, ncol = d) # evaluation points
+
+## Evaluate normal density
+dn <- dNorm(x, scale = P)
+stopifnot(all.equal(dn, c(0.013083858, 0.011141923, 0.009389987, 0.007831596),
+                    tol = 1e-7, check.attributes = FALSE))
 }
 \keyword{distribution}

@@ -48,9 +48,9 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = factorize(scale))
 	variable \eqn{W}.}
     }
   }
-  \item{df}{degress of freedom (positive real or Inf in which case a
-    sample from a multivariate normal with mean vector \code{loc}
-    and covariance matrix \code{scale} is generated).}
+  \item{df}{degress of freedom (positive real or \code{Inf} in which case
+    the distribution is interpreted as multivariate normal with mean
+    vector \code{loc} and covariance matrix \code{scale}).}
   \item{loc}{location vector of dimension \eqn{d}; this equals the mean
     vector of a random vector following the specified normal variance
     mixture distribution if (and only if) the latter exists.}

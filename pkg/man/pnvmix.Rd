@@ -57,9 +57,9 @@ pNorm(upper, lower = rep(-Inf, d),
   }
   \item{mean.sqrt.mix}{Mean of \code{sqrt(W)}, where \eqn{W} is the mixing variable. If not provided, it will be estimated. This is only needed for reordering, hence a rather
     crude approximation is fine.}
-  \item{df}{degress of freedom (positive real or Inf in which case a
-    sample from a multivariate normal with mean vector \code{loc}
-    and covariance matrix \code{scale} is generated).}
+  \item{df}{degress of freedom (positive real or \code{Inf} in which case
+    the distribution is interpreted as multivariate normal with mean
+    vector \code{loc} and covariance matrix \code{scale}).}
   \item{standardized}{\code{logical}. If \code{TRUE}, \code{scale} is assumed to be a correlation matrix; if \code{FALSE} (default), lower, upper and scale will be normalized.}
   \item{abstol}{numeric and non-negative. Absolute precision required. If abstol = 0, algorithm will run
         until total number of function evaluations exceeds Nmax (see also Nmax).}
@@ -112,6 +112,8 @@ pNorm(upper, lower = rep(-Inf, d),
   \code{pStudent()} and \code{pNorm()} are wrappers of
   \code{pnvmix(, mix = "inverse.gamma", df = df)} and
   \code{pnvmix(, mix = "constant", df = df)}, respectively.
+  In the univariate case, the functions
+  \code{\link{pt}()} and \code{\link{pnorm}()} are used.
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
@@ -155,7 +157,7 @@ pt3 <- pnvmix(upper = b, lower = a, scale = P, mix = mix., df  = df)
 print(abs(pt3 - pt2))
 
 
-### Examples for pStudent() and rNorm() ########################################
+### Examples for pStudent() and pNorm() ########################################
 
 ## Generate a random correlation matrix in three dimensions
 d <- 3
