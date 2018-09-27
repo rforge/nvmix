@@ -9,7 +9,7 @@
 ##'        "eigen": eigendecomposition (rmvt() -> rmvnorm() => default for rmvt())
 ##'        "svd": singular-value decomposition (see rmvnorm())
 ##' @param ... additional arguments passed to the underlying functions
-##' @return factor (factorized matrix)
+##' @return factor (factorized matrix) R such that R^T R = x
 ##' @author Marius Hofert
 ##' @note Could be called with tryCatch(factorize(x), error = function(e) e)
 ##'       but probably not necessary

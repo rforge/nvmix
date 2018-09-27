@@ -6,26 +6,27 @@
   mixtures (including normal and Student \emph{t}).
 }
 \usage{
-rnvmix(n, mix, loc = rep(0, d), scale, factor = factorize(scale), ...)
+rnvmix(n, mix, loc = rep(0, d), scale, scale = diag(d),
+       factor = factorize(scale), ...)
 }
 \arguments{
   \item{n}{sample size \eqn{n} (positive integer).}
   \item{mix}{specification of the mixing variable \eqn{W}; see McNeil et
-    al. (2015). Supported are the following types of specification (see
-    also the examples below):
+    al. (2015, Chapter 6). Supported are the following types of
+    specification (see also the examples below):
     \describe{
-      \item{\code{\link{character}}:}{a \code{\link{character}} string
+      \item{\code{\link{character}}:}{\code{\link{character}} string
 	specifying a supported distribution; currently available are
         \code{"constant"} (in which case \eqn{W = 1} and thus a sample
-	 from the multivariate normal distribution with mean vector
-	 \code{loc} and covariance matrix \code{scale} results) and
-	 \code{"inverse.gamma"} (in which case \eqn{W} is drawn from
-	 and inverse gamma distribution with shape and rate parameters
-	 \code{df}/2 resulting in a sample from the multivariate
-	 Student \emph{t} distribution with degrees of freedom
-	 \code{df}; note that \code{df} needs to be provided via
-	 the ellipsis argument then; see the examples below).}
-      \item{\code{\link{list}}:}{a \code{\link{list}} of length at least
+	from the multivariate normal distribution with mean vector
+	\code{loc} and covariance matrix \code{scale} results) and
+	\code{"inverse.gamma"} (in which case \eqn{W} is drawn from
+	an inverse gamma distribution with shape and rate parameters
+	\code{df}/2 resulting in a sample from the multivariate
+	Student \emph{t} distribution with degrees of freedom
+	\code{df} (\code{df} needs to be provided via
+	the ellipsis argument, see the examples below).}
+      \item{\code{\link{list}}:}{\code{\link{list}} of length at least
 	one, where the first component is a \code{\link{character}}
 	string specifying the base name of a distribution which can be
 	sampled via prefix \code{"r"}; an example is \code{"exp"}
@@ -33,26 +34,34 @@ rnvmix(n, mix, loc = rep(0, d), scale, factor = factorize(scale), ...)
         of length larger than one, the remaining elements contain
         additional parameters of the distribution; for \code{"exp"},
         this can be the parameter \code{rate}.}
-      \item{\code{\link{function}}:}{a \code{\link{function}}
+      \item{\code{\link{function}}:}{\code{\link{function}}
 	interpreted as the quantile function of the mixing
 	variable \eqn{W}; internally, sampling is then done with the
-	inversion method by applying this function to U(0,1) random variates.}
-      \item{\code{\link{numeric}}:}{a \code{\link{numeric}} vector
+	inversion method by applying \code{function} to U(0,1)
+	random variates.}
+      \item{\code{\link{numeric}}:}{\code{\link{numeric}} vector
 	of length \code{n} providing a random sample of the mixing
 	variable \eqn{W}.}
     }
   }
-  \item{loc}{location vector of dimension \eqn{d}.}
-  \item{scale}{covariance matrix of dimension \eqn{(d, d)}.}
+  \item{loc}{location vector (of dimension \eqn{d}); this equals the mean
+    vector of a random vector following the specified normal variance
+    mixture distribution if (and only if) the latter exists.}
+  \item{scale}{covariance matrix (of dimension \eqn{(d, d)});
+    this equals the covariance matrix of of a random vector following
+    the specified normal variance mixture distribution divided by by
+    the mean of the mixing variable if (and only if) the former exists.}
   \item{factor}{factorization matrix of the covariance matrix
     \code{scale}. A \code{\link{matrix}} \eqn{R} with \eqn{d}
     rows such that \eqn{R^T R} equals \code{scale}. \eqn{R} is internally
     multiplied from the right to an \eqn{(n, d)}-matrix of independent
     standard normals to obtain a sample from a multivariate normal
-    with zero mean vector and covariance matrix \code{scale}.}
-  \item{\dots}{additional arguments containing parameters of
-    mixing distributions when \code{mix} is a \code{\link{character}}
-    string.}
+    with zero mean vector and covariance matrix \code{scale} (a building
+    block for generating samples from the specified multivariate normal
+    variance mixture).}
+  \item{\dots}{additional arguments (e.g., parameters) passed to the
+    underlying mixing distribution when \code{mix} is a
+    \code{\link{character}} string.}
 }
 \value{
   \code{rnvmix()} returns an \eqn{(n, d)}-\code{\link{matrix}}
@@ -98,20 +107,20 @@ stopifnot(all.equal(X, X.))
 
 ## Checking 'df = Inf'
 set.seed(271)
-X <- rnvmix(n, mix = "constant", scale = P)
+X <- rnvmix(n, mix = "constant", scale = P) # normal
 set.seed(271)
-X. <- rnvmix(n, mix = "inverse.gamma", df = Inf, scale = P)
+X. <- rnvmix(n, mix = "inverse.gamma", scale = P, df = Inf) # t_infinity
 stopifnot(all.equal(X, X.))
 
 ## Univariate case (dimension = number of rows of 'factor' = 1 here)
 set.seed(271)
-X.1d <- rnvmix(n, mix = "inverse.gamma", df = df, factor = 1/2)
+X.1d  <- rnvmix(n, mix = "inverse.gamma", df = df, factor = 1/2)
 set.seed(271)
 X.1d. <- rnvmix(n, mix = "inverse.gamma", df = df, factor = 1)/2 # manual scaling
 stopifnot(all.equal(X.1d, X.1d.))
 
 ## Checking different ways of providing 'mix'
-## 1) By providing a character string (and corresponding '...' arguments)
+## 1) By providing a character string (and corresponding ellipsis arguments)
 set.seed(271)
 X.mix1 <- rnvmix(n, mix = "inverse.gamma", df = df, factor = P)
 ## 2) By providing a list; the first element has to be an existing distribution
@@ -127,7 +136,7 @@ X.mix3 <- rnvmix(n, mix = list("inverseGamma"), factor = P)
 ## 4) By providing a quantile function
 ##    Note: P(1/Y <= x) = P(Y >= 1/x) = 1-F_Y(1/x) = y <=> x = 1/F_Y^-(1-y)
 set.seed(271)
-X.mix4 <- rnvmix(n, mix = function(p) 1 / qgamma(1-p, shape = df/2, rate = df/2),
+X.mix4 <- rnvmix(n, mix = function(p) 1/qgamma(1-p, shape = df/2, rate = df/2),
                  factor = P)
 ## 5) By providing random variates
 set.seed(271) # if seed is set here, results are comparable to the above methods

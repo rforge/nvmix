@@ -54,7 +54,7 @@ P.chol       <- t(A.chol) \%*\% A.chol
 P.chol.pivot <- t(A.chol.pivot) \%*\% A.chol.pivot
 P.eigen      <- t(A.eigen) \%*\% A.eigen
 P.svd        <- t(A.svd) \%*\% A.svd
-stopifnot(all.equal(P.chol, P), all.equal(P.chol.pivot, P),
-          all.equal(P.eigen, P), all.equal(P.svd, P))
+stopifnot(all.equal(P.chol,  P), all.equal(P.chol.pivot, P),
+          all.equal(P.eigen, P), all.equal(P.svd,        P))
 }
 \keyword{array}

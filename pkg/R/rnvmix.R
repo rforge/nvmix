@@ -3,14 +3,14 @@
 ##' @title Random Number Generator for Multivariate Normal Variance Mixtures
 ##' @param n sample size
 ##' @param mix specification of the (mixture) distribution of W. This can be:
-##'        1) a character string specifying a supported distribution (additional
+##'        1) character string specifying a supported distribution (additional
 ##'           arguments of this distribution are passed via '...').
-##'        2) a list of length at least one; the first argument specifies
+##'        2) list of length at least one; the first argument specifies
 ##'           the base name of an existing distribution which can be sampled
 ##'           with prefix "r", the other elements denote additional parameters
 ##'           passed to this "rmix" random number generator.
-##'        3) a function being interpreted as the quantile function F_W^-.
-##'        4) an n-vector containing a random sample from W.
+##'        3) function being interpreted as the quantile function F_W^-.
+##'        4) n-vector containing a random sample from W.
 ##' @param loc d-vector (location != mean vector here)
 ##' @param scale (d, d)-covariance matrix (scale != covariance matrix here)
 ##' @param factor *upper triangular* factor R of the covariance matrix 'scale'
