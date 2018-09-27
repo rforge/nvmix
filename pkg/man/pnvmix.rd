@@ -111,13 +111,11 @@ mix. <- function(u, df){
 c <- sqrt(df) * gamma(df/2) / ( sqrt(2) * gamma( (df+1) / 2 ) )
 set.seed(1)
 pt2 <- pnvmix(upper = b, lower = a, scale = P, mix = mix., mean.sqrt.mix = c, df  = df)
-stopifnot(all.equal(pt1$Prob, pt2$Prob))
+stopifnot(all.equal(pt1, pt2, tol = 5e-4, check.attributes = FALSE))
 ## mean.sqrt.mix will be approximated internally if not provided.
 ## This leads to slightly different results
 set.seed(1)
 pt3 <- pnvmix(upper = b, lower = a, scale = P, mix = mix., df  = df)
-print(abs(pt3$Prob - pt2$Prob))
-
-
+print(abs(pt3 - pt2))
 }
 \keyword{distribution}

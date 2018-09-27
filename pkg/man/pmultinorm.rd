@@ -63,6 +63,6 @@ P <- cov2cor(A \%*\% t(A))
 a <- runif(d) * sqrt(d) * (-3) # random lower limit
 b <- runif(d) * sqrt(d) * 3 # random upper limit
 pn <- pNorm(upper = b, lower = a, scale = P)
-stopifnot(all.equal(pn$Prob, 0.46884, tol = 5e-4))
+stopifnot(all.equal(pn, 0.46884, tol = 5e-4, check.attributes = FALSE))
 }
 \keyword{distribution}

@@ -88,10 +88,10 @@ dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), # TODO: do we need 
               if(!existsFunction(qmix))
                   stop("No function named '", qmix, "'.")
               function(u)
-                  return(do.call(qmix, c(u, mix[-1])))
+                  do.call(qmix, c(u, mix[-1]))
           } else if(is.function(mix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
               function(u)
-                  return(mix(u, ...))
+                  mix(u, ...)
           } else stop("'mix' must be a character string, list or quantile function.")
 
     ## Build result object (log-density)

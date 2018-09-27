@@ -98,141 +98,88 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
     list(lower = lower, upper = upper, scale = scale, cholScale = cholScale)
 }
 
-##' @title Distribution Function of a Multivariate Normal Variance Mixture
-##' @param upper d-vector of upper evaluation limits
-##' @param lower d-vector of lower evaluation limits (<= upper)
-##' @param mix specification of the (mixture) distribution of W. This can be:
-##'        1) a character string specifying a supported distribution (additional
-##'           arguments of this distribution are passed via '...').
-##'        2) a list of length at least one; the first argument specifies
-##'           the base name of an existing distribution which can be sampled
-##'           with prefix "q", the other elements denote additional parameters
-##'           passed to this "rmix" random number generator.
-##'        3) a function being interpreted as the quantile function F_W^-.
-##' @param mean.sqrt.mix E(sqrt(W)) or NULL; the latter if not available
-##'        in which case it is estimated by QMC
-##' @param loc d-vector (location vector)
-##' @param scale (d, d)-covariance matrix (scale matrix)
-##' @param standardized logical indicating whether 'scale' is assumed to be a
-##'        correlation matrix; if FALSE (default), 'upper', 'lower' and 'scale'
-##'        will be normalized.
-##' @param method character string indicating the method to be used:
-##'         - "sobol":   Sobol sequence
-##'         - "ghalton": generalized Halton sequence
-##'         - "prng":    pure Monte Carlo
-##' @param precond logical; if TRUE (recommended), variable reordering
-##'        as described in Genz and Bretz (2002, pp. 955--956) is performed.
-##'        Variable reordering can lead to a significant variance reduction
-##'        and decrease in computational time.
-##' @param abstol numeric >= 0 providing the absolute precision required.
-##'        If abstol = 0, algorithm will run until total number of function
-##'        evaluations exceeds fun.eval[2].
-##' @param CI.factor Monte Carlo confidence interval multiplier. Algorithm runs
-##'        CI.factor * (estimated standard error) < abstol. If CI.factor = 3.3
-##'        (default), one can expect the actual absolute error to be less than
-##'        abstol in 99.9% of the cases
-##' @param fun.eval 2-vector giving the initial function evaluations (in the
-##'        first loop; typically powers of 2) and the maximal number of
-##'        function evaluations
-##' @param B number of randomizations to get error estimates.
-##' @param ... additional arguments passed to the underlying mixing distribution
-##' @return list with the
+##' @title Distribution Function of a Multivariate Normal Variance Mixture for a Single Observation
+##' @param upper
+##' @param lower
+##' @param mix
+##' @param mean.sqrt.mix
+##' @param loc
+##' @param scale
+##' @param standardized
+##' @param method
+##' @param precond
+##' @param abstol
+##' @param CI.factor
+##' @param fun.eval
+##' @param B
+##' @param ...
+##' @return TODO: fix
+##'         list with the
 ##'         - computed probability
 ##'         - total number of function evaluations
 ##'         - number of iterations in the while loop
 ##'         - error estimate
 ##'         - variance estimate
 ##' @author Erik Hintz and Marius Hofert
-pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
-                   loc = rep(0, d), scale = diag(d), standardized = FALSE,
-                   method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
-                   abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12, ...)
+pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
+                    loc = rep(0, d), scale = diag(d), standardized = FALSE,
+                    method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
+                    abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12, ...)
 {
-    ## Checks
-    d <- length(upper) # dimension
-    if(!is.matrix(scale)) scale <- as.matrix(scale)
-    stopifnot(length(lower) == d, lower <= upper, length(loc) == d, # note: 'mean.sqrt.mix' is tested later
-              dim(scale) == c(d, d), is.logical(standardized), is.logical(precond),
-              abstol >= 0, CI.factor >= 0, length(fun.eval) == 2, fun.eval >= 0, B >= 1)
-    method <- match.arg(method)
-
-    ## Deal with trivial case
+    ## (Only) basic check
+    d <- length(upper)
+    stopifnot(length(lower) == d)
     if(any(lower == upper))
-        return(list(Prob = 0, N = 0, i = 0, ErrEst = 0, Var = NA))
-
-    ## Deal with infinite limits
-    lowFin <- is.finite(lower)
-    upFin  <- is.finite(upper)
-    lowupFin <- lowFin | upFin # at least one finite limit
-    if(any(!lowupFin)) {
-        lower <- lower[lowupFin]
-        upper <- upper[lowupFin]
-        scale <- scale[lowupFin, lowupFin, drop = FALSE]
-        d <- ncol(scale)
-    }
-
-    ## Standardize if necessary
-    ## Shift
-    if(any(loc != 0)) {
-        lower <- lower - loc
-        upper <- upper - loc
-    }
-    ## Scale
-    if(!standardized) {
-        Dinv <- diag(1/sqrt(diag(scale))) # TODO: why not work with cov2cor()?; these 4 lines can most likely be improved
-        scale <- Dinv %*% scale %*% Dinv
-        lower[lowFin] <- as.vector(Dinv[lowFin, lowFin] %*% lower[lowFin]) # only works for those values which are not +/- Inf
-        upper[upFin]  <- as.vector(Dinv[upFin,  upFin]  %*% upper[upFin])
-    }
+        return(list(Prob = 0, N = 0, i = 0, ErrEst = 0, Var = NA)) # TODO: for now
 
     ## Define the quantile function of the mixing variable
     const <- FALSE # logical indicating whether we have a multivariate normal
     inv.gam <- FALSE # logical indicating whether we have a multivariate t
-    W <- if(is.character(mix)) { # 'mix' is a character vector specifying supported mixture distributions (utilizing '...')
-             mix <- match.arg(mix, choices = c("constant", "inverse.gamma"))
-             switch(mix,
-                    "constant" = {
-                        const <- TRUE
-                        function(u) 1
-                    },
-                    "inverse.gamma" = {
-                        if(hasArg(df)) df <- list(...)$df else
-                            stop("'mix = \"inverse.gamma\"' requires 'df' to be provided.")
-                        ## Still allow df = Inf (normal distribution)
-                        stopifnot(is.numeric(df), length(df) == 1, df > 0)
-                        if(is.finite(df)) {
-                            inv.gam <- TRUE
-                            df2 <- df / 2
-                            mean.sqrt.mix <- sqrt(df) * gamma(df2) / ( sqrt(2) * gamma( (df+1) / 2 ) ) # used for preconditioning
-                            function(u) 1 / qgamma(u, shape = df2, rate = df2)
-                        } else {
-                            const <- TRUE
-                            mean.sqrt.mix <- 1 # used for preconditioning
-                            function(u) 1
-                        }
-                    },
-                    stop("Currently unsupported 'mix'"))
-         } else if(is.list(mix)) { # 'mix' is a list of the form (<character string>, <parameters>)
-             stopifnot(length(mix) >= 1, is.character(distr <- mix[[1]]))
-             qmix <- paste0("q", distr)
-             if(!existsFunction(qmix))
-                 stop("No function named '", qmix, "'.")
-             function(u)
-                 return(do.call(qmix, c(u, mix[-1])))
-         } else if(is.function(mix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
-             function(u)
-                 return(mix(u, ...))
-         } else stop("'mix' must be a character string, list or quantile function.")
+    qW <- if(is.character(mix)) { # 'mix' is a character vector specifying supported mixture distributions (utilizing '...')
+              mix <- match.arg(mix, choices = c("constant", "inverse.gamma"))
+              switch(mix,
+                     "constant" = {
+                         const <- TRUE
+                         function(u) 1
+                     },
+                     "inverse.gamma" = {
+                         if(hasArg(df)) df <- list(...)$df else
+                                                               stop("'mix = \"inverse.gamma\"' requires 'df' to be provided.")
+                         ## Still allow df = Inf (normal distribution)
+                         stopifnot(is.numeric(df), length(df) == 1, df > 0)
+                         if(is.finite(df)) {
+                             inv.gam <- TRUE
+                             df2 <- df / 2
+                             mean.sqrt.mix <- sqrt(df) * gamma(df2) / ( sqrt(2) * gamma( (df+1) / 2 ) ) # used for preconditioning
+                             function(u) 1 / qgamma(u, shape = df2, rate = df2)
+                         } else {
+                             const <- TRUE
+                             mean.sqrt.mix <- 1 # used for preconditioning
+                             function(u) 1
+                         }
+                     },
+                     stop("Currently unsupported 'mix'"))
+          } else if(is.list(mix)) { # 'mix' is a list of the form (<character string>, <parameters>)
+              stopifnot(length(mix) >= 1, is.character(distr <- mix[[1]]))
+              qmix <- paste0("q", distr)
+              if(!existsFunction(qmix))
+                  stop("No function named '", qmix, "'.")
+              function(u)
+                  do.call(qmix, c(u, mix[-1]))
+          } else if(is.function(mix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
+              function(u)
+                  mix(u, ...)
+          } else stop("'mix' must be a character string, list or quantile function.")
 
     ## If d = 1, deal with multivariate normal or t via pnorm() and pt()
     if(d == 1){
         if(const){
             Prob <- pnorm(upper) - pnorm(lower)
-            return(list(Prob = Prob, N = 0, i = 0, ErrEst = 0, Var = 0))
+            return(list(Prob = Prob, N = 0, i = 0, ErrEst = 0, Var = 0)) # TODO: fix
         }
         if(inv.gam){
             Prob <- pt(upper, df = df) - pt(lower, df = df)
-            return(list(Prob = Prob, N = 0, i = 0, ErrEst = 0, Var = 0))
+            return(list(Prob = Prob, N = 0, i = 0, ErrEst = 0, Var = 0)) # TODO: fix
         }
     }
 
@@ -240,7 +187,7 @@ pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
     cholScale <- t(chol(scale)) # get Cholesky factor (lower triangular)
     if(precond && d > 2) {
         if(is.null(mean.sqrt.mix)) # approximate E(sqrt(W))
-            mean.sqrt.mix <- mean(sqrt(W(qrng::sobol(n = 5000, d = 1, randomize = TRUE))))
+            mean.sqrt.mix <- mean(sqrt(qW(qrng::sobol(n = 5000, d = 1, randomize = TRUE))))
         if(any(mean.sqrt.mix <= 0))
             stop("'mean.sqrt.mix' has to be positive (possibly after being generated in pnvmix())")
         temp <- precond(lower = lower, upper = upper, scale = scale,
@@ -310,11 +257,11 @@ pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
 
                      ## Case d = 1 somewhat special again:
                      if(d == 1){
-                         cbind(sqrt(W(U.)), sqrt(W(1 - U.)))
+                         cbind(sqrt(qW(U.)), sqrt(qW(1 - U.)))
                      } else {
                          ## Column 1:sqrt(mix), columns 2--d: unchanged (still uniforms),
                          ## column d + 1: antithetic realization of sqrt(mix)
-                         cbind(sqrt(W(U.[, 1])), U.[, 2:d], sqrt(W(1 - U.[, 1])))
+                         cbind(sqrt(qW(U.[, 1])), U.[, 2:d], sqrt(qW(1 - U.[, 1])))
                      }
                  }
 
@@ -379,5 +326,120 @@ pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
         warning("Precision level 'abstol' not reached; consider increasing the second component of 'fun.eval'")
 
     ## Return
-    list(Prob = T, N = N., i = i., ErrEst = err, Var = var)
+    list(Prob = T, N = N., i = i., ErrEst = err, Var = var) # TODO: fix
+}
+
+##' @title Distribution Function of a Multivariate Normal Variance Mixture
+##' @param upper d-vector of upper evaluation limits
+##' @param lower d-vector of lower evaluation limits (<= upper)
+##' @param mix specification of the (mixture) distribution of W. This can be:
+##'        1) a character string specifying a supported distribution (additional
+##'           arguments of this distribution are passed via '...').
+##'        2) a list of length at least one; the first argument specifies
+##'           the base name of an existing distribution which can be sampled
+##'           with prefix "q", the other elements denote additional parameters
+##'           passed to this "rmix" random number generator.
+##'        3) a function being interpreted as the quantile function F_W^-.
+##' @param mean.sqrt.mix E(sqrt(W)) or NULL; the latter if not available
+##'        in which case it is estimated by QMC
+##' @param loc d-vector (location vector)
+##' @param scale (d, d)-covariance matrix (scale matrix)
+##' @param standardized logical indicating whether 'scale' is assumed to be a
+##'        correlation matrix; if FALSE (default), 'upper', 'lower' and 'scale'
+##'        will be normalized.
+##' @param method character string indicating the method to be used:
+##'         - "sobol":   Sobol sequence
+##'         - "ghalton": generalized Halton sequence
+##'         - "prng":    pure Monte Carlo
+##' @param precond logical; if TRUE (recommended), variable reordering
+##'        as described in Genz and Bretz (2002, pp. 955--956) is performed.
+##'        Variable reordering can lead to a significant variance reduction
+##'        and decrease in computational time.
+##' @param abstol numeric >= 0 providing the absolute precision required.
+##'        If abstol = 0, algorithm will run until total number of function
+##'        evaluations exceeds fun.eval[2].
+##' @param CI.factor Monte Carlo confidence interval multiplier. Algorithm runs
+##'        CI.factor * (estimated standard error) < abstol. If CI.factor = 3.3
+##'        (default), one can expect the actual absolute error to be less than
+##'        abstol in 99.9% of the cases
+##' @param fun.eval 2-vector giving the initial function evaluations (in the
+##'        first loop; typically powers of 2) and the maximal number of
+##'        function evaluations
+##' @param B number of randomizations to get error estimates.
+##' @param ... additional arguments passed to the underlying mixing distribution
+##' @return TODO
+##' @author Erik Hintz and Marius Hofert
+pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sqrt.mix = NULL,
+                   loc = rep(0, d), scale = diag(d), standardized = FALSE,
+                   method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
+                   abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12, ...)
+{
+    ## Checks
+    if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
+    if(!is.matrix(lower)) lower <- rbind(lower) # 1-row matrix if lower is a vector
+    n <- nrow(upper) # number of evaluation points
+    d <- ncol(upper) # dimension
+    if(!is.matrix(scale)) scale <- as.matrix(scale)
+    stopifnot(dim(lower) == c(n, d), lower <= upper, length(loc) == d, # note: 'mean.sqrt.mix' is tested in pnvmix1()
+              dim(scale) == c(d, d), is.logical(standardized), is.logical(precond),
+              abstol >= 0, CI.factor >= 0, length(fun.eval) == 2, fun.eval >= 0, B >= 1)
+    method <- match.arg(method)
+
+    ## Build result objects
+    res1 <- vector("list", length = n) # results from calls of pnvmix1()
+    res <- rep(NA, n) # final result object; already correct for missing data
+
+    ## Determine which rows of 'upper' and 'lower' to consider
+    NAs <- apply(is.na(lower) | is.na(upper), 1, any) # at least one NA => use NA => nothing left to do
+    equal <- apply(lower == upper, 1, any) # any lower == upper => 0 (integrated over null set)
+    res[equal] <- 0
+    do <- !NAs & !equal # logical indicating which rows of lower and upper to consider
+
+    ## Loop over observations
+    for(i in seq_len(n)) {
+
+        if(!do[i]) next # nothing to do
+
+        ## Deal with ith row of lower and upper
+        low <- lower[i,]
+        up  <- upper[i,]
+
+        ## Deal with case where components of both low and up are Inf
+        lowFin <- is.finite(low)
+        upFin  <- is.finite(up)
+        lowupFin <- lowFin | upFin # at least one finite limit
+        if(any(!lowupFin)) {
+            low <- low[lowupFin]
+            up  <- up [lowupFin]
+            scale <- scale[lowupFin, lowupFin, drop = FALSE]
+        }
+
+        ## Standardize the ith row of lower and upper if necessary
+        ## Shift
+        if(any(loc != 0)) {
+            low <- low - loc
+            up  <- up  - loc
+        }
+        ## Scale
+        if(!standardized) {
+            Dinv <- diag(1/sqrt(diag(scale))) # TODO: why not work with cov2cor()?; these 4 lines can most likely be improved (see cov2cor code)
+            scale <- Dinv %*% scale %*% Dinv
+            low[lowFin] <- as.vector(Dinv[lowFin, lowFin] %*% low[lowFin]) # only works for those values which are not +/- Inf
+            up [upFin]  <- as.vector(Dinv[upFin,  upFin]  %*% up [upFin])
+        }
+
+        ## Compute result for ith row of lower and upper (in essence,
+        ## because of the preconditioning, one has to treat each such
+        ## row separately)
+        res1[[i]] <- pnvmix1(up, lower = low, mix = mix, mean.sqrt.mix = NULL,
+                             loc = loc, scale = scale, standardized = standardized,
+                             method = method, precond = precond, abstol = abstol,
+                             CI.factor = CI.factor, fun.eval = fun.eval, B = B, ...)
+    }
+
+    ## Return
+    res[do] <- vapply(res1, function(r) r$Prob, NA_real_)
+    attr(res, "error")   <- vapply(res1, function(r) r$ErrEst, NA_real_)
+    attr(res, "numiter") <- vapply(res1, function(r) r$i,      NA_real_)
+    res
 }

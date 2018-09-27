@@ -3,11 +3,11 @@
 ## Important
 - MH: Provide matricized 'pnvmix()' interface with all the testing and calling pnvmix1();
       also deal with missing data there => propagate NA
-- MH: return value of pnvmix() has to be renamed (not informative); adapt also
-      documentation before function head and the return() calls inside pnvmix()
+- MH: fix return value(s) of pnvmix(); see also docu before function head and
+      explicit return() calls
   + passing information as list() attribute? as mvtnorm?
-  + important are ('value', (error, numiter)); check mvtnorm
-  => same for dnvmix()
+  + important are ('value', (error, numiter))
+- MH: ... same for dnvmix()
 - MH: check all ./man/*.Rd
 
 - EH/MH: 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 'mix' ('rmix'?)
