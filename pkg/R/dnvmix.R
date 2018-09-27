@@ -32,12 +32,8 @@
 ##' @param B number of randomizations to get error estimates.
 ##' @param log logical indicating whether the logarithmic density is to be computed
 ##' @param ... additional arguments passed to the underlying mixing distribution
-##' @return list with the
-##'         - computed probability
-##'         - total number of function evaluations
-##'         - number of iterations in the while loop
-##'         - error estimate
-##'         - variance estimate
+##' @return n-vector with computed density values and attributes 'error'
+##'         (error estimate) and 'numiter' (number of while-loop iterations)
 ##' @author Erik Hintz and Marius Hofert
 dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), # TODO: do we need a 'standardized = FALSE' here? (see pnvmix())
                    factor = factorize(scale), # needs to be triangular!
@@ -201,9 +197,7 @@ dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), # TODO: do we need 
     }
 
     ## Return
-    if(log) {
-        list(Density = lres,      N = N., i = i., ErrEst = err, Var = var)
-    } else {
-        list(Density = exp(lres), N = N., i = i., ErrEst = err, Var = var)
-    }
+    attr(lres, "error")   <- err
+    attr(lres, "numiter") <- i.
+    if(log) lres else exp(lres)
 }

@@ -63,6 +63,6 @@ x <- matrix(1:12/12, ncol = d) # evaluation points
 ## Evaluate normal density
 dn <- dNorm(x, scale = P)
 stopifnot(all.equal(dn, c(0.013083858, 0.011141923, 0.009389987, 0.007831596),
-                    tol = 1e-7))
+                    tol = 1e-7, check.attributes = FALSE))
 }
 \keyword{distribution}

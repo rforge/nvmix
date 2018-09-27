@@ -6,8 +6,8 @@
   (including normal and Student \emph{t}).
 }
 \usage{
-dStudent(x, df, loc = rep(0, d), scale, 
-       factor = tryCatch(factorize(scale), error = function(e) e), 
+dStudent(x, df, loc = rep(0, d), scale,
+       factor = tryCatch(factorize(scale), error = function(e) e),
        log = FALSE)
 }
 \arguments{
@@ -41,7 +41,7 @@ dStudent(x, df, loc = rep(0, d), scale,
 
   The default factorization used is the Cholesky decomposition.
   To this end, \code{scale} needs to have full rank.
-  
+
   This is a user-friendly wrapper for \code{dnvmix(x, mix = "inverse.gamma",...)}, see \code{\link{dnvmix}()}.
 }
 \author{Marius Hofert and Erik Hintz}
@@ -64,6 +64,6 @@ df <- 3.5
 x <- matrix(1:12/12, ncol = d) # evaluation points
 dt <- dStudent(x, df = df, scale = P)
 stopifnot(all.equal(dt, c(0.013266542, 0.011967156, 0.010760575, 0.009648682),
-                    tol = 1e-7))
+                    tol = 1e-7, check.attributes = FALSE))
 }
 \keyword{distribution}

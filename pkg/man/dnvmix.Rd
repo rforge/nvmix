@@ -111,33 +111,33 @@ P <- cov2cor(A \%*\% t(A))
 ## Evaluate t_{3.5} density
 df <- 3.5
 x <- matrix(1:12/12, ncol = d) # evaluation points
-dt <- dnvmix(x, mix = "inverse.gamma", df = df, scale = P)$Density
+dt <- dnvmix(x, mix = "inverse.gamma", df = df, scale = P)
 stopifnot(all.equal(dt, c(0.013266542, 0.011967156, 0.010760575, 0.009648682),
-                    tol = 1e-7))
+                    tol = 1e-7, check.attributes = FALSE))
 
 ## The same can be achieved by defining a function for mix:
 mix. <- function(u, df){
-  df2 <- df/2
-  return(1 / qgamma(u, shape = df2, rate = df2))
+    df2 <- df/2
+    1 / qgamma(u, shape = df2, rate = df2)
 }
-dt2 <-dnvmix(x, mix = mix., df = df, scale = P)$Density
-stopifnot(all.equal(dt, dt2, tol = 5e-4))
+dt2 <-dnvmix(x, mix = mix., df = df, scale = P)
+stopifnot(all.equal(dt, dt2, tol = 5e-4, check.attributes = FALSE))
 
 ## Evaluate normal density
-dn <- dnvmix(x, mix = "constant", scale = P)$Density
+dn <- dnvmix(x, mix = "constant", scale = P)
 stopifnot(all.equal(dn, c(0.013083858, 0.011141923, 0.009389987, 0.007831596),
-                    tol = 1e-7))
+                    tol = 1e-7, check.attributes = FALSE))
 
 ## Missing data
 x[3,2] <- NA
 x[4,3] <- NA
-dt <- dnvmix(x, mix = "inverse.gamma", df = df, scale = P)$Density
+dt <- dnvmix(x, mix = "inverse.gamma", df = df, scale = P)
 stopifnot(is.na(dt) == rep(c(FALSE, TRUE), each = 2))
 
 ## Univariate case
-x <- matrix(1:10/10, ncol = 1)
-dt <- dnvmix(x, mix = "inverse.gamma", df = df, factor = 1)$Density
+x <- cbind(1:10/10) # (n = 10, 1)-matrix; note: vectors are rows in dnvmix()
+dt <- dnvmix(x, mix = "inverse.gamma", df = df, factor = 1)
 dt. <- dt(as.vector(x), df = df)
-stopifnot(all.equal(dt, dt.))
+stopifnot(all.equal(dt, dt., check.attributes = FALSE))
 }
 \keyword{distribution}
