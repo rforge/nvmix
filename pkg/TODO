@@ -1,7 +1,7 @@
 ### For next release ###########################################################
 
 ## Important
-- MH: check + merge all ./man/*.Rd:
+- MH: check:
   + dnvmix.Rd
   + pnvmix.Rd
 
