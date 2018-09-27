@@ -19,8 +19,8 @@ swap <- function(i, j, lower, upper, scale)
     upper[ij] <- upper[ji]
     ## Reorder scale
     wo.ij <- setdiff(seq_len(nrow(scale)), ij)
-    temp_i <- as.matrix(scale[wo.ij,i])
-    temp_j <- as.matrix(scale[wo.ij,j])
+    temp_i <- scale[wo.ij,i, drop = FALSE]
+    temp_j <- scale[wo.ij,j, drop = FALSE]
     temp_ii <- scale[i,i]
     scale[wo.ij,i] <- temp_j
     scale[wo.ij,j] <- temp_i
@@ -37,7 +37,8 @@ swap <- function(i, j, lower, upper, scale)
 ##' @param upper d-vector of upper evaluation limits
 ##' @param scale (d, d)-covariance matrix (scale matrix)
 ##' @param cholScale Cholesky factor (lower triangular matrix) of 'scale'
-##' @param mean.sqrt.mix E(sqrt(W))
+##' @param mean.sqrt.mix E(sqrt(W)) or NULL; the latter if not available
+##'        in which case it is estimated by QMC
 ##' @return list with reordered integration limits, scale matrix and Cholesky factor
 ##' @author Erik Hintz and Marius Hofert
 ##' @note See Genz and Bretz (2002, p. 957)
@@ -62,10 +63,10 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 
     ## Update the Cholesky factor
     cholScale[1, 1] <- sqrt(scale[1, 1])
-    cholScale[2:d, 1] <- as.matrix(scale[2:d, 1] / cholScale[1, 1])
+    cholScale[2:d, 1] <- scale[2:d, 1, drop = FALSE] / cholScale[1, 1]
     for(j in 2:(d-1)) {
-        denom <- sqrt(diag(scale)[j:d] - rowSums(as.matrix(cholScale[j:d, 1:(j-1)])^2))
-        c <- as.matrix(cholScale[j:d, 1:j-1]) %*% y[1:(j-1)]
+        denom <- sqrt(diag(scale)[j:d] - rowSums(cholScale[j:d, 1:(j-1), drop = FALSE]^2))
+        c <- cholScale[j:d, 1:j-1, drop = FALSE] %*% y[1:(j-1)] # TODO: shouldn't this be 1:(j-1)? This is (1:j)-1 (so a sequence starting from 0, not 1)
         ## Find i = argmin { <expected length of interval j> }
         i <- which.min(pnorm((upper[j:d] / mean.sqrt.mix - c) / denom) -
                        pnorm((lower[j:d] / mean.sqrt.mix - c) / denom)) + j - 1
@@ -74,16 +75,18 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
             lower <- tmp$lower
             upper <- tmp$upper
             scale <- tmp$scale
-            cholScale[c(i,j),]   <- as.matrix(cholScale[c(j,i),])
-            cholScale[j,(j+1):i] <- as.matrix(0, ncol = i - j, nrow = 1)
+            cholScale[c(i,j),]   <- cholScale[c(j,i),, drop = FALSE]
+            cholScale[j,(j+1):i] <- matrix(0, ncol = i - j, nrow = 1)
         }
         ## Update Cholesky factor
         cholScale[j,j] <- sqrt(scale[j,j] - sum(cholScale[j,1:(j-1)]^2))
-        if(j < d-1)
-            cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - as.matrix(cholScale[(j+1):d, 1:(j-1)]) %*%
-                                       cholScale[j, 1:(j-1)]) / cholScale[j, j]
-        else cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1)] %*%
-                                        cholScale[j, 1:(j-1)]) / cholScale[j, j]
+        if(j < d-1) {
+            cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1), drop = FALSE] %*%
+                                      cholScale[j, 1:(j-1)]) / cholScale[j, j]
+        } else {
+            cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1)] %*%
+                                      cholScale[j, 1:(j-1)]) / cholScale[j, j]
+        }
         ## Get yj
         low.j.up.j <- c(lower[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)],
                         upper[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)]) / cholScale[j, j]
@@ -95,9 +98,9 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
     list(lower = lower, upper = upper, scale = scale, cholScale = cholScale)
 }
 
-##' @title Distribution Function of the Multivariate t Distribution
+##' @title Distribution Function of a Multivariate Normal Variance Mixture
 ##' @param upper d-vector of upper evaluation limits
-##' @param lower d-vector of lower evaluation limits
+##' @param lower d-vector of lower evaluation limits (<= upper)
 ##' @param mix specification of the (mixture) distribution of W. This can be:
 ##'        1) a character string specifying a supported distribution (additional
 ##'           arguments of this distribution are passed via '...').
@@ -106,7 +109,8 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##'           with prefix "q", the other elements denote additional parameters
 ##'           passed to this "rmix" random number generator.
 ##'        3) a function being interpreted as the quantile function F_W^-.
-##' @param mean.sqrt.mix expectation of sqrt(W)
+##' @param mean.sqrt.mix E(sqrt(W)) or NULL; the latter if not available
+##'        in which case it is estimated by QMC
 ##' @param loc d-vector (location vector)
 ##' @param scale (d, d)-covariance matrix (scale matrix)
 ##' @param standardized logical indicating whether 'scale' is assumed to be a
@@ -131,26 +135,29 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##'        first loop; typically powers of 2) and the maximal number of
 ##'        function evaluations
 ##' @param B number of randomizations to get error estimates.
-##' @param ... additional arguments passed to the underlying mixing distributions
+##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return list with the
 ##'         - computed probability
 ##'         - total number of function evaluations
 ##'         - number of iterations in the while loop
 ##'         - error estimate
 ##'         - variance estimate
-##' @author Erik Hintz
+##' @author Erik Hintz and Marius Hofert
 pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
                    loc = rep(0, d), scale = diag(d), standardized = FALSE,
                    method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
                    abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12, ...)
 {
     ## Checks
-    d <- length(upper) # dimension of the problem
+    d <- length(upper) # dimension
     if(!is.matrix(scale)) scale <- as.matrix(scale)
-    stopifnot(length(lower) == d, lower < upper, length(loc) == d, # note: mean.sqrt.mix tested later
+    stopifnot(length(lower) == d, lower <= upper, length(loc) == d, # note: 'mean.sqrt.mix' is tested later
               dim(scale) == c(d, d), is.logical(standardized), is.logical(precond),
               abstol >= 0, CI.factor >= 0, length(fun.eval) == 2, fun.eval >= 0, B >= 1)
     method <- match.arg(method)
+
+    ## Deal with trivial case
+    if(any(lower == upper)) return(list(0)) # TODO
 
     ## Deal with infinite limits
     lowFin <- is.finite(lower)
@@ -209,13 +216,11 @@ pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
              qmix <- paste0("q", distr)
              if(!existsFunction(qmix))
                  stop("No function named '", qmix, "'.")
-             function(u){
-                 return(  do.call(qmix, c(u, mix[-1])))
-             }
+             function(u)
+                 return(do.call(qmix, c(u, mix[-1])))
          } else if(is.function(mix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
-             function(u){
+             function(u)
                  return(mix(u, ...))
-             }
          } else stop("'mix' must be a character string, list or quantile function.")
 
     ## If d = 1, deal with multivariate normal or t via pnorm() and pt()
@@ -316,6 +321,7 @@ pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
             ## Both T.[l] and the new estimate are based on n. evaluations, so we
             ## can just average them unless we are in the first iteration in which
             ## case denom = 1 and T.[l] = 0.
+            ## TODO: do 'scaling' outside here, then just .Call() etc. inside if() else()
             if(d == 1) {
                 ## Case of dimension 1: Don't need to approximate the multivariate
                 ##                      normal df and can just use pnorm()
@@ -354,15 +360,11 @@ pnvmix <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
         ## TODO why keep this code? give a reason
         ## ## Change denom and useksip. This is done exactly once, namely in the first iteration.
         ## if(i. == 0){
-        ##
         ##   denom <- 2
         ##   useskip <- 1
-        ##
         ## } else {
-        ##
         ##   ## Increase sample size n. This is done in all iterations except for the first two.
         ##   n. <- 2 * n.
-        ##
         ## }
         sig <- sd(T.) # get standard deviation of the estimator
         err <- CI.factor * sig # update error; note that this CI.factor is actually CI.factor/sqrt(N) (see above)

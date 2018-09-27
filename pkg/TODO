@@ -1,37 +1,42 @@
 ### For next release ###########################################################
 
-1) MH: check ./R/dnvmix.R
+1) MH: check ./R/dnvmix.R + FIX!!!
 2) MH: check ./man/*.Rd
 
 ## Important
-- Give variables internally in pnvmix() better names (than 'N.', 'i.', 'T.', n.', for example)
-- C code: use 'd' instead of 'q' (caution: 'd' is already a variable in the C code...)
-- 'ZERO' and 'ONE' could be 'zero' and 'one', no? or 'machine0' and 'machine1' or so
-- EH/MH: return value of pnvmix() has to be renamed (not informative); adapt also
+- MH: return value of pnvmix() has to be renamed (not informative); adapt also
       documentation before function head and the return() calls inside pnvmix()
+  + passing information as list() attribute? as mvtnorm?
+  + important are ('value', (error, numiter)); check mvtnorm
+  => same for dnvmix()
+- MH: Would possibly be useful to have a 'matricized' version of pnvmix() (we do the
+  looping); d/(r)nvmix are 'matricized'
+- MH: also deal with missing data => propagate NA
+- MH: incorporate the case of a singular scale matrix
+      (or at least give better error message)
+- MH: do most of the beginning of pnvmix() in the wrapper function
+
+- EH/MH: 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 'mix' ('rmix'?)
+         for passing a RNG
+         => call other arguments 'mix' 'qmix' instead (check carefully)
+- EH: Give variables internally in pnvmix() better names (than 'N.', 'i.', 'T.', n.', for example)
+- EH: C code: use 'd' instead of 'q' (caution: 'd' is already a variable in the C code...)
+      maybe yorg/y_org and yant/y_ant
 - EH: why does 'q' need to be passed to precond()? simply determine it from 'scale'?
 - EH: TODOs inside pnvmix()
-- 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 'mix' ('rmix'?)
-  for passing a RNG
-  => call other arguments 'mix' 'qmix' instead (check carefully)
-- properly document 'mean.sqrt.mix' in pnvmix() and precond(); in particular, when to use NA
-  (when unknown or when not actually used or both?)
-- can't precond() start the for-loop from case j = 1?
-- could allow pnvmix to be called with lower <= upper instead of lower < upper and return 0
-  if at least one component satisfies lower == upper
+- EH: can't precond() start the for-loop from case j = 1?
 - Write vignette nvmix_functionality.Rmd
 
 
 ### TODO #######################################################################
 
-- TODO in rnvmix(), maybe it would be nice if user could specify if random
-       or quasi-random samples should be produced
 - TODO Need fitnvmix(): check what other packages do
+- TODO look into quantile functions of univariate (marginal) normal variance mixtures.
+       If we have a function, say, qnvmix1 (for 1 dimensional normal variance mixtures),
+       we have a way to sample from univariate normal variance mixtures using inversion,
+       which can then be used for quasi-Monte Carlo sampling
 - DONE implement dnvmix() as well as wrappers for normal/t case.
 - DONE (d=1): pnvmix() should work with d = 1 and with missing data
-  TODO what to do with missing data? error?
-- RNOT Do we want a function that has multiple lower and upper as input?
-       (not easily done)
 - DONE pStudent should work with df = Inf
 - DONE implement multivariate normal distribution
 - DONE rename 'a' and 'b' to 'lower' and 'upper'; 'nu' to 'df'
@@ -43,12 +48,6 @@
 - DONE 'func' not needed if 'base case' in pnvmix() is part of the loop
        (only one call necessary then, so can be omitted)
 - DONE more intuitive names for arguments concerning tolerance(s)
-- TODO incorporate the case of a singular scale matrix
-       (or at least give better error message)
-- TODO look into quantile functions of univariate (marginal) normal variance mixtures.
-       If we have a function, say, qnvmix1 (for 1 dimensional normal variance mixtures),
-       we have a way to sample from univariate normal variance mixtures using inversion,
-       which can then be used for quasi-Monte Carlo sampling
 - DONE polish ./src
 
 

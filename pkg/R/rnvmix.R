@@ -16,8 +16,7 @@
 ##' @param factor *upper triangular* factor R of the covariance matrix 'scale'
 ##'        such that R^T R = 'scale' here (otherwise det(scale) not computed
 ##'        correctly!)
-##' @param ... additional arguments containing parameters of
-##'        mixing distributions when 'mix' is a 'character' string
+##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Marius Hofert
 ##' @note - For the Student t distribution, W ~ df/rchisq(n, df = df) but
@@ -73,5 +72,5 @@ rnvmix <- function(n, mix, loc = rep(0, d), scale = diag(d),
     ## Generate X ~ M_k(0, Sigma, LS[F_W])
     X <- sqrt(W) * Y # also fine for different k
     ## Generate X ~ M_k(mu, Sigma, LS[F_W])
-    sweep(Y, 2, loc, "+")
+    sweep(X, 2, loc, "+")
 }
