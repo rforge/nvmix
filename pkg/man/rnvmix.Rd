@@ -1,13 +1,17 @@
 \name{rnvmix}
 \alias{rnvmix}
+\alias{rStudent}
+\alias{rNorm}
 \title{Random Number Generator for Multivariate Normal Variance Mixtures}
 \description{
   Generate vectors of random variates from multivariate normal variance
-  mixtures (including normal and Student \emph{t}).
+  mixtures (including Student \emph{t} and normal distributions).
 }
 \usage{
-rnvmix(n, mix, loc = rep(0, d), scale, scale = diag(d),
-       factor = factorize(scale), ...)
+rnvmix(n, mix,  loc = rep(0, d), scale = diag(2), factor = factorize(scale), ...)
+
+rStudent(n, df, loc = rep(0, d), scale = diag(2), factor = factorize(scale))
+rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = factorize(scale))
 }
 \arguments{
   \item{n}{sample size \eqn{n} (positive integer).}
@@ -44,21 +48,23 @@ rnvmix(n, mix, loc = rep(0, d), scale, scale = diag(d),
 	variable \eqn{W}.}
     }
   }
-  \item{loc}{location vector (of dimension \eqn{d}); this equals the mean
+  \item{df}{degress of freedom (positive real or Inf in which case a
+    sample from a multivariate normal with mean vector \code{loc}
+    and covariance matrix \code{scale} is generated).}
+  \item{loc}{location vector of dimension \eqn{d}; this equals the mean
     vector of a random vector following the specified normal variance
     mixture distribution if (and only if) the latter exists.}
-  \item{scale}{covariance matrix (of dimension \eqn{(d, d)});
-    this equals the covariance matrix of of a random vector following
-    the specified normal variance mixture distribution divided by by
+  \item{scale}{scale matrix (a covariance matrix entering the
+    distribution as a parameter) of dimension \eqn{(d, d)} (\eqn{d = 2}
+    per default);
+    this equals the covariance matrix of a random vector following
+    the specified normal variance mixture distribution divided by
     the mean of the mixing variable if (and only if) the former exists.}
-  \item{factor}{factorization matrix of the covariance matrix
-    \code{scale}. A \code{\link{matrix}} \eqn{R} with \eqn{d}
+  \item{factor}{\code{\link{matrix}} \eqn{R} with \eqn{d}
     rows such that \eqn{R^T R} equals \code{scale}. \eqn{R} is internally
     multiplied from the right to an \eqn{(n, d)}-matrix of independent
     standard normals to obtain a sample from a multivariate normal
-    with zero mean vector and covariance matrix \code{scale} (a building
-    block for generating samples from the specified multivariate normal
-    variance mixture).}
+    with zero mean vector and covariance matrix \code{scale}.}
   \item{\dots}{additional arguments (e.g., parameters) passed to the
     underlying mixing distribution when \code{mix} is a
     \code{\link{character}} string.}
@@ -66,8 +72,17 @@ rnvmix(n, mix, loc = rep(0, d), scale, scale = diag(d),
 \value{
   \code{rnvmix()} returns an \eqn{(n, d)}-\code{\link{matrix}}
   containing \eqn{n} samples of the specified (via \code{mix})
-  \eqn{d}-dimensional multivariate normal variance mixture with location
-  vector \code{loc} and scale matrix \code{scale} (a covariance matrix).
+  \eqn{d}-dimensional multivariate normal variance mixture with
+  location vector \code{loc} and scale matrix \code{scale}
+  (a covariance matrix).
+
+  \code{rStudent()} returns samples from the \eqn{d}-dimensional
+  multivariate Student \emph{t} distribution with location vector
+  \code{loc} and scale matrix \code{scale}.
+
+  \code{rNorm()} returns samples from the \eqn{d}-dimensional
+  multivariate normal distribution with mean vector
+  \code{loc} and covariance matrix \code{scale}.
 }
 \details{
   Internally used is \code{factor}, so \code{scale} is not required
@@ -79,6 +94,10 @@ rnvmix(n, mix, loc = rep(0, d), scale, scale = diag(d),
 
   The number of rows of \code{factor} are the dimension \eqn{d} of
   the sample. Typically (but not necessarily), \code{factor} is square.
+
+  \code{rStudent()} and \code{rNorm()} are wrappers of
+  \code{rnvmix(, mix = "inverse.gamma", df = df)} and
+  \code{rnvmix(, mix = "constant", df = df)}, respectively.
 }
 \author{Marius Hofert}
 \references{
@@ -90,7 +109,9 @@ rnvmix(n, mix, loc = rep(0, d), scale, scale = diag(d),
   \code{\link{dnvmix}()}, \code{\link{pnvmix}()}, \code{\link{factorize}()}
 }
 \examples{
-## Generate a random correlation matrix in three dimensions
+### Examples for rnvmix() ######################################################
+
+## Generate a random correlation matrix in d dimensions
 d <- 3
 set.seed(157)
 A <- matrix(runif(d * d), ncol = d)
@@ -148,5 +169,46 @@ X.mix5 <- rnvmix(n, mix = W, factor = P)
 stopifnot(all.equal(X.mix2, X.mix1),
           all.equal(X.mix3, X.mix1),
           all.equal(X.mix5, X.mix1))
+
+
+### Examples for rStudent() and rNorm() ########################################
+
+## Draw N(0, P) random variates by providing scale or factor and compare
+n <- 1000
+set.seed(271)
+X.n  <- rNorm(n, scale = P) # providing scale
+set.seed(271)
+X.n. <- rNorm(n, factor = chol(P)) # providing the factor
+stopifnot(all.equal(X.n, X.n.))
+
+## Univariate case (dimension = number of rows of 'factor' = 1 here)
+set.seed(271)
+X.n.1d  <- rNorm(n, factor = 1/2)
+set.seed(271)
+X.n.1d. <- rNorm(n, factor = 1)/2 # manual scaling
+stopifnot(all.equal(X.n.1d, X.n.1d.))
+
+## Draw t_3.5 random variates by providing scale or factor and compare
+df <- 3.5
+n <- 1000
+set.seed(271)
+X.t  <- rStudent(n, df = df, scale = P) # providing scale
+set.seed(271)
+X.t. <- rStudent(n, df = df, factor = chol(P)) # providing the factor
+stopifnot(all.equal(X.t, X.t.))
+
+## Univariate case (dimension = number of rows of 'factor' = 1 here)
+set.seed(271)
+X.t.1d  <- rStudent(n, df = df, factor = 1/2)
+set.seed(271)
+X.t.1d. <- rStudent(n, df = df, factor = 1)/2 # manual scaling
+stopifnot(all.equal(X.t.1d, X.t.1d.))
+
+## Check df = Inf
+set.seed(271)
+X.t <- rStudent(n, df = Inf, scale = P)
+set.seed(271)
+X.n <- rNorm(n, scale = P)
+stopifnot(all.equal(X.t, X.n))
 }
 \keyword{distribution}

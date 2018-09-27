@@ -26,7 +26,7 @@
 ##'         + "Runuran": faster if n large and parameters fixed; based on density
 ##'         + "GIGrvg":  faster if n small and often called with several parameters
 ##'         see examples of 'GIGrvg' for both methods
-rnvmix <- function(n, mix, loc = rep(0, d), scale = diag(d),
+rnvmix <- function(n, mix, loc = rep(0, d), scale = diag(2),
                    factor = factorize(scale), # needs to be triangular!
                    ...)
 {

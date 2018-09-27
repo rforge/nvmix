@@ -1,14 +1,13 @@
 ### For next release ###########################################################
 
 ## Important
-- MH: check all ./man/*.Rd:
+- MH: check + merge all ./man/*.Rd:
+  + dnvmix.Rd
   + dStudent.Rd
   + dmultinorm.Rd
-  + dnvmix.Rd
+  + pnvmix.rd
   + pStudent.rd
   + pmultinorm.rd
-  + pnvmix.rd
-  + rStudent.Rd
 
 - EH: fix return value(s) of pnvmix[1](), also docu before function head and
       in explicit return() calls

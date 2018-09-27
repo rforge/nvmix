@@ -2,33 +2,37 @@
 \alias{rStudent}
 \title{Random Number Generator for the Multivariate Student t Distribution}
 \description{
-  Generate vectors of random variates from the multivariate Student \emph{t} distribution.
+  Generate vectors of random variates from the multivariate Student
+  \emph{t} distribution.
 }
 \usage{
-rStudent(n, loc = rep(0, d), scale, df, factor = factorize(scale))
+rStudent(n, df, loc = rep(0, d), scale = diag(2), factor = factorize(scale))
 }
 \arguments{
   \item{n}{sample size \eqn{n} (positive integer).}
-  \item{loc}{location vector of dimension \eqn{d}.}
-  \item{scale}{covariance matrix of dimension \eqn{(d, d)}.}
-  \item{df}{degress of freedom (positive real or Inf in which case a sample from N(loc, scale) is returned.}
-  \item{factor}{factorization matrix of the covariance matrix
-    \code{scale}. A \code{\link{matrix}} \eqn{R} with \eqn{d}
+  \item{df}{degress of freedom (positive real or Inf in which case a
+    sample from a multivariate normal with mean vector \code{loc}
+    and covariance matrix \code{scale} is generated).}
+  \item{loc}{location vector of dimension \eqn{d}; this equals the mean
+    vector of a random vector following the specified Student \emph{t}
+    distribution if (and only if) the latter exists.}
+  \item{scale}{scale matrix (a covariance matrix entering the
+    distribution as a parameter) of dimension \eqn{(d, d)}
+    (\eqn{d = 2} per default); this equals the covariance matrix of a
+    random vector following the specified Student \emph{t} distribution divided
+    by  the mean of the mixing variable if (and only if) the former exists.}
+  \item{factor}{\code{\link{matrix}} \eqn{R} with \eqn{d}
     rows such that \eqn{R^T R} equals \code{scale}. \eqn{R} is internally
     multiplied from the right to an \eqn{(n, d)}-matrix of independent
     standard normals to obtain a sample from a multivariate normal
     with zero mean vector and covariance matrix \code{scale}.}
 }
 \value{
-  \code{rStudent()} returns an \eqn{(n, d)}-\code{\link{matrix}}
-  containing \eqn{n} samples of the
-  \eqn{d}-dimensional multivariate \emph{t} distribution with location
-  vector \code{loc} and scale matrix \code{scale} (a covariance matrix).
+  \eqn{(n, d)}-\code{\link{matrix}} containing \eqn{n} samples of the
+  \eqn{d}-dimensional multivariate Student \emph{t} distribution with
+  location vector \code{loc} and scale matrix \code{scale}.
 }
 \details{
-  This is a user friendly wrapper and calls \code{rnvmix(...,mix = 
-  "inverse.gamma", df = df)}, see \code{\link{rnvmix}()}.
-  
   Internally used is \code{factor}, so \code{scale} is not required
   to be provided if \code{factor} is given.
 
@@ -38,19 +42,23 @@ rStudent(n, loc = rep(0, d), scale, df, factor = factorize(scale))
 
   The number of rows of \code{factor} are the dimension \eqn{d} of
   the sample. Typically (but not necessarily), \code{factor} is square.
-  
+
+  \code{rStudent()} and \code{rNorm()} are wrappers of
+  \code{rnvmix(, mix = "inverse.gamma", df = df)} and
+  \code{rnvmix(, mix = "constant", df = df)}, respectively.
 }
-\author{Marius Hofert, Erik Hintz}
+\author{Erik Hintz and Marius Hofert}
 \references{
   McNeil, A. J., Frey, R., and Embrechts, P. (2015).
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
   Princeton University Press.
 }
 \seealso{
-  \code{\link{dStudent}()}, \code{\link{pStudent}()}, \code{\link{rnvmix}()}, \code{\link{factorize}()}
+  \code{\link{rnvmix}()} (of which \code{rStudent()} is a wrapper),
+  \code{\link{dStudent}()}, \code{\link{pStudent}()}, \code{\link{factorize}()}
 }
 \examples{
-## Generate a random correlation matrix in three dimensions
+## Generate a random correlation matrix in d dimensions
 d <- 3
 set.seed(157)
 A <- matrix(runif(d * d), ncol = d)
@@ -67,7 +75,7 @@ stopifnot(all.equal(X, X.))
 
 ## Univariate case (dimension = number of rows of 'factor' = 1 here)
 set.seed(271)
-X.1d <- rStudent(n, df = df, factor = 1/2)
+X.1d  <- rStudent(n, df = df, factor = 1/2)
 set.seed(271)
 X.1d. <- rStudent(n, df = df, factor = 1)/2 # manual scaling
 stopifnot(all.equal(X.1d, X.1d.))
