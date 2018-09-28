@@ -47,50 +47,57 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
   d <- length(lower)
   y <- rep(0, d - 1)
   
-  ## Find i = argmin_j { <expected length of interval> }
-  i <- which.min(apply(pnorm(cbind(upper, lower) / (mean.sqrt.mix * sqrt(diag(scale)))), 1, diff))
-  if(i != 1) {
-    ## Swap 1 and i in 'lower', 'upper' and 'scale'
-    tmp <- swap(i = 1, j = i, lower = lower, upper = upper, scale = scale)
-    lower <- tmp$lower
-    upper <- tmp$upper
-    scale <- tmp$scale
-  }
-  
-  ## Store y1
-  y[1] <- -(dnorm(upper[1]/mean.sqrt.mix) - dnorm(lower[1]/mean.sqrt.mix)) /
-    (pnorm(upper[1]/mean.sqrt.mix) - pnorm(lower[1]/mean.sqrt.mix))
-  
-  ## Update the Cholesky factor
-  cholScale[1, 1] <- sqrt(scale[1, 1])
-  cholScale[2:d, 1] <- scale[2:d, 1, drop = FALSE] / cholScale[1, 1]
-  for(j in 2:(d-1)) {
-    denom <- sqrt(diag(scale)[j:d] - rowSums(cholScale[j:d, 1:(j-1), drop = FALSE]^2))
-    c <- cholScale[j:d, 1:(j-1), drop = FALSE] %*% y[1:(j-1)] 
+  for(j in 1:(d-1)) {
+    
+    ## Case j = 1 somewhat special:
+    if(j == 1){
+      denom <- sqrt(diag(scale))
+      c <- 0
+    } else {
+      denom <- sqrt(diag(scale)[j:d] - rowSums(cholScale[j:d, 1:(j-1), drop = FALSE]^2))
+      c <- cholScale[j:d, 1:(j-1), drop = FALSE] %*% y[1:(j-1)] 
+    }
+    
     ## Find i = argmin { <expected length of interval j> }
     i <- which.min(pnorm((upper[j:d] / mean.sqrt.mix - c) / denom) -
                      pnorm((lower[j:d] / mean.sqrt.mix - c) / denom)) + j - 1
-    if(i != j){ # swap i and j
+    
+    
+    ## Swap i and j if they are different:
+    if(i != j){ 
       tmp <- swap(i = i, j = j, lower = lower, upper = upper, scale = scale)
       lower <- tmp$lower
       upper <- tmp$upper
       scale <- tmp$scale
-      cholScale[c(i,j),]   <- cholScale[c(j,i),, drop = FALSE]
-      cholScale[j,(j+1):i] <- matrix(0, ncol = i - j, nrow = 1)
+      
+      ## If j>1 and an actual swap has occured, need to reorder cholesky factor:
+      if(j > 1){
+        cholScale[c(i,j),]   <- cholScale[c(j,i),, drop = FALSE]
+        cholScale[j,(j+1):i] <- matrix(0, ncol = i - j, nrow = 1) 
+      }
     }
+    
     ## Update Cholesky factor
-    cholScale[j,j] <- sqrt(scale[j,j] - sum(cholScale[j,1:(j-1)]^2))
-    if(j < d-1) {
-      cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1), drop = FALSE] %*%
-                                  cholScale[j, 1:(j-1)]) / cholScale[j, j]
+    if(j == 1){
+      cholScale[1, 1] <- sqrt(scale[1, 1])
+      cholScale[2:d, 1] <- scale[2:d, 1, drop = FALSE] / cholScale[1, 1]
+      ## Store y1
+      y[1] <- -(dnorm(upper[1]/mean.sqrt.mix) - dnorm(lower[1]/mean.sqrt.mix)) /
+        (pnorm(upper[1]/mean.sqrt.mix) - pnorm(lower[1]/mean.sqrt.mix))
     } else {
-      cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1)] %*%
-                                  cholScale[j, 1:(j-1)]) / cholScale[j, j]
+      cholScale[j,j] <- sqrt(scale[j,j] - sum(cholScale[j,1:(j-1)]^2))
+      if(j < d-1) {
+        cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1), drop = FALSE] %*%
+                                    cholScale[j, 1:(j-1)]) / cholScale[j, j]
+      } else {
+        cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1)] %*%
+                                    cholScale[j, 1:(j-1)]) / cholScale[j, j]
+      }
+      ## Get yj
+      low.j.up.j <- c(lower[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)],
+                      upper[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)]) / cholScale[j, j]
+      y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) / (pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]))
     }
-    ## Get yj
-    low.j.up.j <- c(lower[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)],
-                    upper[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)]) / cholScale[j, j]
-    y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) / (pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]))
   }
   cholScale[d, d] <- sqrt(scale[d, d] - sum(cholScale[d, 1:(d-1)]^2))
   

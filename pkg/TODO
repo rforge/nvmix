@@ -12,13 +12,6 @@
          five components you previously returned) Seems more intuitive, no?
 	EH: variance can be computed from error; numiter (or equivalently, total function 	evaluations) should just give an idea of how long it took to converge
 
-- EH: ?pnvmix and ?dnvmix say that if abstol = 0, the algorithm runs until
-  eval.fun[2]. This is not necessarily the case. I would thus suggest to allow
-  abstol = NULL (in which case the latter behavior occurs). abstol = 0
-  certainly will give you the same in most cases, but not necessarily all.
-  (That's also the common way, we use that in qrmtools, too, for example).
-	EH: will do
-
 - EH: ?pnvmix describes 'precond'; can you add half a sentence
   describing the idea behind the preconditioning, please?
 
@@ -27,9 +20,6 @@
 
 - EH: TODOs inside pnvmix()
 	EH: mostly done.
-
-- EH: can't precond() start the for-loop from case j = 1?
-	EH: will do 
 
 - Write vignette nvmix_functionality.Rmd
 
