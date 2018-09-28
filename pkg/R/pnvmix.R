@@ -11,25 +11,25 @@
 ##' @author Erik Hintz and Marius Hofert
 swap <- function(i, j, lower, upper, scale)
 {
-    ## Build vector
-    ij <- c(i,j)
-    ji <- c(j,i)
-    ## Reorder lower, upper
-    lower[ij] <- lower[ji]
-    upper[ij] <- upper[ji]
-    ## Reorder scale
-    wo.ij <- setdiff(seq_len(nrow(scale)), ij)
-    temp_i <- scale[wo.ij,i, drop = FALSE]
-    temp_j <- scale[wo.ij,j, drop = FALSE]
-    temp_ii <- scale[i,i]
-    scale[wo.ij,i] <- temp_j
-    scale[wo.ij,j] <- temp_i
-    scale[i,wo.ij] <- temp_j
-    scale[j,wo.ij] <- temp_i
-    scale[i,i] <- scale[j,j]
-    scale[j,j] <- temp_ii
-    ## Return
-    list(lower = lower, upper = upper, scale = scale)
+  ## Build vector
+  ij <- c(i,j)
+  ji <- c(j,i)
+  ## Reorder lower, upper
+  lower[ij] <- lower[ji]
+  upper[ij] <- upper[ji]
+  ## Reorder scale
+  wo.ij <- setdiff(seq_len(nrow(scale)), ij)
+  temp_i <- scale[wo.ij,i, drop = FALSE]
+  temp_j <- scale[wo.ij,j, drop = FALSE]
+  temp_ii <- scale[i,i]
+  scale[wo.ij,i] <- temp_j
+  scale[wo.ij,j] <- temp_i
+  scale[i,wo.ij] <- temp_j
+  scale[j,wo.ij] <- temp_i
+  scale[i,i] <- scale[j,j]
+  scale[j,j] <- temp_ii
+  ## Return
+  list(lower = lower, upper = upper, scale = scale)
 }
 
 ##' @title Preconditioning (Reordering Variables According to their Expected Integration Limits)
@@ -44,58 +44,58 @@ swap <- function(i, j, lower, upper, scale)
 ##' @note See Genz and Bretz (2002, p. 957)
 precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 {
-    d <- length(lower)
-    y <- rep(0, d - 1)
-
-    ## Find i = argmin_j { <expected length of interval> }
-    i <- which.min(apply(pnorm(cbind(upper, lower) / (mean.sqrt.mix * sqrt(diag(scale)))), 1, diff))
-    if(i != 1) {
-        ## Swap 1 and i in 'lower', 'upper' and 'scale'
-        tmp <- swap(i = 1, j = i, lower = lower, upper = upper, scale = scale)
-        lower <- tmp$lower
-        upper <- tmp$upper
-        scale <- tmp$scale
+  d <- length(lower)
+  y <- rep(0, d - 1)
+  
+  ## Find i = argmin_j { <expected length of interval> }
+  i <- which.min(apply(pnorm(cbind(upper, lower) / (mean.sqrt.mix * sqrt(diag(scale)))), 1, diff))
+  if(i != 1) {
+    ## Swap 1 and i in 'lower', 'upper' and 'scale'
+    tmp <- swap(i = 1, j = i, lower = lower, upper = upper, scale = scale)
+    lower <- tmp$lower
+    upper <- tmp$upper
+    scale <- tmp$scale
+  }
+  
+  ## Store y1
+  y[1] <- -(dnorm(upper[1]/mean.sqrt.mix) - dnorm(lower[1]/mean.sqrt.mix)) /
+    (pnorm(upper[1]/mean.sqrt.mix) - pnorm(lower[1]/mean.sqrt.mix))
+  
+  ## Update the Cholesky factor
+  cholScale[1, 1] <- sqrt(scale[1, 1])
+  cholScale[2:d, 1] <- scale[2:d, 1, drop = FALSE] / cholScale[1, 1]
+  for(j in 2:(d-1)) {
+    denom <- sqrt(diag(scale)[j:d] - rowSums(cholScale[j:d, 1:(j-1), drop = FALSE]^2))
+    c <- cholScale[j:d, 1:(j-1), drop = FALSE] %*% y[1:(j-1)] 
+    ## Find i = argmin { <expected length of interval j> }
+    i <- which.min(pnorm((upper[j:d] / mean.sqrt.mix - c) / denom) -
+                     pnorm((lower[j:d] / mean.sqrt.mix - c) / denom)) + j - 1
+    if(i != j){ # swap i and j
+      tmp <- swap(i = i, j = j, lower = lower, upper = upper, scale = scale)
+      lower <- tmp$lower
+      upper <- tmp$upper
+      scale <- tmp$scale
+      cholScale[c(i,j),]   <- cholScale[c(j,i),, drop = FALSE]
+      cholScale[j,(j+1):i] <- matrix(0, ncol = i - j, nrow = 1)
     }
-
-    ## Store y1
-    y[1] <- -(dnorm(upper[1]/mean.sqrt.mix) - dnorm(lower[1]/mean.sqrt.mix)) /
-        (pnorm(upper[1]/mean.sqrt.mix) - pnorm(lower[1]/mean.sqrt.mix))
-
-    ## Update the Cholesky factor
-    cholScale[1, 1] <- sqrt(scale[1, 1])
-    cholScale[2:d, 1] <- scale[2:d, 1, drop = FALSE] / cholScale[1, 1]
-    for(j in 2:(d-1)) {
-        denom <- sqrt(diag(scale)[j:d] - rowSums(cholScale[j:d, 1:(j-1), drop = FALSE]^2))
-        c <- cholScale[j:d, 1:j-1, drop = FALSE] %*% y[1:(j-1)] # TODO: shouldn't this be 1:(j-1)? This is (1:j)-1 (so a sequence starting from 0, not 1)
-        ## Find i = argmin { <expected length of interval j> }
-        i <- which.min(pnorm((upper[j:d] / mean.sqrt.mix - c) / denom) -
-                       pnorm((lower[j:d] / mean.sqrt.mix - c) / denom)) + j - 1
-        if(i != j){ # swap i and j
-            tmp <- swap(i = i, j = j, lower = lower, upper = upper, scale = scale)
-            lower <- tmp$lower
-            upper <- tmp$upper
-            scale <- tmp$scale
-            cholScale[c(i,j),]   <- cholScale[c(j,i),, drop = FALSE]
-            cholScale[j,(j+1):i] <- matrix(0, ncol = i - j, nrow = 1)
-        }
-        ## Update Cholesky factor
-        cholScale[j,j] <- sqrt(scale[j,j] - sum(cholScale[j,1:(j-1)]^2))
-        if(j < d-1) {
-            cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1), drop = FALSE] %*%
-                                      cholScale[j, 1:(j-1)]) / cholScale[j, j]
-        } else {
-            cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1)] %*%
-                                      cholScale[j, 1:(j-1)]) / cholScale[j, j]
-        }
-        ## Get yj
-        low.j.up.j <- c(lower[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)],
-                        upper[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)]) / cholScale[j, j]
-        y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) / (pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]))
+    ## Update Cholesky factor
+    cholScale[j,j] <- sqrt(scale[j,j] - sum(cholScale[j,1:(j-1)]^2))
+    if(j < d-1) {
+      cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1), drop = FALSE] %*%
+                                  cholScale[j, 1:(j-1)]) / cholScale[j, j]
+    } else {
+      cholScale[(j+1):d, j] <- (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1)] %*%
+                                  cholScale[j, 1:(j-1)]) / cholScale[j, j]
     }
-    cholScale[d, d] <- sqrt(scale[d, d] - sum(cholScale[d, 1:(d-1)]^2))
-
-    ## Return
-    list(lower = lower, upper = upper, scale = scale, cholScale = cholScale)
+    ## Get yj
+    low.j.up.j <- c(lower[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)],
+                    upper[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)]) / cholScale[j, j]
+    y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) / (pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]))
+  }
+  cholScale[d, d] <- sqrt(scale[d, d] - sum(cholScale[d, 1:(d-1)]^2))
+  
+  ## Return
+  list(lower = lower, upper = upper, scale = scale, cholScale = cholScale)
 }
 
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture for a Single Observation
@@ -111,227 +111,256 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##' @param abstol
 ##' @param CI.factor
 ##' @param fun.eval
+##' @param method.increment 
 ##' @param B
 ##' @param ...
-##' @return TODO: fix
-##'         list with the
-##'         - computed probability
-##'         - total number of function evaluations
-##'         - number of iterations in the while loop
-##'         - error estimate
-##'         - variance estimate
+##' @return list of length 3: 
+##'         - value: computed probability
+##'         - error: error estimate
+##'         - numiter: number of iterations needed 
 ##' @author Erik Hintz and Marius Hofert
 pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
                     loc = rep(0, d), scale = diag(d), standardized = FALSE,
                     method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
-                    abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12, ...)
+                    abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), 
+                    method.increment = c("double", "n.initial"), B = 12, ...)
 {
-    ## (Only) basic check
-    d <- length(upper)
-    stopifnot(length(lower) == d)
-    if(any(lower == upper))
-        return(list(Prob = 0, N = 0, i = 0, ErrEst = 0, Var = NA)) # TODO: for now
-
-    ## Define the quantile function of the mixing variable
-    const <- FALSE # logical indicating whether we have a multivariate normal
-    inv.gam <- FALSE # logical indicating whether we have a multivariate t
-    qW <- if(is.character(mix)) { # 'mix' is a character vector specifying supported mixture distributions (utilizing '...')
-              mix <- match.arg(mix, choices = c("constant", "inverse.gamma"))
-              switch(mix,
-                     "constant" = {
-                         const <- TRUE
-                         function(u) 1
-                     },
-                     "inverse.gamma" = {
-                         if(hasArg(df)) df <- list(...)$df else
-                                                               stop("'mix = \"inverse.gamma\"' requires 'df' to be provided.")
-                         ## Still allow df = Inf (normal distribution)
-                         stopifnot(is.numeric(df), length(df) == 1, df > 0)
-                         if(is.finite(df)) {
-                             inv.gam <- TRUE
-                             df2 <- df / 2
-                             mean.sqrt.mix <- sqrt(df) * gamma(df2) / ( sqrt(2) * gamma( (df+1) / 2 ) ) # used for preconditioning
-                             function(u) 1 / qgamma(u, shape = df2, rate = df2)
-                         } else {
-                             const <- TRUE
-                             mean.sqrt.mix <- 1 # used for preconditioning
-                             function(u) 1
-                         }
-                     },
-                     stop("Currently unsupported 'mix'"))
-          } else if(is.list(mix)) { # 'mix' is a list of the form (<character string>, <parameters>)
-              stopifnot(length(mix) >= 1, is.character(distr <- mix[[1]]))
-              qmix <- paste0("q", distr)
-              if(!existsFunction(qmix))
-                  stop("No function named '", qmix, "'.")
-              function(u)
-                  do.call(qmix, c(u, mix[-1]))
-          } else if(is.function(mix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
-              function(u)
-                  mix(u, ...)
-          } else stop("'mix' must be a character string, list or quantile function.")
-
-    ## If d = 1, deal with multivariate normal or t via pnorm() and pt()
-    if(d == 1){
-        if(const){
-            Prob <- pnorm(upper) - pnorm(lower)
-            return(list(Prob = Prob, N = 0, i = 0, ErrEst = 0, Var = 0)) # TODO: fix
-        }
-        if(inv.gam){
-            Prob <- pt(upper, df = df) - pt(lower, df = df)
-            return(list(Prob = Prob, N = 0, i = 0, ErrEst = 0, Var = 0)) # TODO: fix
-        }
+  ## (Only) basic check
+  d <- length(upper)
+  stopifnot(length(lower) == d)
+  if(any(lower == upper))
+    return(list(value = 0, error = 0, numiter = 0)) 
+  
+  ## Define the quantile function of the mixing variable
+  const <- FALSE # logical indicating whether we have a multivariate normal
+  inv.gam <- FALSE # logical indicating whether we have a multivariate t
+  qW <- if(is.character(mix)) { # 'mix' is a character vector specifying supported mixture distributions (utilizing '...')
+    mix <- match.arg(mix, choices = c("constant", "inverse.gamma"))
+    switch(mix,
+           "constant" = {
+             const <- TRUE
+             function(u) 1
+           },
+           "inverse.gamma" = {
+             if(hasArg(df)) df <- list(...)$df else
+               stop("'mix = \"inverse.gamma\"' requires 'df' to be provided.")
+             ## Still allow df = Inf (normal distribution)
+             stopifnot(is.numeric(df), length(df) == 1, df > 0)
+             if(is.finite(df)) {
+               inv.gam <- TRUE
+               df2 <- df / 2
+               mean.sqrt.mix <- sqrt(df) * gamma(df2) / ( sqrt(2) * gamma( (df+1) / 2 ) ) # used for preconditioning
+               function(u) 1 / qgamma(u, shape = df2, rate = df2)
+             } else {
+               const <- TRUE
+               mean.sqrt.mix <- 1 # used for preconditioning
+               function(u) 1
+             }
+           },
+           stop("Currently unsupported 'mix'"))
+  } else if(is.list(mix)) { # 'mix' is a list of the form (<character string>, <parameters>)
+    stopifnot(length(mix) >= 1, is.character(distr <- mix[[1]]))
+    qmix <- paste0("q", distr)
+    if(!existsFunction(qmix))
+      stop("No function named '", qmix, "'.")
+    function(u)
+      do.call(qmix, c(u, mix[-1]))
+  } else if(is.function(mix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
+    function(u)
+      mix(u, ...)
+  } else stop("'mix' must be a character string, list or quantile function.")
+  
+  ## If d = 1, deal with multivariate normal or t via pnorm() and pt()
+  if(d == 1){
+    if(const){
+      value <- pnorm(upper) - pnorm(lower)
+      return(list(value = value, error = 0, numiter = 0)) 
     }
-
-    ## Preconditioning (resorting the limits; only for d > 2)
-    cholScale <- t(chol(scale)) # get Cholesky factor (lower triangular)
-    if(precond && d > 2) {
-        if(is.null(mean.sqrt.mix)) # approximate E(sqrt(W))
-            mean.sqrt.mix <- mean(sqrt(qW(qrng::sobol(n = 5000, d = 1, randomize = TRUE))))
-        if(any(mean.sqrt.mix <= 0))
-            stop("'mean.sqrt.mix' has to be positive (possibly after being generated in pnvmix())")
-        temp <- precond(lower = lower, upper = upper, scale = scale,
-                        cholScale = cholScale, mean.sqrt.mix = mean.sqrt.mix)
-        lower <- temp$lower
-        upper <- temp$upper
-        cholScale <- temp$cholScale
+    if(inv.gam){
+      value <- pt(upper, df = df) - pt(lower, df = df)
+      return(list(value = value, error = 0, numiter = 0)) 
     }
-
-    ## TODO: put meaningful header here (and in what follows)
-    CI.factor <- CI.factor / sqrt(B) # instead of dividing sigma by sqrt(B) each time
-    n. <- fun.eval[1] # initial n
-    T. <- rep(0, B) # vector to store RQMC estimates
-
-    ZERO <- .Machine$double.eps # TODO: shouldn't this be double.xmin? see ?.Machine
-    ONE <- 1-.Machine$double.neg.eps
-
-    if(method == "sobol") {
-        if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
-        seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used.
-    }
-
-    err <- abstol + 42 # initialize err to something bigger than abstol so that we can enter the while loop
-    N. <- 0 # N. will count the total number of function evaluations
-    i. <- 0 # initialize counter; this will count the number of iterations in the while loop
-
-    ## useskip <- 0 # will need that because the first iteration is a little different from all the others
-    ## denom <- 1
-    while(err > abstol && N. < fun.eval[2])
+  }
+  
+  ## Preconditioning (resorting the limits; only for d > 2)
+  cholScale <- t(chol(scale)) # get Cholesky factor (lower triangular)
+  if(precond && d > 2) {
+    if(is.null(mean.sqrt.mix)) # approximate E(sqrt(W))
+      mean.sqrt.mix <- mean(sqrt(qW(qrng::sobol(n = 5000, d = 1, randomize = TRUE))))
+    if(any(mean.sqrt.mix <= 0))
+      stop("'mean.sqrt.mix' has to be positive (possibly after being generated in pnvmix())")
+    temp <- precond(lower = lower, upper = upper, scale = scale,
+                    cholScale = cholScale, mean.sqrt.mix = mean.sqrt.mix)
+    lower <- temp$lower
+    upper <- temp$upper
+    cholScale <- temp$cholScale
+  }
+  
+  ##
+  ## Define some basics needed for the while loop below:
+  ##
+  ## Error is calculated as CI.factor * sd( estimates) / sqrt(B); 
+  ## replace CI.factor by CI.factor / sqrt(B) to avoid calculating sqrt(B) everytime
+  CI.factor <- CI.factor / sqrt(B) 
+  
+  ## Grab the number of sample points for the first iteration
+  current.n <- fun.eval[1] #
+  
+  ## Vector to store the B RQMC estimates 
+  rqmc.estimates <- rep(0, B) 
+  
+  ## Initialize error to something bigger than abstol so that we can enter the while loop below
+  error <- abstol + 42 
+  ## Initialize the total number of function evaluations
+  total.fun.evals <- 0 
+  ## Initialize a variable that counts the number of iterations in the while loop below
+  numiter <- 0 
+  
+  ## It may happen that qnorm(u) for u too close to 1 (or 0) is evaluated; in those
+  ## cases, u will be replaced by ONE and ZERO which is the largest (smallest) number
+  ## different from 1 (0) such that qnorm(u) is not +/- Inf
+  ZERO <- .Machine$double.eps #TODO: Talk to Marius about this (cf TODO)
+  ONE <- 1-.Machine$double.neg.eps
+  
+  ## If method == sobol, we want the same random shifts in each iteration below,
+  ## this is accomplished by reseting to the "original" seed 
+  if(method == "sobol") {
+    if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
+    seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used.
+  }
+  
+  ## Additional variables needed if the method chosen is "double" 
+  if(method.increment == "double") {
+    if(method == "sobol") useskip <- 0 
+    denom <- 1 
+  }
+  
+  
+  
+  while(error > abstol && total.fun.evals < fun.eval[2])
+  {
+    if(method == "sobol" && numiter > 0)
+      .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
+    
+    ## Get B RQCM estimates
+    for(l in 1:B)
     {
-        if(method == "sobol")
-            .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
-
-        ## Get N RQCM estimates
-        for(l in 1:B)
-        {
-            ## Get the point set
-            ## If const = TRUE, we only need d - 1 (quasi) random numbers
-            ## (the case const = TRUE and d = 1 has already been dealt with)
-            U <- if(const){
-                     U. <- switch(method,
-                                  "sobol"   = {
-                                      ## qrng::sobol(n = n., d = d - 1, randomize = TRUE, skip = (useskip * n.))
-                                      qrng::sobol(n = n., d = d - 1, randomize = TRUE, skip = (i. * n.) )
-                                  },
-                                  "ghalton" = {
-                                      qrng::ghalton(n = n., d = d - 1, method = "generalized")
-                                  },
-                                  "prng"    = {
-                                      matrix(runif( n. * (d - 1)), ncol = d - 1)
-                                  })
-
-                     ## First and last column contain 1s corresponding to simulated values from sqrt(mix)
-                     cbind( rep(1, n.), U., rep(1, n.))
-                 } else {
-                     U. <- switch(method,
-                                  "sobol"   = {
-                                      ## qrng::sobol(n = n., d = d, randomize = TRUE, skip = (useskip * n.))
-                                      qrng::sobol(n = n., d = d, randomize = TRUE, skip = (i. * n.))
-                                  },
-                                  "ghalton" = {
-                                      qrng::ghalton(n = n., d = d, method = "generalized")
-                                  },
-                                  "prng"    = {
-                                      matrix(runif( n. * d), ncol = d)
-                                  })
-
-                     ## Case d = 1 somewhat special again:
-                     if(d == 1){
-                         cbind(sqrt(qW(U.)), sqrt(qW(1 - U.)))
-                     } else {
-                         ## Column 1:sqrt(mix), columns 2--d: unchanged (still uniforms),
-                         ## column d + 1: antithetic realization of sqrt(mix)
-                         cbind(sqrt(qW(U.[, 1])), U.[, 2:d], sqrt(qW(1 - U.[, 1])))
-                     }
-                 }
-
-            ## Evaluate the integrand at the point set and save it in T[]; calls C.
-            ## Both T.[l] and the new estimate are based on n. evaluations, so we
-            ## can just average them unless we are in the first iteration in which
-            ## case denom = 1 and T.[l] = 0.
-            ## TODO: do 'scaling' outside here, then just .Call() etc. inside if() else()
-            if(d == 1) {
-                ## Case of dimension 1: Don't need to approximate the multivariate
-                ##                      normal df and can just use pnorm()
-                ## Note that d = 1 for a pure normal or t df has already been addressed
-
-                ## TODO: once 'converged', remove the commented parts (or put in a switch and keep both)
-                ## T.[l] <- (T.[l] + mean((pnorm(upper/U[,1])   - pnorm(lower/U[,1]) +
-                ##                         pnorm(upper/U[,d+1]) - pnorm(lower/U[,d+1]))/2)) / denom
-                T.[l] <- (i. * T.[l] + mean((pnorm(upper/U[,1])   - pnorm(lower/U[,1]) +
-                                             pnorm(upper/U[,d+1]) - pnorm(lower/U[,d+1])) / 2)) / (i. + 1)
-            } else {
-                ## TODO: why keep this code? give a reason
-                ## T.[l] <- (T.[l] + .Call("eval_nvmix_integral",
-                ##                lower     = as.double(lower),
-                ##                upper     = as.double(upper),
-                ##                U         = as.double(U),
-                ##                n         = as.integer(n.),
-                ##                d         = as.integer(d),
-                ##                cholScale = as.double(cholScale),
-                ##                ZERO      = as.double(ZERO),
-                ##                ONE       = as.double(ONE)) )/denom
-                T.[l] <- (i. * T.[l] + .Call("eval_nvmix_integral",
-                                             lower     = as.double(lower),
-                                             upper     = as.double(upper),
-                                             U         = as.double(U),
-                                             n         = as.integer(n.),
-                                             d         = as.integer(d),
-                                             cholScale = as.double(cholScale),
-                                             ZERO      = as.double(ZERO),
-                                             ONE       = as.double(ONE)) ) / (i. + 1)
-            }
-        } # end for(l in 1:B)
-
-        ## Update various variables
-        N. <- N. + 2 * B * n. # number of function evaluations; (* 2 since antithetic variates are used in eval_nvmix_integral())
-        ## TODO why keep this code? give a reason
-        ## ## Change denom and useksip. This is done exactly once, namely in the first iteration.
-        ## if(i. == 0){
-        ##   denom <- 2
-        ##   useskip <- 1
-        ## } else {
-        ##   ## Increase sample size n. This is done in all iterations except for the first two.
-        ##   n. <- 2 * n.
-        ## }
-        sig <- sd(T.) # get standard deviation of the estimator
-        err <- CI.factor * sig # update error; note that this CI.factor is actually CI.factor/sqrt(N) (see above)
-        i. <- i. + 1 # update counter
+      ## Get the point set:
+      
+      ## If const = TRUE, we only need (d - 1) (quasi) random numbers
+      ## (the case const = TRUE and d = 1 has already been dealt with)
+      U <- if(const){
+        U. <- switch(method,
+                     "sobol"   = {
+                       if(method.increment == "double")
+                         qrng::sobol(n = current.n, d = d - 1, randomize = TRUE, skip = (useskip * current.n))
+                       else 
+                         qrng::sobol(n = current.n, d = d - 1, randomize = TRUE, skip = (numiter * current.n) )
+                     },
+                     "ghalton" = {
+                       qrng::ghalton(n = current.n, d = d - 1, method = "generalized")
+                     },
+                     "prng"    = {
+                       matrix(runif( current.n * (d - 1)), ncol = d - 1)
+                     })
+        
+        ## First and last column contain 1s corresponding to "simulated" values from sqrt(mix)
+        cbind( rep(1, current.n), U., rep(1, current.n))
+      } else {
+        U. <- switch(method,
+                     "sobol"   = {
+                       if(method.increment == "double")
+                         qrng::sobol(n = current.n, d = d, randomize = TRUE, skip = (useskip * current.n))
+                       else 
+                         qrng::sobol(n = current.n, d = d, randomize = TRUE, skip = (numiter * current.n))
+                     },
+                     "ghalton" = {
+                       qrng::ghalton(n = current.n, d = d, method = "generalized")
+                     },
+                     "prng"    = {
+                       matrix(runif( current.n * d), ncol = d)
+                     })
+        
+        ## Case d = 1 somewhat special again:
+        if(d == 1){
+          cbind( sqrt(qW(U.)), sqrt(qW(1 - U.)) )
+        } else {
+          ## Column 1:sqrt(mix), Columns 2--d: unchanged (still uniforms),
+          ## Column d + 1: antithetic realization of sqrt(mix)
+          cbind(sqrt(qW(U.[, 1])), U.[, 2:d], sqrt(qW(1 - U.[, 1])))
+        }
+      }
+      
+      ## Evaluate the integrand at the (next) point set 
+      
+      if(d == 1) {
+        ## Case of dimension 1: Don't need to approximate the multivariate
+        ##                      normal df and can just use pnorm()
+        ## Note that d = 1 for a pure normal or t df has already been addressed
+        
+        next.estimate <- mean( (pnorm(upper/U[,1])   - pnorm(lower/U[,1]) +
+                                  pnorm(upper/U[,d+1]) - pnorm(lower/U[,d+1]) ) / 2)
+        
+      } else {
+        
+        next.estimate <- .Call("eval_nvmix_integral",
+                               lower     = as.double(lower),
+                               upper     = as.double(upper),
+                               U         = as.double(U),
+                               n         = as.integer(current.n),
+                               d         = as.integer(d),
+                               cholScale = as.double(cholScale),
+                               ZERO      = as.double(ZERO),
+                               ONE       = as.double(ONE))
+      }
+      
+      ## Update RQMC estimates
+      if(method.increment == "double")
+        ## In this case both, rqmc.estimates[l] and next.estimate depend on n.current points
+        rqmc.estimates[l] <- ( rqmc.estimates[l] + next.estimate ) / denom
+      else 
+        ## In this case, rqmc.estimates[l] depends on numiter*n.current points whereas
+        ## next.estimate depends on n.current points
+        rqmc.estimates[l] <- ( numiter * rqmc.estimates[l] + next.estimate ) / (numiter + 1)
+      
+    } # end for(l in 1:B)
+    
+    ## Update various variables
+    
+    ## Number of function evaluations: (* 2 since antithetic variates are used in eval_nvmix_integral())
+    total.fun.evals <- total.fun.evals + 2 * B * current.n 
+    
+    ## Double sample size and adjust denominator in averaging as well as useskip 
+    if(method.increment == "double"){
+      ## Change denom and useksip. This is done exactly once, namely in the first iteration.
+      if(numiter == 0){
+        denom <- 2
+        useskip <- 1
+      } else {
+        ## Increase sample size n. This is done in all iterations except for the first two.
+        current.n <- 2 * current.n
+      }
     }
-
-    ## Finalize
-    T <- mean(T.) # calculate the RQMC estimator
-    var <- (sig / sqrt(B))^2 # its variance
-    if(err > abstol)
-        warning("Precision level 'abstol' not reached; consider increasing the second component of 'fun.eval'")
-
-    ## Return
-    list(Prob = T, N = N., i = i., ErrEst = err, Var = var) # TODO: fix
+    
+    ## Update error; note that this CI.factor is actually CI.factor/sqrt(B) (see above)
+    error <- CI.factor * sd(rqmc.estimates) 
+    numiter <- numiter + 1 # update counter
+  }
+  
+  ## Finalize
+  value <- mean(rqmc.estimates) # calculate the RQMC estimator
+  
+  ## Check if desired precision reached 
+  if(error > abstol)
+    warning("Precision level 'abstol' not reached; consider increasing the second component of 'fun.eval'")
+  
+  ## Return
+  list(value = value, error = error, numiter = numiter) 
 }
 
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture
-##' @param upper (n, d)-matrix of upper integration limits
-##' @param lower (n, d)-matrix of lower integration limits (lower <= upper)
+##' @param upper d-vector of upper evaluation limits
+##' @param lower d-vector of lower evaluation limits (<= upper)
 ##' @param mix specification of the (mixture) distribution of W. This can be:
 ##'        1) a character string specifying a supported distribution (additional
 ##'           arguments of this distribution are passed via '...').
@@ -358,22 +387,27 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
 ##' @param abstol numeric >= 0 providing the absolute precision required.
 ##'        If abstol = 0, algorithm will run until total number of function
 ##'        evaluations exceeds fun.eval[2].
-##' @param CI.factor multiplier of the Monte Carlo confidence interval bounds.
-##'        The algorithm runs until CI.factor * (estimated standard error) < abstol.
-##'        If CI.factor = 3.3 (the default), one can expect the actual absolute
-##'        error to be less than abstol in 99.9% of the cases
-##' @param fun.eval 2-vector giving the size of the first point set to be used
-##'        to estimate the probabilities (typically a power of 2) and the
-##'        maximal number of function evaluations.
-##' @param B number of randomizations to get an error estimate in the
-##'        randomized quasi-Monte Carlo approach
+##' @param CI.factor Monte Carlo confidence interval multiplier. Algorithm runs
+##'        CI.factor * (estimated standard error) < abstol. If CI.factor = 3.3
+##'        (default), one can expect the actual absolute error to be less than
+##'        abstol in 99.9% of the cases
+##' @param fun.eval 2-vector giving the initial function evaluations (in the
+##'        first loop; typically powers of 2) and the maximal number of
+##'        function evaluations
+##' @param method.increment character string indicating how the sample size should
+##'        should be increased in each iteration
+##'        - "double" next iteration has as many sample points as all the previous 
+##'        iterations combined
+##'        - "n.initial" all iterations use an additional fun.eval[1] many points
+##' @param B numeric >=2 providing number of randomizations to get error estimates
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return TODO
 ##' @author Erik Hintz and Marius Hofert
 pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sqrt.mix = NULL,
                    loc = rep(0, d), scale = diag(d), standardized = FALSE,
                    method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
-                   abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12, ...)
+                   abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), 
+                   method.increment = c("double", "n.initial"), B = 12, ...)
 {
     ## Checks
     if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
@@ -445,7 +479,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
 
     ## Return
     res <- vapply(res1, function(r) r$Prob, NA_real_)
-    attr(res, "error")   <- vapply(res1, function(r) r$ErrEst, NA_real_)
-    attr(res, "numiter") <- vapply(res1, function(r) r$i,      NA_real_)
+    attr(res, "error")   <- vapply(res1, function(r) r$error, NA_real_)
+    attr(res, "numiter") <- vapply(res1, function(r) r$numiter,      NA_real_)
     res
 }
