@@ -247,6 +247,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
     {
       ## Get the point set:
       
+      #TODO: Check U. vs U 
       ## If const = TRUE, we only need (d - 1) (quasi) random numbers
       ## (the case const = TRUE and d = 1 has already been dealt with)
       U <- if(const){
