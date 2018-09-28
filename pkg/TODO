@@ -5,6 +5,7 @@
   \code{"error"} in which case the degenerate density is computed
   as \code{Inf} at \code{loc} and 0 everywhere else. Do we need that for
   fitting?
+	EH: not really, as we assume full rank sigma in fitting so far
 - EH/MH: 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 'mix' ('rmix'?)
          for passing a RNG
          => call other arguments 'mix' 'qmix' instead (check carefully)
@@ -12,30 +13,42 @@
       (on each help pages) half a sentence what these iterations are exactly?
       => alternatively, shouldn't we rather return the variance? (one of the
          five components you previously returned) Seems more intuitive, no?
+	EH: variance can be computed from error; numiter (or equivalently, total function 	evaluations) should just give an idea of how long it took to converge
 - EH: ?pnvmix and ?dnvmix say that if abstol = 0, the algorithm runs until
   eval.fun[2]. This is not necessarily the case. I would thus suggest to allow
   abstol = NULL (in which case the latter behavior occurs). abstol = 0
   certainly will give you the same in most cases, but not necessarily all.
   (That's also the common way, we use that in qrmtools, too, for example).
+	EH: will do
 - EH: ?pnvmix describes 'precond'; can you add half a sentence
   describing the idea behind the preconditioning, please?
 - EH: fix return value(s) of pnvmix[1](), also docu before function head and
       in explicit return() calls
+	EH: DONE
 - EH: incorporate the case of a singular scale matrix
       (or at least give better error message)
 - EH: Give variables internally in pnvmix() better names (than 'N.', 'i.', 'T.', n.', for example)
+	EH: DONE
 - EH: C code: use 'd' instead of 'q' (caution: 'd' is already a variable in the C code...)
       maybe yorg/y_org and yant/y_ant
+	EH: DONE
 - EH: why does 'q' need to be passed to precond()? simply determine it from 'scale'?
+	Thought it's more efficient :) can change it 
 - EH: TODOs inside pnvmix()
+	EH: mostly done.
 - EH: can't precond() start the for-loop from case j = 1?
-
+	EH: will do 
 - Write vignette nvmix_functionality.Rmd
+
+- TODO (maybe): pnvmix() has multiple lower/upper as input, but only one scale. pnvmix1() 	then calculates t(chol(scale)) for each input => maybe do that in pnvmix once and 	pass it as argument to pnvmix1()
+- TODO (maybe): If error precision not reached, warning is returned. Maybe tell user 		*which* lower/upper didn't reach precision, so that user doesn't have to calculate 	all other probabilities that did reach the precision again. E.g. omit warning in 	pnvmix1() and check in pnvmix() if error < abserr or something like that. 
+
+- TODO Need fitnvmix(): check what other packages do
 
 
 ### TODO #######################################################################
 
-- TODO Need fitnvmix(): check what other packages do
+
 - TODO look into quantile functions of univariate (marginal) normal variance mixtures.
        If we have a function, say, qnvmix1 (for 1 dimensional normal variance mixtures),
        we have a way to sample from univariate normal variance mixtures using inversion,

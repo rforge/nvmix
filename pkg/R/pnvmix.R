@@ -480,6 +480,6 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
     ## Return
     res <- vapply(res1, function(r) r$Prob, NA_real_)
     attr(res, "error")   <- vapply(res1, function(r) r$error, NA_real_)
-    attr(res, "numiter") <- vapply(res1, function(r) r$numiter,      NA_real_)
+    attr(res, "numiter") <- vapply(res1, function(r) r$numiter, NA_real_)
     res
 }

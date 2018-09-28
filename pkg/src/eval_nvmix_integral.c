@@ -3,16 +3,17 @@
 
 /**
  * @title Evaluate Integrand for a Normal Variance Mixture
- * @param lower q-vector of lower evaluation limits
- * @param upper q-vector of upper evaluation limits
- * @param U vector representing '(n, q+1)-matrix' of uniforms
+ * @param lower d-vector of lower evaluation limits
+ * @param upper d-vector of upper evaluation limits
+ * @param U vector representing '(n, d+1)-matrix' of uniforms
  *        (e.g. Sobol pointset) and realizations of sqrt(mix).
- *        The '(n, q+1)-matrix' is of the form [M1, U, M2], where the first
+ *        The '(n, d+1)-matrix' is of the form [M1, U, M2], where the first
  *        column (M1) consists of realizations of sqrt(mix), the last column
  *        (M2) consists of the antithetic realizations of (M1) and the middle
- *        part is an (n, q-1)-matrix of uniforms (e.g. a Sobol point-set).
+ *        part is an (n, d-1)-matrix of uniforms (e.g. a Sobol point-set).
  * @param n sample size (i.e., number of rows of U)
- * @param q dimension minus 1 (i.e., number of columns of U minus 1)
+ * @param d dimension minus 1 (i.e., number of columns of U minus 1); this is
+ *        the dimension of the original problem
  * @param cholScale lower triangular Cholesky factor as vector
  * @param ZERO smallest number x > 0 such that x != 0
  * @param ONE   largest number x < 1 such that x != 1
@@ -22,17 +23,22 @@
  *       and setting the value to 0/1 rather than calling pnorm().
  * @author Erik Hintz and Marius Hofert
  */
-double eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int q,
+double eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int d,
                              double *cholScale, double ZERO, double ONE)
 {
-    double y[q-1],  sqrtmix,  d,  diff,  f,  scprod;
-    double ya[q-1], sqrtmixa, da, diffa, fa, scproda; /* corresponding antithetic values */
+    
+    /* "variablename"org stands for "original", "variablename"ant stands for their
+     antithetic value */
+    
+    double yorg[d-1], sqrtmixorg, dorg, difforg, forg, scprodorg;
+    double yant[d-1], sqrtmixant, dant, diffant, fant, scprodant;
     /* y:       vector to save phi^{-1}(dj+uj(ej-dj)) */
     /* sqrtmix: used to store sqrt(F_w^{-1}(u_0)) */
     /* d:       current values of di from the paper */
     /* diff:    current values of (ei-di) from the paper */
     /* f:       current value of (e1-d1) * (e2-d2) * ... * (ei-di) */
     /* scprod:  scalar product sum cholScale_{ij} y_j */
+    
     double tmp; /* to store temporary values */
     double mean = 0; /* to store the result */
     int i, j, l; /* counters for loops */
@@ -41,34 +47,34 @@ double eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int
     for(j = 0; j < n; j++){
 
         /* Grab the realizations of sqrt(mix) = sqrt(W) */
-        sqrtmix  = U[j];
-        sqrtmixa = U[q*n+j];
+        sqrtmixorg = U[j];
+        sqrtmixant = U[d*n+j];
 
         /* Check if entry of lower is -Inf */
         if(lower[0] == R_NegInf){
-            d  = 0;
-            da = 0;
+            dorg = 0;
+            dant = 0;
         } else {
-            d  = pnorm(lower[0] / (cholScale[0] * sqrtmix),  0, 1, 1, 0);
-            da = pnorm(lower[0] / (cholScale[0] * sqrtmixa), 0, 1, 1, 0);
+            dorg = pnorm(lower[0] / (cholScale[0] * sqrtmixorg), 0, 1, 1, 0);
+            dant = pnorm(lower[0] / (cholScale[0] * sqrtmixant), 0, 1, 1, 0);
         }
 
         /* Check if entry of b is +Inf */
         if(upper[0] == R_PosInf){
-            diff  = 1 - d;
-            diffa = 1 - da;
+            difforg = 1 - dorg;
+            diffant = 1 - dant;
         } else {
-            diff  = pnorm(upper[0] / (cholScale[0] * sqrtmix),  0, 1, 1, 0) - d;
-            diffa = pnorm(upper[0] / (cholScale[0] * sqrtmixa), 0, 1, 1, 0) - da;
+            difforg = pnorm(upper[0] / (cholScale[0] * sqrtmixorg), 0, 1, 1, 0) - dorg;
+            diffant = pnorm(upper[0] / (cholScale[0] * sqrtmixant), 0, 1, 1, 0) - dant;
         }
 
-        /* Go through all q-1 columns (without first and last) */
+        /* Go through all d-1 columns (without first and last) */
         /* For better readability, we start at i = 0 */
-        f  = diff;
-        fa = diffa;
-        for(i = 0; i < q-1; i++){
+        forg = difforg;
+        fant = diffant;
+        for(i = 0; i < d-1; i++){
             /* U[i * n + j] corresponds to U[j,i] in the orginal matrix */
-            tmp = d + U[(i+1) * n + j] * diff;
+            tmp = dorg + U[(i+1) * n + j] * difforg;
 
             /* Check if too close to 0 or 1 */
             if(tmp < ZERO){
@@ -77,48 +83,48 @@ double eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int
             if(tmp > ONE){
                 tmp = ONE;
             }
-            y[i] = qnorm(tmp, 0, 1, 1, 0);
+            yorg[i] = qnorm(tmp, 0, 1, 1, 0);
 
             /* The same for the antithetic value */
-            tmp = da + (1-U[(i+1) * n + j]) * diffa;
+            tmp = dant + (1-U[(i+1) * n + j]) * diffant;
             if(tmp < ZERO){
                 tmp = ZERO;
             }
             if(tmp > ONE){
                 tmp = ONE;
             }
-            ya[i] = qnorm(tmp, 0, 1, 1, 0);
+            yant[i] = qnorm(tmp, 0, 1, 1, 0);
 
             /* Calculate the scalar product sum cholScale[i,j] y[j] for j = 1:(i-1) */
-            scprod  = 0;
-            scproda = 0;
+            scprodorg = 0;
+            scprodant = 0;
             for(l = 0; l < (i+1); l++){
-                /* cholScale[l * q + i+1] corresponds to cholScale[i+1,l] in the original matrix */
-                scprod  += y[l]  * cholScale[l * q + i+1];
-                scproda += ya[l] * cholScale[l * q + i+1];
+                /* cholScale[l * d + i+1] corresponds to cholScale[i+1,l] in the original matrix */
+                scprodorg += yorg[l] * cholScale[l * d + i+1];
+                scprodant += yant[l] * cholScale[l * d + i+1];
             }
 
             /* Calculate new d and diff = e-d */
             if(lower[i+1] == R_NegInf){
-                d  = 0;
-                da = 0;
+                dorg = 0;
+                dant = 0;
             } else {
-                d  = pnorm((lower[i+1] / sqrtmix  - scprod)  / cholScale[(i+1)*(q+1)], 0, 1, 1, 0);
-                da = pnorm((lower[i+1] / sqrtmixa - scproda) / cholScale[(i+1)*(q+1)], 0, 1, 1, 0);
+                dorg = pnorm((lower[i+1] / sqrtmixorg  - scprodorg)  / cholScale[(i+1)*(d+1)], 0, 1, 1, 0);
+                dant = pnorm((lower[i+1] / sqrtmixant - scprodant) / cholScale[(i+1)*(d+1)], 0, 1, 1, 0);
             }
             if(upper[i+1] == R_PosInf){
-                diff  = 1 - d;
-                diffa = 1 - da;
+                difforg = 1 - dorg;
+                diffant = 1 - dant;
             } else {
-                diff  = pnorm((upper[i+1] / sqrtmix  - scprod)  / cholScale[(i+1)*(q+1)], 0, 1, 1, 0) - d;
-                diffa = pnorm((upper[i+1] / sqrtmixa - scproda) / cholScale[(i+1)*(q+1)], 0, 1, 1, 0) - da;
+                difforg = pnorm((upper[i+1] / sqrtmixorg  - scprodorg)  / cholScale[(i+1)*(d+1)], 0, 1, 1, 0) - dorg;
+                diffant = pnorm((upper[i+1] / sqrtmixant - scprodant) / cholScale[(i+1)*(d+1)], 0, 1, 1, 0) - dant;
             }
-            f  *= diff;
-            fa *= diffa;
+            forg *= difforg;
+            fant *= diffant;
         }
-        mean += (f+fa)/2;
+        mean += (forg+fant)/2;
     }
-    mean = mean/ n;
+    mean = mean / n;
     return(mean);
 }
 
@@ -128,11 +134,11 @@ double eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int
  * @return mean(f(U)) where f is the integrand and U specifies the point-set
  * @author Erik Hintz, Marius Hofert (polishing)
  */
-SEXP eval_nvmix_integral(SEXP lower, SEXP upper, SEXP U, SEXP n, SEXP q,
+SEXP eval_nvmix_integral(SEXP lower, SEXP upper, SEXP U, SEXP n, SEXP d,
 			 SEXP cholScale, SEXP ZERO, SEXP ONE)
 {
     double res = eval_nvmix_integral_c(REAL(lower), REAL(upper), REAL(U),
-				       INTEGER(n)[0], INTEGER(q)[0],
+				       INTEGER(n)[0], INTEGER(d)[0],
 				       REAL(cholScale), REAL(ZERO)[0],
                                        REAL(ONE)[0]);
     return ScalarReal(res);
