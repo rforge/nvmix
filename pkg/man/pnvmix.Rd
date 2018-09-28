@@ -23,9 +23,9 @@ pNorm(upper, lower = rep(-Inf, d),
       abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12)
 }
 \arguments{
-  \item{upper}{\eqn{(n,d)}-matrix of upper integration limits;
+  \item{upper}{\eqn{(n, d)}-\code{\link{matrix}} of upper integration limits;
     each row represents a \eqn{d}-vector of upper integration limits.}
-  \item{lower}{\eqn{(n,d)}-matrix of lower integration limits
+  \item{lower}{\eqn{(n, d)}-\code{\link{matrix}} of lower integration limits
     (componentwise less than or equal to \code{upper});
     each row represents a \eqn{d}-vector of lower integration limits.}
   \item{mix}{specification of the mixing variable \eqn{W}; see McNeil et
@@ -73,7 +73,8 @@ pNorm(upper, lower = rep(-Inf, d),
     distribution as a parameter) of dimension \eqn{(d, d)};
     this equals the covariance matrix of a random vector following
     the specified normal variance mixture distribution divided by
-    the expecation of the mixing variable \eqn{W} if (and only if) the former exists.}
+    the expecation of the mixing variable \eqn{W} if (and only if) the
+    former exists.}
   \item{standardized}{\code{logical} indicating whether \code{scale} is
     assumed to be a correlation matrix.}
   \item{method}{\code{\link{character}} string indicating the method
@@ -105,20 +106,10 @@ pNorm(upper, lower = rep(-Inf, d),
     \code{\link{character}} string or \code{\link{function}}.}
 }
 \value{
-  \code{pnvmix()} returns a list of length five, containing the the
-  estimated probabilities, the number of iterations, the total number of
-  function evaluations, an error estimate and the estimated variance of
-  the randomized Quasi Monte Carlo estimator.
-
-  \code{pStudent()} returns a list of length five, containing the the
-  estimated probabilities, the number of iterations, the total number of
-  function evaluations, an error estimate and the estimated variance of
-  the randomized Quasi Monte Carlo estimator.
-
-  \code{pNorm()} returns a list of length five, containing the the
-  estimated probabilities, the number of iterations, the total number of
-  function evaluations, an error estimate and the estimated variance of
-  the randomized Quasi Monte Carlo estimator.
+  \code{pnvmix()}, \code{pStudent()} and \code{pNorm()} return
+  a \code{\link{numeric}} vector with the computed probabilities
+  and attributes \code{"error"} (error estimate of the RQMC estimator)
+  and  \code{"numiter"} (number of iterations).
 }
 \details{
   One should highlight that evaluating normal variance mixtures
@@ -143,7 +134,7 @@ pNorm(upper, lower = rep(-Inf, d),
 
   \code{pStudent()} and \code{pNorm()} are wrappers of
   \code{pnvmix(, mix = "inverse.gamma", df = df)} and
-  \code{pnvmix(, mix = "constant", df = df)}, respectively.
+  \code{pnvmix(, mix = "constant")}, respectively.
   In the univariate case, the functions
   \code{\link{pt}()} and \code{\link{pnorm}()} are used.
 }
@@ -165,7 +156,7 @@ set.seed(157)
 A <- matrix(runif(d * d), ncol = d)
 P <- cov2cor(A \%*\% t(A))
 
-## Evaluate a t_{1/2} distribution
+## Evaluate a t_{1/2} distribution function
 a <- -3 * runif(d) * sqrt(d) # random lower limit
 b <-  3 * runif(d) * sqrt(d) # random upper limit
 df <- 0.5 # note that this is *non-integer*
@@ -174,10 +165,10 @@ pt1 <- pnvmix(upper = b, lower = a, scale = P, mix = "inverse.gamma", df = df)
 
 ## Here is a version providing the quantile function of the mixing distribution
 qW <- function(u, df) 1 / qgamma(u, shape = df/2, rate = df/2)
-const <- sqrt(df) * gamma(df/2) / (sqrt(2) * gamma((df+1) / 2))
+mean.sqrt.mix <- sqrt(df) * gamma(df/2) / (sqrt(2) * gamma((df+1) / 2))
 set.seed(1)
-pt2 <- pnvmix(upper = b, lower = a, scale = P, mix = qW, mean.sqrt.mix = const,
-              df  = df)
+pt2 <- pnvmix(upper = b, lower = a, scale = P, mix = qW,
+              mean.sqrt.mix = mean.sqrt.mix, df  = df)
 
 ## Compare
 stopifnot(all.equal(pt1, pt2, tol = 7e-4, check.attributes = FALSE))
@@ -191,12 +182,12 @@ stopifnot(all.equal(pt3, pt1, tol = 7e-4, check.attributes = FALSE))
 
 ### Examples for pStudent() and pNorm() ########################################
 
-## Evaluate the t_{3.5} distribution function
+## Evaluate a t_{3.5} distribution function
 set.seed(271)
 pt <- pStudent(upper = b, lower = a, scale = P, df = 3.5)
 stopifnot(all.equal(pt, 0.6180, tol = 5e-5, check.attributes = FALSE))
 
-## Evaluate the N(0,P) distribution function
+## Evaluate a N(0,P) distribution function
 set.seed(271)
 pn <- pNorm(upper = b, lower = a, scale = P)
 stopifnot(all.equal(pn, 0.7001, tol = 6e-5, check.attributes = FALSE))

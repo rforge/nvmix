@@ -13,9 +13,8 @@
 ##'        4) n-vector containing a random sample from W.
 ##' @param loc d-vector (location != mean vector here)
 ##' @param scale (d, d)-covariance matrix (scale != covariance matrix here)
-##' @param factor *upper triangular* factor R of the covariance matrix 'scale'
-##'        such that R^T R = 'scale' here (otherwise det(scale) not computed
-##'        correctly!)
+##' @param factor factor R of the covariance matrix 'scale' such that R^T R
+##'        = 'scale'
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Marius Hofert
@@ -27,8 +26,7 @@
 ##'         + "GIGrvg":  faster if n small and often called with several parameters
 ##'         see examples of 'GIGrvg' for both methods
 rnvmix <- function(n, mix, loc = rep(0, d), scale = diag(2),
-                   factor = factorize(scale), # needs to be triangular!
-                   ...)
+                   factor = factorize(scale), ...)
 {
     ## Checks
     d <- nrow(as.matrix(factor))

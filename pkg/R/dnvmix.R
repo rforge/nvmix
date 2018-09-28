@@ -36,7 +36,7 @@
 ##'         (error estimate) and 'numiter' (number of while-loop iterations)
 ##' @author Erik Hintz and Marius Hofert
 dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), # TODO: do we need a 'standardized = FALSE' here? (see pnvmix())
-                   factor = factorize(scale), # needs to be triangular!
+                   factor = factorize(scale), # needs to be upper triangular!
                    method = c("sobol", "ghalton", "PRNG"),
                    abstol = 0.001, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
                    log = FALSE, ...)

@@ -1,7 +1,15 @@
 ### For next release ###########################################################
 
 ## Important
-- MH: check dnvmix.Rd (see pnvmix.Rd)
+- ?pnvmix needs a short example calling it with a matrix, also with a single vector
+- We used to allow \code{factor = NULL} or inherit from
+  \code{"error"} in which case the degenerate density is computed
+  as \code{Inf} at \code{loc} and 0 everywhere else. Do we need that for
+  fitting?
+- EH: ?pnvmix and ?dnvmix describe the output value 'numiter'. Can you had
+      (on each help pages) half a sentence what these iterations are exactly?
+      => alternatively, shouldn't we rather return the variance? (one of the
+         five components you previously returned) Seems more intuitive, no?
 - EH: ?pnvmix and ?dnvmix say that if abstol = 0, the algorithm runs until
   eval.fun[2]. This is not necessarily the case. I would thus suggest to allow
   abstol = NULL (in which case the latter behavior occurs). abstol = 0

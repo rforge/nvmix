@@ -61,7 +61,7 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = factorize(scale))
     the specified normal variance mixture distribution divided by
     the expectation of the mixing variable \eqn{W} if (and only if) the
     former exists.}
-  \item{factor}{\code{\link{matrix}} \eqn{R} with \eqn{d}
+  \item{factor}{factorization \code{\link{matrix}} \eqn{R} with \eqn{d}
     rows such that \eqn{R^T R} equals \code{scale}. \eqn{R} is internally
     multiplied from the right to an \eqn{(n, d)}-matrix of independent
     standard normals to obtain a sample from a multivariate normal
