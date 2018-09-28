@@ -161,14 +161,14 @@ a <- -3 * runif(d) * sqrt(d) # random lower limit
 b <-  3 * runif(d) * sqrt(d) # random upper limit
 df <- 0.5 # note that this is *non-integer*
 set.seed(1)
-pt1 <- pnvmix(upper = b, lower = a, scale = P, mix = "inverse.gamma", df = df)
+pt1 <- pnvmix(b, lower = a, mix = "inverse.gamma", df = df, scale = P)
 
 ## Here is a version providing the quantile function of the mixing distribution
 qW <- function(u, df) 1 / qgamma(u, shape = df/2, rate = df/2)
 mean.sqrt.mix <- sqrt(df) * gamma(df/2) / (sqrt(2) * gamma((df+1) / 2))
 set.seed(1)
-pt2 <- pnvmix(upper = b, lower = a, scale = P, mix = qW,
-              mean.sqrt.mix = mean.sqrt.mix, df  = df)
+pt2 <- pnvmix(b, lower = a, mix = qW, mean.sqrt.mix = mean.sqrt.mix, df  = df,
+              scale = P)
 
 ## Compare
 stopifnot(all.equal(pt1, pt2, tol = 7e-4, check.attributes = FALSE))
@@ -176,20 +176,28 @@ stopifnot(all.equal(pt1, pt2, tol = 7e-4, check.attributes = FALSE))
 ## mean.sqrt.mix will be approximated by QMC internally if not provided,
 ## so the results will differ slightly.
 set.seed(1)
-pt3 <- pnvmix(upper = b, lower = a, scale = P, mix = qW, df  = df)
+pt3 <- pnvmix(b, lower = a, mix = qW, df = df, scale = P)
 stopifnot(all.equal(pt3, pt1, tol = 7e-4, check.attributes = FALSE))
+
+## Case with missing data and a matrix of lower and upper bounds
+a. <- matrix(rep(a, each = 4), ncol = d)
+b. <- matrix(rep(b, each = 4), ncol = d)
+a.[2,1] <- NA
+b.[3,2] <- NA
+pt <- pnvmix(b., lower = a., mix = "inverse.gamma", df = df, scale = P)
+stopifnot(is.na(pt) == c(FALSE, TRUE, TRUE, FALSE))
 
 
 ### Examples for pStudent() and pNorm() ########################################
 
 ## Evaluate a t_{3.5} distribution function
 set.seed(271)
-pt <- pStudent(upper = b, lower = a, scale = P, df = 3.5)
+pt <- pStudent(b, lower = a, df = 3.5, scale = P)
 stopifnot(all.equal(pt, 0.6180, tol = 5e-5, check.attributes = FALSE))
 
-## Evaluate a N(0,P) distribution function
+## Evaluate a normal distribution function
 set.seed(271)
-pn <- pNorm(upper = b, lower = a, scale = P)
+pn <- pNorm(b, lower = a, scale = P)
 stopifnot(all.equal(pn, 0.7001, tol = 6e-5, check.attributes = FALSE))
 }
 \keyword{distribution}

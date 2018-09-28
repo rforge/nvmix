@@ -1,11 +1,13 @@
 ### For next release ###########################################################
 
 ## Important
-- ?pnvmix needs a short example calling it with a matrix, also with a single vector
-- We used to allow \code{factor = NULL} or inherit from
+- EH/MH: We used to allow dnvmix() to get \code{factor = NULL} or inherit from
   \code{"error"} in which case the degenerate density is computed
   as \code{Inf} at \code{loc} and 0 everywhere else. Do we need that for
   fitting?
+- EH/MH: 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 'mix' ('rmix'?)
+         for passing a RNG
+         => call other arguments 'mix' 'qmix' instead (check carefully)
 - EH: ?pnvmix and ?dnvmix describe the output value 'numiter'. Can you had
       (on each help pages) half a sentence what these iterations are exactly?
       => alternatively, shouldn't we rather return the variance? (one of the
@@ -17,12 +19,8 @@
   (That's also the common way, we use that in qrmtools, too, for example).
 - EH: ?pnvmix describes 'precond'; can you add half a sentence
   describing the idea behind the preconditioning, please?
-
 - EH: fix return value(s) of pnvmix[1](), also docu before function head and
       in explicit return() calls
-- EH/MH: 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 'mix' ('rmix'?)
-         for passing a RNG
-         => call other arguments 'mix' 'qmix' instead (check carefully)
 - EH: incorporate the case of a singular scale matrix
       (or at least give better error message)
 - EH: Give variables internally in pnvmix() better names (than 'N.', 'i.', 'T.', n.', for example)

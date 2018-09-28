@@ -381,29 +381,34 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
     n <- nrow(upper) # number of evaluation points
     d <- ncol(upper) # dimension
     if(!is.matrix(scale)) scale <- as.matrix(scale)
-    stopifnot(dim(lower) == c(n, d), lower <= upper, length(loc) == d, # note: 'mean.sqrt.mix' is tested in pnvmix1()
+    stopifnot(dim(lower) == c(n, d), length(loc) == d, # note: 'mean.sqrt.mix' is tested in pnvmix1()
               dim(scale) == c(d, d), is.logical(standardized), is.logical(precond),
               abstol >= 0, CI.factor >= 0, length(fun.eval) == 2, fun.eval >= 0, B >= 1)
     method <- match.arg(method)
 
-    ## Build result objects
+    ## Build temporary result list
     res1 <- vector("list", length = n) # results from calls of pnvmix1()
-    res <- rep(NA, n) # final result object; already correct for missing data
 
-    ## Determine which rows of 'upper' and 'lower' to consider
+    ## Deal with NA
     NAs <- apply(is.na(lower) | is.na(upper), 1, any) # at least one NA => use NA => nothing left to do
-    equal <- apply(lower == upper, 1, any) # any lower == upper => 0 (integrated over null set)
-    res[equal] <- 0
-    do <- !NAs & !equal # logical indicating which rows of lower and upper to consider
 
     ## Loop over observations
     for(i in seq_len(n)) {
 
-        if(!do[i]) next # nothing to do
+        if(NAs[i]) {
+            res1[[i]] <- list(Prob = NA, i = 0, ErrEst = 0) # TODO: fix
+            next
+        }
 
-        ## Deal with ith row of lower and upper
+        ## Pick out ith row of lower and upper
         low <- lower[i,]
         up  <- upper[i,]
+
+        ## Deal with equal bounds (result is 0 as integral over null set)
+        if(any(low == up)) {
+            res1[[i]] <- list(Prob = 0, i = 0, ErrEst = 0) # TODO: fix
+            next
+        }
 
         ## Deal with case where components of both low and up are Inf
         lowFin <- is.finite(low)
@@ -439,7 +444,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
     }
 
     ## Return
-    res[do] <- vapply(res1, function(r) r$Prob, NA_real_)
+    res <- vapply(res1, function(r) r$Prob, NA_real_)
     attr(res, "error")   <- vapply(res1, function(r) r$ErrEst, NA_real_)
     attr(res, "numiter") <- vapply(res1, function(r) r$i,      NA_real_)
     res
