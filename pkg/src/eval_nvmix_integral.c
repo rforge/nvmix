@@ -109,14 +109,14 @@ double eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int
                 dorg = 0;
                 dant = 0;
             } else {
-                dorg = pnorm((lower[i+1] / sqrtmixorg  - scprodorg)  / cholScale[(i+1)*(d+1)], 0, 1, 1, 0);
+                dorg = pnorm((lower[i+1] / sqrtmixorg - scprodorg) / cholScale[(i+1)*(d+1)], 0, 1, 1, 0);
                 dant = pnorm((lower[i+1] / sqrtmixant - scprodant) / cholScale[(i+1)*(d+1)], 0, 1, 1, 0);
             }
             if(upper[i+1] == R_PosInf){
                 difforg = 1 - dorg;
                 diffant = 1 - dant;
             } else {
-                difforg = pnorm((upper[i+1] / sqrtmixorg  - scprodorg)  / cholScale[(i+1)*(d+1)], 0, 1, 1, 0) - dorg;
+                difforg = pnorm((upper[i+1] / sqrtmixorg - scprodorg) / cholScale[(i+1)*(d+1)], 0, 1, 1, 0) - dorg;
                 diffant = pnorm((upper[i+1] / sqrtmixant - scprodant) / cholScale[(i+1)*(d+1)], 0, 1, 1, 0) - dant;
             }
             forg *= difforg;
