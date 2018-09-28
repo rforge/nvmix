@@ -111,7 +111,7 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##' @param abstol
 ##' @param CI.factor
 ##' @param fun.eval
-##' @param method.increment 
+##' @param increment 
 ##' @param B
 ##' @param ...
 ##' @return list of length 3: 
@@ -123,7 +123,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
                     loc = rep(0, d), scale = diag(d), standardized = FALSE,
                     method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
                     abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), 
-                    method.increment = c("double", "n.initial"), B = 12, ...)
+                    increment = c("double", "num.init"), B = 12, ...)
 {
   ## (Only) basic check
   d <- length(upper)
@@ -229,31 +229,34 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
     seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used.
   }
   
-  ## Additional variables needed if the method chosen is "double" 
-  if(method.increment == "double") {
+  ## Additional variables needed if the increment chosen is "double" 
+  if(increment == "double") {
     if(method == "sobol") useskip <- 0 
     denom <- 1 
   }
   
-  #TODO comment 
-  
+  ## Now enter the while loop, which runs until precision abstol is reached or 
+  ## the number of function evaluations exceed fun.eval[2]. In each iteration of 
+  ## the while loop, B RQMC estimates of the desired probability are calculated. 
+
   while(error > abstol && total.fun.evals < fun.eval[2])
   {
     if(method == "sobol" && numiter > 0)
       .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
     
     ## Get B RQCM estimates
-    for(l in 1:B)
+    for(b in 1:B)
     {
       ## Get the point set:
       
       #TODO: Check U. vs U 
+      
       ## If const = TRUE, we only need (d - 1) (quasi) random numbers
       ## (the case const = TRUE and d = 1 has already been dealt with)
       U <- if(const){
-        U. <- switch(method,
+        U <- switch(method,
                      "sobol"   = {
-                       if(method.increment == "double")
+                       if(increment == "double")
                          qrng::sobol(n = current.n, d = d - 1, randomize = TRUE, skip = (useskip * current.n))
                        else 
                          qrng::sobol(n = current.n, d = d - 1, randomize = TRUE, skip = (numiter * current.n) )
@@ -265,11 +268,11 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
                        matrix(runif( current.n * (d - 1)), ncol = d - 1)
                      })
         ## First and last column contain 1s corresponding to "simulated" values from sqrt(mix)
-        cbind( rep(1, current.n), U., rep(1, current.n))
+        cbind( rep(1, current.n), U, rep(1, current.n))
       } else {
-        U. <- switch(method,
+        U <- switch(method,
                      "sobol"   = {
-                       if(method.increment == "double")
+                       if(increment == "double")
                          qrng::sobol(n = current.n, d = d, randomize = TRUE, skip = (useskip * current.n))
                        else 
                          qrng::sobol(n = current.n, d = d, randomize = TRUE, skip = (numiter * current.n))
@@ -283,11 +286,11 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
         
         ## Case d = 1 somewhat special again:
         if(d == 1){
-          cbind( sqrt(qW(U.)), sqrt(qW(1 - U.)) )
+          cbind( sqrt(qW(U)), sqrt(qW(1 - U)) )
         } else {
           ## Column 1:sqrt(mix), Columns 2--d: unchanged (still uniforms),
           ## Column d + 1: antithetic realization of sqrt(mix)
-          cbind(sqrt(qW(U.[, 1])), U.[, 2:d], sqrt(qW(1 - U.[, 1])))
+          cbind(sqrt(qW(U[, 1])), U[, 2:d], sqrt(qW(1 - U[, 1])))
         }
       }
       
@@ -315,15 +318,15 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
       }
       
       ## Update RQMC estimates
-      if(method.increment == "double")
-        ## In this case both, rqmc.estimates[l] and next.estimate depend on n.current points
-        rqmc.estimates[l] <- ( rqmc.estimates[l] + next.estimate ) / denom
+      if(increment == "double")
+        ## In this case both, rqmc.estimates[b] and next.estimate depend on n.current points
+        rqmc.estimates[b] <- ( rqmc.estimates[b] + next.estimate ) / denom
       else 
-        ## In this case, rqmc.estimates[l] depends on numiter*n.current points whereas
+        ## In this case, rqmc.estimates[b] depends on numiter*n.current points whereas
         ## next.estimate depends on n.current points
-        rqmc.estimates[l] <- ( numiter * rqmc.estimates[l] + next.estimate ) / (numiter + 1)
+        rqmc.estimates[b] <- ( numiter * rqmc.estimates[b] + next.estimate ) / (numiter + 1)
       
-    } # end for(l in 1:B)
+    } # end for(b in 1:B)
     
     ## Update various variables
     
@@ -331,7 +334,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
     total.fun.evals <- total.fun.evals + 2 * B * current.n 
     
     ## Double sample size and adjust denominator in averaging as well as useskip 
-    if(method.increment == "double"){
+    if(increment == "double"){
       ## Change denom and useksip. This is done exactly once, namely in the first iteration.
       if(numiter == 0){
         denom <- 2
@@ -390,11 +393,11 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
 ##' @param fun.eval 2-vector giving the initial function evaluations (in the
 ##'        first loop; typically powers of 2) and the maximal number of
 ##'        function evaluations
-##' @param method.increment character string indicating how the sample size should
+##' @param increment character string indicating how the sample size should
 ##'        should be increased in each iteration
 ##'        - "double" next iteration has as many sample points as all the previous 
 ##'        iterations combined
-##'        - "n.initial" all iterations use an additional fun.eval[1] many points
+##'        - "num.init" all iterations use an additional fun.eval[1] many points
 ##' @param B numeric >=2 providing number of randomizations to get error estimates
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return TODO
@@ -403,7 +406,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
                    loc = rep(0, d), scale = diag(d), standardized = FALSE,
                    method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
                    abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), 
-                   method.increment = c("double", "n.initial"), B = 12, ...)
+                   increment = c("double", "num.init"), B = 12, ...)
 {
     ## Checks
     if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
