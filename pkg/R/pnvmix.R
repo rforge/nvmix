@@ -330,8 +330,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
 }
 
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture
-##' @param upper d-vector of upper evaluation limits
-##' @param lower d-vector of lower evaluation limits (<= upper)
+##' @param upper (n, d)-matrix of upper integration limits
+##' @param lower (n, d)-matrix of lower integration limits (lower <= upper)
 ##' @param mix specification of the (mixture) distribution of W. This can be:
 ##'        1) a character string specifying a supported distribution (additional
 ##'           arguments of this distribution are passed via '...').
@@ -358,14 +358,15 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
 ##' @param abstol numeric >= 0 providing the absolute precision required.
 ##'        If abstol = 0, algorithm will run until total number of function
 ##'        evaluations exceeds fun.eval[2].
-##' @param CI.factor Monte Carlo confidence interval multiplier. Algorithm runs
-##'        CI.factor * (estimated standard error) < abstol. If CI.factor = 3.3
-##'        (default), one can expect the actual absolute error to be less than
-##'        abstol in 99.9% of the cases
-##' @param fun.eval 2-vector giving the initial function evaluations (in the
-##'        first loop; typically powers of 2) and the maximal number of
-##'        function evaluations
-##' @param B number of randomizations to get error estimates.
+##' @param CI.factor multiplier of the Monte Carlo confidence interval bounds.
+##'        The algorithm runs until CI.factor * (estimated standard error) < abstol.
+##'        If CI.factor = 3.3 (the default), one can expect the actual absolute
+##'        error to be less than abstol in 99.9% of the cases
+##' @param fun.eval 2-vector giving the size of the first point set to be used
+##'        to estimate the probabilities (typically a power of 2) and the
+##'        maximal number of function evaluations.
+##' @param B number of randomizations to get an error estimate in the
+##'        randomized quasi-Monte Carlo approach
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return TODO
 ##' @author Erik Hintz and Marius Hofert

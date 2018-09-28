@@ -59,7 +59,8 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = factorize(scale))
     per default);
     this equals the covariance matrix of a random vector following
     the specified normal variance mixture distribution divided by
-    the mean of the mixing variable if (and only if) the former exists.}
+    the expectation of the mixing variable \eqn{W} if (and only if) the
+    former exists.}
   \item{factor}{\code{\link{matrix}} \eqn{R} with \eqn{d}
     rows such that \eqn{R^T R} equals \code{scale}. \eqn{R} is internally
     multiplied from the right to an \eqn{(n, d)}-matrix of independent

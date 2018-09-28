@@ -1,9 +1,14 @@
 ### For next release ###########################################################
 
 ## Important
-- MH: check:
-  + dnvmix.Rd
-  + pnvmix.Rd
+- MH: check dnvmix.Rd (see pnvmix.Rd)
+- EH: ?pnvmix and ?dnvmix say that if abstol = 0, the algorithm runs until
+  eval.fun[2]. This is not necessarily the case. I would thus suggest to allow
+  abstol = NULL (in which case the latter behavior occurs). abstol = 0
+  certainly will give you the same in most cases, but not necessarily all.
+  (That's also the common way, we use that in qrmtools, too, for example).
+- EH: ?pnvmix describes 'precond'; can you add half a sentence
+  describing the idea behind the preconditioning, please?
 
 - EH: fix return value(s) of pnvmix[1](), also docu before function head and
       in explicit return() calls
