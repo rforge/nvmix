@@ -235,7 +235,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
     denom <- 1 
   }
   
-  
+  #TODO comment 
   
   while(error > abstol && total.fun.evals < fun.eval[2])
   {
@@ -264,7 +264,6 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
                      "prng"    = {
                        matrix(runif( current.n * (d - 1)), ncol = d - 1)
                      })
-        
         ## First and last column contain 1s corresponding to "simulated" values from sqrt(mix)
         cbind( rep(1, current.n), U., rep(1, current.n))
       } else {
@@ -351,10 +350,6 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
   ## Finalize
   value <- mean(rqmc.estimates) # calculate the RQMC estimator
   
-  ## Check if desired precision reached 
-  if(error > abstol)
-    warning("Precision level 'abstol' not reached; consider increasing the second component of 'fun.eval'")
-  
   ## Return
   list(value = value, error = error, numiter = numiter) 
 }
@@ -420,7 +415,11 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
               dim(scale) == c(d, d), is.logical(standardized), is.logical(precond),
               abstol >= 0, CI.factor >= 0, length(fun.eval) == 2, fun.eval >= 0, B >= 1)
     method <- match.arg(method)
-
+    
+    ## Setting abstol to a negative value will ensure that algorithm runs until fun.eval[2] function
+    ## evaluations are done. 
+    if(is.null(abstol)) abstol <- -42  
+    
     ## Build temporary result list
     res1 <- vector("list", length = n) # results from calls of pnvmix1()
 
@@ -476,6 +475,12 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
                              loc = loc, scale = scale, standardized = standardized,
                              method = method, precond = precond, abstol = abstol,
                              CI.factor = CI.factor, fun.eval = fun.eval, B = B, ...)
+        
+        ## Check if desired precision reached 
+        if(res1[[i]]$error > abstol)
+          warning( paste( "Precision level 'abstol' for row",toString(i), "not reached; 
+                          consider increasing the second component of 'fun.eval'." ))
+        
     }
 
     ## Return
