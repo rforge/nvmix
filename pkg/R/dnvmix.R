@@ -193,7 +193,7 @@ dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), # TODO: do we need 
             ## Finalize
             var <- (sig / sqrt(B))^2
             if(verbose && (err > abstol))
-                warning("Precision level 'abstol' not reached; consider increasing the second component of 'fun.eval'")
+                warning("Precision level 'abstol' not reached; consider increasing 'fun.eval[2]'")
             lres[notNA] <- colMeans(T.)
         }
     }

@@ -412,8 +412,9 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
 ##'          iterations combined
 ##'        - "num.init": all iterations use an additional fun.eval[1] many points
 ##' @param B numeric >= 2 providing number of randomizations to get error estimates
-##' @param verbose logical indicating whether a warning is given if the required
-##'        precision 'abstol' has not been reached.
+##' @param verbose logical (or integer: 0 = FALSE, 1 = TRUE, 2 = more output)
+##'        indicating whether a warning is given if the required precision
+##'        'abstol' has not been reached.
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return TODO
 ##' @author Erik Hintz and Marius Hofert
@@ -446,6 +447,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
     NAs <- apply(is.na(lower) | is.na(upper), 1, any) # at least one NA => use NA => nothing left to do
 
     ## Loop over observations
+    reached <- logical(n) # indicating whether 'abstol' has been reached in the ith integration bounds
     for(i in seq_len(n)) {
 
         if(NAs[i]) {
@@ -497,10 +499,16 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
                              increment = increment, B = B, ...)
 
         ## Check if desired precision reached
-        if(verbose & (res1[[i]]$error > abstol))
+        reached[i] <- res1[[i]]$error <= abstol
+        if(verbose >= 2 & !reached[i]) {
             warning(paste("Precision level 'abstol' for row", toString(i), "not reached;
-                          consider increasing the second component of 'fun.eval'." ))
+                          consider increasing 'fun.eval[2]'."))
+        }
+    }
 
+    if(verbose & any(!reached)) { # <=> verbose == 1
+        warning("Precision level 'abstol' not reached for at least one pair of integration bounds;
+                consider increasing 'fun.eval[2]'.")
     }
 
     ## Return

@@ -114,9 +114,12 @@ pNorm(upper, lower = rep(-Inf, d),
   }
   \item{B}{number of randomizations to get an error estimate in the
     randomized quasi-Monte Carlo approach.}
-  \item{verbose}{\code{\link{logical}} indicating whether a
-    warning is given if the required precision \code{abstol} has not
-    been reached.}
+  \item{verbose}{\code{\link{logical}}
+    indicating whether a warning is given if the required precision
+    \code{abstol} has not been reached; can also be an \code{\link{integer}}
+    in which case 0 is \code{FALSE}, 1 is \code{TRUE} and 2 stands
+    for producing a more verbose warning (for each set of provided
+    integration bounds).}
   \item{\dots}{additional arguments (e.g., parameters) passed to the
     underlying mixing distribution when \code{mix} is a
     \code{\link{character}} string or \code{\link{function}}.}
