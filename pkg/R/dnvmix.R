@@ -31,8 +31,8 @@
 ##'        function evaluations
 ##' @param B number of randomizations to get error estimates.
 ##' @param log logical indicating whether the logarithmic density is to be computed
-##' @param verbose logical indicating whether the required precision abstol
-##'        is reached
+##' @param verbose logical indicating whether a warning is given if the required
+##'        precision 'abstol' has not been reached.
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return n-vector with computed density values and attributes 'error'
 ##'         (error estimate) and 'numiter' (number of while-loop iterations)

@@ -50,16 +50,20 @@ dNorm <- function(x, loc = rep(0, d), scale = diag(d),
 ##'        first loop; typically powers of 2) and the maximal number of
 ##'        function evaluations
 ##' @param B number of randomizations to get error estimates.
+##' @param verbose logical indicating whether a warning is given if the required
+##'        precision 'abstol' (see dnvmix()) has not been reached.
 ##' @author Erik Hintz and Marius Hofert
 pNorm <- function(upper, lower = rep(-Inf, d),
                   loc = rep(0, d), scale = diag(d), standardized = FALSE,
                   method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
-                  abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12)
+                  abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
+                  verbose = TRUE)
 {
     d <- length(upper)
     pnvmix(upper, lower = lower, mix = "constant", loc = loc, scale = scale,
            standardized = standardized, method = method, precond = precond,
-           abstol = abstol, CI.factor = CI.factor, fun.eval = fun.eval, B = B)
+           abstol = abstol, CI.factor = CI.factor, fun.eval = fun.eval, B = B,
+           verbose = verbose)
 }
 
 ##' @title Random Number Generator for the Multivariate Normal Distribution

@@ -412,6 +412,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
 ##'          iterations combined
 ##'        - "num.init": all iterations use an additional fun.eval[1] many points
 ##' @param B numeric >= 2 providing number of randomizations to get error estimates
+##' @param verbose logical indicating whether a warning is given if the required
+##'        precision 'abstol' has not been reached.
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return TODO
 ##' @author Erik Hintz and Marius Hofert
@@ -419,7 +421,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
                    loc = rep(0, d), scale = diag(d), standardized = FALSE,
                    method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
                    abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
-                   increment = c("doubling", "num.init"), B = 12, ...)
+                   increment = c("doubling", "num.init"), B = 12, verbose = TRUE, ...)
 {
     ## Checks
     if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
@@ -495,8 +497,8 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
                              increment = increment, B = B, ...)
 
         ## Check if desired precision reached
-        if(res1[[i]]$error > abstol)
-            warning( paste( "Precision level 'abstol' for row",toString(i), "not reached;
+        if(verbose & (res1[[i]]$error > abstol))
+            warning(paste("Precision level 'abstol' for row", toString(i), "not reached;
                           consider increasing the second component of 'fun.eval'." ))
 
     }

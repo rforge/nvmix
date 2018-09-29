@@ -12,16 +12,18 @@ pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sqrt.mix = NUL
        loc = rep(0, d), scale = diag(d), standardized = FALSE,
        method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
        abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
-       increment = c("doubling", "num.init"), B = 12, ...)
+       increment = c("doubling", "num.init"), B = 12, verbose = TRUE, ...)
 
 pStudent(upper, lower = rep(-Inf, d),
          df, loc = rep(0, d), scale = diag(d), standardized = FALSE,
          method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
-         abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12)
+         abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
+         verbose = TRUE)
 pNorm(upper, lower = rep(-Inf, d),
       loc = rep(0, d), scale = diag(d), standardized = FALSE,
       method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
-      abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12)
+      abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
+      verbose = TRUE)
 }
 \arguments{
   \item{upper}{\eqn{(n, d)}-\code{\link{matrix}} of upper integration limits;
@@ -112,6 +114,9 @@ pNorm(upper, lower = rep(-Inf, d),
   }
   \item{B}{number of randomizations to get an error estimate in the
     randomized quasi-Monte Carlo approach.}
+  \item{verbose}{\code{\link{logical}} indicating whether a
+    warning is given if the required precision \code{abstol} has not
+    been reached.}
   \item{\dots}{additional arguments (e.g., parameters) passed to the
     underlying mixing distribution when \code{mix} is a
     \code{\link{character}} string or \code{\link{function}}.}
