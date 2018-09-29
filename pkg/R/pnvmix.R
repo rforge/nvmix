@@ -500,16 +500,12 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
 
         ## Check if desired precision reached
         reached[i] <- res1[[i]]$error <= abstol
-        if(verbose >= 2 & !reached[i]) {
-            warning(paste("Precision level 'abstol' for row", toString(i), "not reached;
-                          consider increasing 'fun.eval[2]'."))
-        }
+        if(verbose >= 2 & !reached[i])
+            warning(sprintf("'abstol' not reached for pair %d of integration bounds; consider increasing 'fun.eval[2]'", i))
     }
 
-    if(verbose & any(!reached)) { # <=> verbose == 1
-        warning("Precision level 'abstol' not reached for at least one pair of integration bounds;
-                consider increasing 'fun.eval[2]'.")
-    }
+    if(verbose & any(!reached)) # <=> verbose == 1
+        warning("'abstol' not reached for at least one pair of integration bounds; consider increasing 'fun.eval[2]'")
 
     ## Return
     res <- vapply(res1, function(r) r$value, NA_real_)
