@@ -9,16 +9,19 @@
 ##'        such that R^T R = 'scale' here (otherwise det(scale) not computed
 ##'        correctly!)
 ##' @param log logical indicating whether the logarithmic density is computed
+##' @param verbose logical indicating whether a warning is given if the required
+##'        precision 'abstol' (see dnvmix()) has not been reached.
+##' @param ... additional arguments passed to the underlying dnvmix()
 ##' @return n-vector of t_nu(loc, scale) density values
 ##' @author Erik Hintz and Marius Hofert
 dStudent <- function(x, df, loc = rep(0, d), scale = diag(d),
                      factor = factorize(scale), # needs to be triangular!
-                     log = FALSE)
+                     log = FALSE, verbose = TRUE, ...)
 {
     if(!is.matrix(x)) x <- rbind(x)
     d <- ncol(x)
     dnvmix(x, mix = "inverse.gamma", loc = loc, scale = scale,
-           factor = factor, log = log, df = df)
+           factor = factor, log = log, verbose = verbose, df = df, ...)
 }
 
 ##' @title Distribution Function of the Multivariate Student t Distribution

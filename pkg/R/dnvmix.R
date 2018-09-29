@@ -31,6 +31,8 @@
 ##'        function evaluations
 ##' @param B number of randomizations to get error estimates.
 ##' @param log logical indicating whether the logarithmic density is to be computed
+##' @param verbose logical indicating whether the required precision abstol
+##'        is reached
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return n-vector with computed density values and attributes 'error'
 ##'         (error estimate) and 'numiter' (number of while-loop iterations)
@@ -39,7 +41,7 @@ dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), # TODO: do we need 
                    factor = factorize(scale), # needs to be upper triangular!
                    method = c("sobol", "ghalton", "PRNG"),
                    abstol = 0.001, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
-                   log = FALSE, ...)
+                   log = FALSE, verbose = TRUE, ...)
 {
     ## Checks
     if(!is.matrix(x)) x <- rbind(x)
@@ -190,7 +192,7 @@ dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), # TODO: do we need 
 
             ## Finalize
             var <- (sig / sqrt(B))^2
-            if(err > abstol)
+            if(verbose && (err > abstol))
                 warning("Precision level 'abstol' not reached; consider increasing the second component of 'fun.eval'")
             lres[notNA] <- colMeans(T.)
         }

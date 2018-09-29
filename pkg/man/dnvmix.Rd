@@ -11,12 +11,12 @@
 dnvmix(x, mix, loc = rep(0, d), scale = diag(d),
        factor = factorize(scale), method = c("sobol", "ghalton", "PRNG"),
        abstol = 0.001, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
-       log = FALSE, ...)
+       log = FALSE, verbose = TRUE, ...)
 
-dStudent(x, df, loc = rep(0, d), scale = diag(d),
-         factor = factorize(scale), log = FALSE)
-dNorm(x, loc = rep(0, d), scale = diag(d),
-      factor = factorize(scale), log = FALSE)
+dStudent(x, df, loc = rep(0, d), scale = diag(d), factor = factorize(scale),
+         log = FALSE, verbose = TRUE, ...)
+dNorm(x, loc = rep(0, d), scale = diag(d), factor = factorize(scale),
+      log = FALSE, verbose = TRUE, ...)
 }
 \arguments{
   \item{x}{\eqn{(n, d)}-\code{\link{matrix}} of evaluation points.}
@@ -97,9 +97,18 @@ dNorm(x, loc = rep(0, d), scale = diag(d),
     randomized quasi-Monte Carlo approach.}
   \item{log}{\code{\link{logical}} indicating whether the logarithmic
     density is to be computed.}
-  \item{\dots}{additional arguments (e.g., parameters) passed to the
-    underlying mixing distribution when \code{mix} is a
-    \code{\link{character}} string or \code{\link{function}}.}
+  \item{verbose}{\code{\link{logical}} indicating whether a
+    warning is given if the required precision \code{abstol} has not
+    been reached.}
+  \item{\dots}{
+    \describe{
+      \item{\code{dnvmix()}:}{additional arguments (e.g., parameters)
+	passed to the underlying mixing distribution when \code{mix}
+	is a \code{\link{character}} string or \code{\link{function}}.}
+      \item{\code{dStudent()}, \code{dNorm()}:}{additional arguments
+        passed to the underlying \code{dnvmix()}.}
+    }
+  }
 }
 \value{
   \code{dnvmix()}, \code{dStudent()} and \code{dNorm()} return

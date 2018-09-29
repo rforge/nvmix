@@ -11,7 +11,8 @@
 pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sqrt.mix = NULL,
        loc = rep(0, d), scale = diag(d), standardized = FALSE,
        method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
-       abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12, ...)
+       abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
+       increment = c("doubling", "num.init"), B = 12, ...)
 
 pStudent(upper, lower = rep(-Inf, d),
          df, loc = rep(0, d), scale = diag(d), standardized = FALSE,
@@ -98,7 +99,17 @@ pNorm(upper, lower = rep(-Inf, d),
     than \code{abstol} in 99.9\% of the cases.}
   \item{fun.eval}{\code{\link{numeric}(2)} providing the size of the
     first point set to be used to estimate the probabilities
-    (typically a power of 2) and the maximal number of function evaluations.}
+    (typically a power of 2) and the maximal number of function
+    evaluations.}
+  \item{increment}{\code{\link{character}} string indicating how the
+    sample size should be increased in each iteration. Available are:
+    \describe{
+      \item{\code{"doubling"}:}{next iteration has as many sample points
+	as all the previous iterations combined.}
+      \item{\code{"num.init"}:}{all iterations use an additional
+	\code{fun.eval[1]} many points.}
+    }
+  }
   \item{B}{number of randomizations to get an error estimate in the
     randomized quasi-Monte Carlo approach.}
   \item{\dots}{additional arguments (e.g., parameters) passed to the
@@ -198,6 +209,6 @@ stopifnot(all.equal(pt, 0.6180, tol = 5e-5, check.attributes = FALSE))
 ## Evaluate a normal distribution function
 set.seed(271)
 pn <- pNorm(b, lower = a, scale = P)
-stopifnot(all.equal(pn, 0.7001, tol = 6e-5, check.attributes = FALSE))
+stopifnot(all.equal(pn, 0.7001, tol = 1e-4, check.attributes = FALSE))
 }
 \keyword{distribution}
