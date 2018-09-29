@@ -5,7 +5,11 @@
 - EH/MH: 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 'mix' ('rmix'?)
          for passing a RNG
          => call other arguments 'mix' 'qmix' instead (check carefully)
-
+- EH: Does it make sense to choose the default of fun.eval[2] differently?
+      I feel it should be something like 1/abstol, so that if one plays
+      with abstol, one has a reasonable chance not having to modify
+      fun.eval[2]. I realized this when choosing abstol = 1e-8 (then
+      with fun.eval[2] = 1e8, the computations took forever.
 - EH: ?pnvmix and ?dnvmix describe the output value 'numiter'. Can you had
       (on each help pages) half a sentence what these iterations are exactly?
       => alternatively, shouldn't we rather return the variance? (one of the

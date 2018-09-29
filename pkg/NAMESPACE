@@ -10,6 +10,8 @@ importFrom("methods",
            "existsFunction", "hasArg")
 importFrom("qrng",
            "sobol", "ghalton")
+importFrom("utils",
+           "head")
 
 
 ### Exports ####################################################################

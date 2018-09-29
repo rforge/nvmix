@@ -447,12 +447,12 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
     NAs <- apply(is.na(lower) | is.na(upper), 1, any) # at least one NA => use NA => nothing left to do
 
     ## Loop over observations
-    reached <- logical(n) # indicating whether 'abstol' has been reached in the ith integration bounds
+    reached <- rep(TRUE, n) # indicating whether 'abstol' has been reached in the ith integration bounds (has to have default TRUE!)
     for(i in seq_len(n)) {
 
         if(NAs[i]) {
             res1[[i]] <- list(value = NA, error = 0, numiter = 0)
-            next
+            next # => 'reached' already has the right value
         }
 
         ## Pick out ith row of lower and upper
@@ -462,7 +462,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
         ## Deal with equal bounds (result is 0 as integral over null set)
         if(any(low == up)) {
             res1[[i]] <- list(value = 0, error = 0, numiter = 0)
-            next
+            next # => 'reached' already has the right value
         }
 
         ## Deal with case where components of both low and up are Inf
@@ -498,14 +498,17 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
                              CI.factor = CI.factor, fun.eval = fun.eval,
                              increment = increment, B = B, ...)
 
-        ## Check if desired precision reached
+        ## Check if desired precision was reached
         reached[i] <- res1[[i]]$error <= abstol
-        if(verbose >= 2 & !reached[i])
+        if(verbose >= 2 && !reached[i])
             warning(sprintf("'abstol' not reached for pair %d of integration bounds; consider increasing 'fun.eval[2]'", i))
     }
 
-    if(verbose & any(!reached)) # <=> verbose == 1
-        warning("'abstol' not reached for at least one pair of integration bounds; consider increasing 'fun.eval[2]'")
+    if(verbose == 1 && any(!reached)) { # <=> verbose == 1
+        ii <- which(!reached) # (beginning of) indices
+        strng <- if(length(ii) > 6) paste0(paste(head(ii), collapse = ", "), ",...") else paste(ii, collapse = ", ")
+        warning("'abstol' not reached for pair(s) ",strng," of integration bounds; consider increasing 'fun.eval[2]'")
+    }
 
     ## Return
     res <- vapply(res1, function(r) r$value, NA_real_)
