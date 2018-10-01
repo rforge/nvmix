@@ -14,7 +14,8 @@
       with abstol, one has a reasonable chance not having to modify
       fun.eval[2]. I realized this when choosing abstol = 1e-8 (then
       with fun.eval[2] = 1e8, the computations took forever.
-	EH: the default is set such that the algorithm terminates with reasonable 		tolerances (0.001, 0.0005, maybe 0.0001). Tolerances beyond that will take 		forever one way or another.
+
+	EH: the default is set such that the algorithm terminates with reasonable 		tolerances (0.001, 0.0005, maybe 0.0001). Tolerances beyond that will take 		forever one way or another. 
 
 - EH: incorporate the case of a singular scale matrix
       (or at least give better error message)
@@ -22,6 +23,7 @@
 - Write vignette nvmix_functionality.Rmd
 
 
+- DONE  EH: renaming etc in dnvmix() similar to pnvmix()
 - DONE	EH: TODOs inside pnvmix()
 - DONE 	EH: pnvmix() has multiple lower/upper as input, but only one scale. pnvmix1() 		then calculates t(chol(scale)) for each input => maybe do that in pnvmix once and 	pass it as argument to pnvmix1()
 - DONE ?pnvmix and ?dnvmix describe the output value 'numiter'. Can you had

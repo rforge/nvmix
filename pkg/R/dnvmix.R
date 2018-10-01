@@ -37,7 +37,7 @@
 ##' @return n-vector with computed density values and attributes 'error'
 ##'         (error estimate) and 'numiter' (number of while-loop iterations)
 ##' @author Erik Hintz and Marius Hofert
-dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), # TODO: do we need a 'standardized = FALSE' here? (see pnvmix())
+dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), 
                    factor = factorize(scale), # needs to be upper triangular!
                    method = c("sobol", "ghalton", "PRNG"),
                    abstol = 0.001, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
@@ -115,27 +115,25 @@ dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), # TODO: do we need 
         ##                       = log(prod(diag(R))) = sum(log(diag(R)))
         lrdet <- sum(log(diag(factor)))
 
-        ## Counters TODO: better names (as in pnvmix())
-        N. <- 0 # N. will count the total number of function evaluations
-        i. <- 0 # initialize counter; this will count the number of iterations in the while loop
+        ## Counters 
+        total.fun.evals <- 0 # total.fun.evals will count the total number of function evaluations
+        numiter <- 0 # initialize counter; this will count the number of iterations in the while loop
 
         ## Deal with the different distributions
         if(inv.gam) { # multivariate t
             df.d.2 <- (df + d) / 2
             lres[notNA] <- lgamma(df.d.2) - lgamma(df/2) - (d/2) * log(df * pi) - lrdet - df.d.2 * log1p(maha2 / df)
-            err <- 0
-            var <- 0
+            error <- 0
         } else if(const) { # multivariate normal
             lres[notNA] <- -(d/2) * log(2 * pi) - lrdet - maha2/2
-            err <- 0
-            var <- 0
+            error <- 0
         } else { # general case of a multivariate normal variance mixture (RQMC)
 
             ## Basics
             CI.factor <- CI.factor / sqrt(B) # instead of dividing sigma by sqrt(B) each time
-            n. <- fun.eval[1] # initial n
-            T. <- matrix(0, ncol = n, nrow = B) # matrix to store RQMC estimates
-            err <- abstol + 42 # initialize err to something bigger than abstol so that we can enter the while loop
+            current.n <- fun.eval[1] # initial n
+            rqmc.estimates <- matrix(0, ncol = n, nrow = B) # matrix to store RQMC estimates
+            error <- abstol + 42 # initialize error to something bigger than abstol so that we can enter the while loop
             useskip <- 0 # will need that because the first iteration is a little different from all the others
             denom <- 1
 
@@ -146,7 +144,7 @@ dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), # TODO: do we need 
             }
 
             ## Main loop
-            while(err > abstol && N. < fun.eval[2]) {
+            while(error > abstol && total.fun.evals < fun.eval[2]) {
                 if(method == "sobol") .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
 
                 ## Get B RQCM estimates
@@ -154,52 +152,54 @@ dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), # TODO: do we need 
                     ## Get the point set
                     U <- switch(method,
                                 "sobol"   = {
-                                    qrng::sobol(n., d = 1, randomize = TRUE, skip = (useskip * n.))
+                                    qrng::sobol(current.n, d = 1, randomize = TRUE, skip = (useskip * current.n))
                                 },
                                 "gHalton" = {
-                                    qrng::ghalton(n., d = 1, method = "generalized")
+                                    qrng::ghalton(current.n, d = 1, method = "generalized")
                                 },
                                 "prng"    = {
-                                    cbind(runif(n.)) # 1-column matrix
+                                    cbind(runif(current.n)) # 1-column matrix
                                 })
-                    W <- qW(U) # n.-vector of W's
+                    W <- qW(U) # current.n-vector of W's
 
                     ## exp-log trick
-                    b <- - (d/2) * log(2 * pi * W) - lrdet - outer(1/W, maha2 / 2) # (n., n)-matrix, each column corresponds to "one x"
+                    b <- - (d/2) * log(2 * pi * W) - lrdet - outer(1/W, maha2 / 2) # (current.n, n)-matrix, each column corresponds to "one x"
                     bmax <- apply(b, 2, max) # n-vector of maximal b's
-                    T.[l,] <- (T.[l,] - log(n.) + bmax +
-                               log(colSums(exp(b - rep(bmax, each = n.))))) / denom
+                    rqmc.estimates[l,] <- (rqmc.estimates[l,] - log(current.n) + bmax +
+                               log(colSums(exp(b - rep(bmax, each = current.n))))) / denom
                 }
 
                 ## Update various variables
-                N. <- N. + B * n.
+                total.fun.evals <- total.fun.evals + B * current.n
 
                 ## Change denom and useskip; this is done exactly once, namely in the first iteration.
-                if(i. == 0){
+                if(numiter == 0){
                     denom <- 2
                     useskip <- 1
 
                 } else {
                     ## Increase the sample size n; this is done in all iterations except the first
-                    n. <- 2 * n.
+                    current.n <- 2 * current.n
                 }
 
                 ## Compute error measures and update counter
-                sig <- max(apply(T., 2, sd)) # get standard deviation of the column with the largest standard deviation
-                err <- CI.factor * sig # update error. Note that this CI.factor is actually CI.factor/sqrt(N)
-                i. <- i. + 1 # update counter
+                sig <- max(apply(rqmc.estimates, 2, sd)) # get standard deviation of the column with the largest standard deviation
+                error <- CI.factor * sig # update error. Note that this CI.factor is actually CI.factor/sqrt(N)
+                numiter <- numiter + 1 # update counter
+                
+                ## Update abserr to ensure that the precision is reached for *both* log-density and density
+                abstol <- abstol / max(1, max(exp(colMeans(rqmc.estimates)))) 
             } # while()
 
             ## Finalize
-            var <- (sig / sqrt(B))^2
-            if(verbose && (err > abstol))
+            if(verbose && (error > abstol))
                 warning("'abstol' not reached; consider increasing 'fun.eval[2]'")
-            lres[notNA] <- colMeans(T.)
+            lres[notNA] <- colMeans(rqmc.estimates)
         }
     }
 
     ## Return
-    attr(lres, "error")   <- err
-    attr(lres, "numiter") <- i.
+    attr(lres, "error")   <- error
+    attr(lres, "numiter") <- numiter
     if(log) lres else exp(lres)
 }
