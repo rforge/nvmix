@@ -112,7 +112,7 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##' @param mean.sqrt.mix
 ##' @param loc
 ##' @param scale
-##' @param standardized
+##' @param cholScale lower triangular cholesky factor of scale. If NULL, it will be calculated.
 ##' @param method
 ##' @param precond
 ##' @param abstol
@@ -125,11 +125,12 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##'         - value: computed probability
 ##'         - error: error estimate
 ##'         - numiter: number of iterations needed
+##' @note 'standardized' not needed anymore; that is being taken care of in pnvmix()        
 ##' @author Erik Hintz and Marius Hofert
 pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
-                    loc = rep(0, d), scale = diag(d), standardized = FALSE,
-                    method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
-                    abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
+                    loc = rep(0, d), scale = diag(d), cholScale = NULL, 
+                    method = c("sobol", "ghalton", "PRNG"), precond = TRUE, 
+                    abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), 
                     increment = c("doubling", "num.init"), B = 12, ...)
 {
     ## (Only) basic check; most checking was done in pnvmix()
@@ -193,7 +194,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
     }
 
     ## Preconditioning (resorting the limits; only for d > 2)
-    cholScale <- t(chol(scale)) # get Cholesky factor (lower triangular)
+    if(is.null(cholScale)) cholScale <- t(chol(scale)) # get Cholesky factor if not provided (lower triangular)
+    
     if(precond && d > 2) {
         if(is.null(mean.sqrt.mix)) # approximate E(sqrt(W))
             mean.sqrt.mix <- mean(sqrt(qW(qrng::sobol(n = 5000, d = 1, randomize = TRUE))))
@@ -443,6 +445,14 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
 
     ## Deal with NA
     NAs <- apply(is.na(lower) | is.na(upper), 1, any) # at least one NA => use NA => nothing left to do
+    
+    ## Standardize 'scale' if necessary; limits will be standardized later
+    if(!standardized){
+      Dinv <- diag(1/sqrt(diag(scale))) 
+      scale <- Dinv %*% scale %*% Dinv
+    }
+    ## Get (lower triangular) Cholesky factor of 'scale'
+    cholScale <- t(chol(scale)) 
 
     ## Loop over observations
     reached <- rep(TRUE, n) # indicating whether 'abstol' has been reached in the ith integration bounds (has to have default TRUE!)
@@ -471,6 +481,10 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
             low <- low[lowupFin]
             up  <- up [lowupFin]
             scale <- scale[lowupFin, lowupFin, drop = FALSE]
+            cholScaleFin <- t(chol(scale)) # Cholesky factor changes!
+        } else {
+            ## If no such component exists, set Choleksy factor correctly
+            cholScaleFin <- cholScale 
         }
 
         ## Standardize the ith row of lower and upper if necessary
@@ -480,9 +494,8 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
             up  <- up  - loc
         }
         ## Scale
+        ## Note that 'scale' has already been standardized 
         if(!standardized) {
-            Dinv <- diag(1/sqrt(diag(scale))) 
-            scale <- Dinv %*% scale %*% Dinv
             low[lowFin] <- as.vector(Dinv[lowFin, lowFin] %*% low[lowFin]) # only works for those values which are not +/- Inf
             up [upFin]  <- as.vector(Dinv[upFin,  upFin]  %*% up [upFin])
         }
@@ -491,9 +504,9 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
         ## because of the preconditioning, one has to treat each such
         ## row separately)
         res1[[i]] <- pnvmix1(up, lower = low, mix = mix, mean.sqrt.mix = NULL,
-                             loc = loc, scale = scale, standardized = standardized,
+                             loc = loc, scale = scale, cholScale = cholScaleFin,
                              method = method, precond = precond, abstol = abstol,
-                             CI.factor = CI.factor, fun.eval = fun.eval,
+                             CI.factor = CI.factor, fun.eval = fun.eval, 
                              increment = increment, B = B, ...)
 
         ## Check if desired precision was reached

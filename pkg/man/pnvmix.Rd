@@ -89,7 +89,10 @@ pNorm(upper, lower = rep(-Inf, d),
     }
   }
   \item{precond}{\code{\link{logical}} indicating whether preconditioning
-    is applied, that is, reordering of the integration variables.}
+    is applied, that is, reordering of the integration variables. If \code{TRUE},
+    integration limits as well as \code{scale} are internally re-ordered in 
+    a way such that the overall variance of the integrand is smaller than 
+    with the original ordering; this usually leads smaller run-times.}
   \item{abstol}{non-negative \code{\link{numeric}} providing the
     absolute precision required; if \code{abstol} is zero,
     the algorithm will run until the total number of function
@@ -141,6 +144,13 @@ pNorm(upper, lower = rep(-Inf, d),
   dimensions \eqn{d\ge 16510}{d >= 16510} are not supported for the
   default method \code{sobol}.
 
+  Internally, an iterative randomized Quasi-Monte Carlo approach is used
+  to estimate the probability. It is an iterative algorithm that evaluates
+  the integrand at a point-set with size as specified by \code{increment}) 
+  in each iteration until the pre-specified error tolerance \code{abstol}
+  is reached. The attribute \code{"numiter"} gives the number of such 
+  iterations needed.
+  
   Care should be taken when changing the algorithm-specific parameters,
   notably \code{method}, \code{precond}, \code{fun.eval[2]} and \code{B}.
   Error estimates will not be reliable for too small \code{B} and the
