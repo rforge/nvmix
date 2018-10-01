@@ -132,7 +132,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
                     abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
                     increment = c("doubling", "num.init"), B = 12, ...)
 {
-    ## (Only) basic check
+    ## (Only) basic check; most checking was done in pnvmix()
     d <- length(upper)
     stopifnot(length(lower) == d)
     if(any(lower == upper))
@@ -258,8 +258,6 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
         for(b in 1:B)
         {
             ## Get the point set:
-
-            ## TODO: Check U. vs U
 
             ## If const = TRUE, we only need (d - 1) (quasi) random numbers
             ## (the case const = TRUE and d = 1 has already been dealt with)
@@ -483,7 +481,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
         }
         ## Scale
         if(!standardized) {
-            Dinv <- diag(1/sqrt(diag(scale))) # TODO: why not work with cov2cor()?; these 4 lines can most likely be improved (see cov2cor code)
+            Dinv <- diag(1/sqrt(diag(scale))) 
             scale <- Dinv %*% scale %*% Dinv
             low[lowFin] <- as.vector(Dinv[lowFin, lowFin] %*% low[lowFin]) # only works for those values which are not +/- Inf
             up [upFin]  <- as.vector(Dinv[upFin,  upFin]  %*% up [upFin])
