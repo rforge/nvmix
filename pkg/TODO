@@ -5,6 +5,7 @@
 
 - MH: in dnvmix.Rd, the description of (...) (the ellipsis argument) looks odd - is 		that intended?
 - Write vignette nvmix_functionality.Rmd
+	EH: I'm on it. 
 
 ## To be discussed:
 
