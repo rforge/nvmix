@@ -28,6 +28,7 @@
 - Write vignette nvmix_functionality.Rmd
 
 
+- DONE  EH: rnvmix() should have 'skip' if method = 'sobol' 
 - DONE  EH: renaming etc in dnvmix() similar to pnvmix()
 - DONE	EH: TODOs inside pnvmix()
 - DONE 	EH: pnvmix() has multiple lower/upper as input, but only one scale. pnvmix1() 		then calculates t(chol(scale)) for each input => maybe do that in pnvmix once and 	pass it as argument to pnvmix1()
