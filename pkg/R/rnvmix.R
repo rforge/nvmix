@@ -33,6 +33,7 @@
 ##'         and rmix() is ignored. For the method "PRNG", either qmix() or rmix()
 ##'         needs to be provided. If both are provided, qmix() is ignored and
 ##'         rmix() is used. 
+##' @param skip numeric integer. How many points should be skipped when method='sobol'?        
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Marius Hofert
@@ -44,7 +45,8 @@
 ##'         + "GIGrvg":  faster if n small and often called with several parameters
 ##'         see examples of 'GIGrvg' for both methods
 rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2),
-                   factor = factorize(scale), method = c("PRNG", "sobol", "ghalton"), ...)
+                   factor = factorize(scale), method = c("PRNG", "sobol", "ghalton"), 
+                   skip = 0, ...)
 {
     ## Checks
     d <- nrow(factor <- as.matrix(factor))
@@ -68,7 +70,7 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
       ## Get low discrepancy pointset
       U <- switch(method,
                   "sobol" = {
-                    qrng::sobol(n, d = d + 1, randomize = TRUE)
+                    qrng::sobol(n, d = d + 1, randomize = TRUE, skip = skip)
                   },
                   "ghalton" = {
                     qrng::ghalton(n, d = d + 1, method = "generalized")

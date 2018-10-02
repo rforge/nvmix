@@ -9,12 +9,13 @@
 }
 \usage{
 rnvmix(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2), 
-       factor = factorize(scale), method = c("PRNG", "sobol", "ghalton"),  ...)
+       factor = factorize(scale), method = c("PRNG", "sobol", "ghalton"),
+       skip = 0, ...)
 
 rStudent(n, df, loc = rep(0, d), scale = diag(2), factor = factorize(scale),
-         method = c("PRNG", "sobol", "ghalton"))
+         method = c("PRNG", "sobol", "ghalton"), skip = 0)
 rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = factorize(scale),
-         method = c("PRNG", "sobol", "ghalton"))
+         method = c("PRNG", "sobol", "ghalton"), skip = 0)
 }
 \arguments{
   \item{n}{sample size \eqn{n} (positive integer).}
@@ -110,6 +111,9 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = factorize(scale),
     provided. If both are provided, \code{rmix} is used and \code{qmix}
     ignored. For the other two methods, sampling is done via inversion, 
     hence \code{qmix} has to be provided and \code{rmix} is ignored. 
+  }
+  \item{skip}{integer, numer of points to be skipped when \code{method='sobol'},
+  see also example below.
   }
   \item{\dots}{additional arguments (e.g., parameters) passed to the
     underlying mixing distribution when \code{mix} is a
@@ -215,6 +219,20 @@ X.mix5 <- rnvmix(n, rmix = W, factor = P)
 stopifnot(all.equal(X.mix2, X.mix1),
           all.equal(X.mix3, X.mix1),
           all.equal(X.mix5, X.mix1))
+
+
+## Example for using 'skip' and method = 'sobol'. 
+## Generate 2n points, once all at once, and then successively.
+## Need to reset the seed before every call to get the same shifts in 'sobol'.
+## Note that when using method = 'sobol', we have to provide 'qmix' instead of 'rmix'.
+set.seed(271)
+X.skip0 <- rnvmix(n, qmix = "inverse.gamma", df = df, scale = P, method = 'sobol') 
+set.seed(271)
+X.skip1 <- rnvmix(n, qmix = "inverse.gamma", df = df, scale = P, method = 'sobol', skip = n) 
+set.seed(271)
+X.withoutskip <- rnvmix(2*n, qmix = "inverse.gamma", df = df, scale = P, method = 'sobol') 
+X.withskip <- rbind(X.skip0, X.skip1)
+stopifnot(all.equal(X.withoutskip, X.withskip))
 
 
 ### Examples for rStudent() and rNorm() ########################################

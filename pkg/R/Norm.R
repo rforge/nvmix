@@ -76,8 +76,8 @@ pNorm <- function(upper, lower = rep(-Inf, d),
 ##' @return (n, d)-matrix with N(loc, scale) samples
 ##' @author Marius Hofert, Erik Hintz
 rNorm <- function(n, loc = rep(0, d), scale = diag(2),
-                  factor = factorize(scale), method = c("PRNG", "sobol", "ghalton")) # needs to be triangular!
+                  factor = factorize(scale), method = c("PRNG", "sobol", "ghalton"), skip = 0) # needs to be triangular!
 {
     d <- nrow(as.matrix(factor))
-    rnvmix(n, qmix = "constant", loc = loc, scale = scale, factor = factor, method = method)
+    rnvmix(n, qmix = "constant", loc = loc, scale = scale, factor = factor, method = method, skip = skip)
 }
