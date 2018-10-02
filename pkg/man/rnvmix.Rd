@@ -221,9 +221,7 @@ stopifnot(all.equal(X.mix2, X.mix1),
           all.equal(X.mix5, X.mix1))
 
 
-## Example for using 'skip' and method = 'sobol'. 
-## Generate 2n points, once all at once, and then successively.
-## Need to reset the seed before every call to get the same shifts in 'sobol'.
+## Using 'skip'. Need to reset the seed everytime to get the same shifts in 'sobol'.
 ## Note that when using method = 'sobol', we have to provide 'qmix' instead of 'rmix'.
 set.seed(271)
 X.skip0 <- rnvmix(n, qmix = "inverse.gamma", df = df, scale = P, method = 'sobol') 
@@ -231,8 +229,8 @@ set.seed(271)
 X.skip1 <- rnvmix(n, qmix = "inverse.gamma", df = df, scale = P, method = 'sobol', skip = n) 
 set.seed(271)
 X.withoutskip <- rnvmix(2*n, qmix = "inverse.gamma", df = df, scale = P, method = 'sobol') 
-X.withskip <- rbind(X.skip0, X.skip1)
-stopifnot(all.equal(X.withoutskip, X.withskip))
+X.skip <- rbind(X.skip0, X.skip1)
+all.equal(X.withoutskip, X.skip)
 
 
 ### Examples for rStudent() and rNorm() ########################################
