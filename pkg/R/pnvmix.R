@@ -452,7 +452,9 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
       scale <- Dinv %*% scale %*% Dinv
     }
     ## Get (lower triangular) Cholesky factor of 'scale'
-    cholScale <- t(chol(scale)) 
+    tryCatch( cholScale <- t(chol(scale)), error = 
+                function(error) stop("'scale' needs to be positive definite.", call. = FALSE))
+    
 
     ## Loop over observations
     reached <- rep(TRUE, n) # indicating whether 'abstol' has been reached in the ith integration bounds (has to have default TRUE!)

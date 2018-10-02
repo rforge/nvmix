@@ -19,7 +19,9 @@ factorize <- function(x, method = c("chol", "chol.pivot", "eigen", "svd"),
     method <- match.arg(method)
     switch(method,
            "chol" = { # for positive definite matrices; typically fastest
-               chol(x, ...)
+               
+             tryCatch( chol(x, ...) , error = 
+                         function(error) stop("'scale' needs to be positive definite.", call. = FALSE))
            },
            "chol.pivot" = { # for positive semidefinite matrices
                ## ... but can result in non-upper triangular factor, see:
