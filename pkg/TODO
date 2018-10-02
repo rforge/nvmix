@@ -5,9 +5,13 @@
 - EH/MH: 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 'mix' ('rmix'?)
          for passing a RNG
          => call other arguments 'mix' 'qmix' instead (check carefully)
-	EH: Will do
+
+	EH: DONE for rnvmix(), has a few more arguments now. (rmix, qmix, method)
+	Should 'mix' in 'pnvmix' and 'dmvmix' be called 'qmix' instead? For consistency?
+
 
 - MH: in dnvmix.Rd, the description of (...) (the ellipsis argument) looks odd - is 		that intended?
+
 
 - EH: Does it make sense to choose the default of fun.eval[2] differently?
       I feel it should be something like 1/abstol, so that if one plays
@@ -16,6 +20,7 @@
       with fun.eval[2] = 1e8, the computations took forever.
 
 	EH: the default is set such that the algorithm terminates with reasonable 		tolerances (0.001, 0.0005, maybe 0.0001). Tolerances beyond that will take 		forever one way or another. 
+
 
 - EH: incorporate the case of a singular scale matrix
       (or at least give better error message)

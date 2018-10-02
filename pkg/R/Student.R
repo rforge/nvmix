@@ -79,8 +79,9 @@ pStudent <- function(upper, lower = rep(-Inf, d),
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Marius Hofert, Erik Hintz
 rStudent <- function(n, df, loc = rep(0, d), scale = diag(2),
-                     factor = factorize(scale)) # needs to be triangular!
+                     factor = factorize(scale), method = c("PRNG", "sobol", "ghalton")) # needs to be triangular!
 {
     d <- nrow(as.matrix(factor))
-    rnvmix(n, mix = "inverse.gamma", loc = loc, scale = scale, factor = factor, df = df)
+    rnvmix(n, qmix = "inverse.gamma", loc = loc, scale = scale, factor = factor, df = df,
+           method = method)
 }
