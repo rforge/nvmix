@@ -1,5 +1,5 @@
 ---
-title: Evaluating Multivariate Normal Mixture Distribution Functions
+title: Functionalities for Multivariate Normal Variance Mixture Distributions
 author: Marius Hofert, Erik Hintz and Christiane Lemieux
 date: '`r Sys.Date()`'
 output:
@@ -16,7 +16,79 @@ doPDF <- FALSE
 ```
 
 
-## 1 Heading
+
+## 0 Introduction
+
+This package provides functionalities for *Multivariate Normal Variance Mixture Distributions*. A random vector $\mathbf{X}=(X_1,\dots,X_d)$ follows a *normal variance
+  mixture*, notation $\mathbf{X}\sim NVM_d(\mathbf{\mu},\Sigma,F_W)$, if, in
+distribution,
+$$  \mathbf{X}=\mathbf{\mu}+\sqrt{W}A\mathbf{Z},$$
+where $\mathbf{\mu}\in\mathbb{R}^d$ denotes the *location (vector)*, $\Sigma=AA^T$ for
+$A\in\mathbb{R}^{d\times k}$ the *scale (matrix)* (a covariance matrix), and
+$W\sim F_W$ is a non-negative random variable independent of
+$\mathbf{Z}\sim N_k(\mathbf{0},I_k)$ (where $I_k\in\mathbb{R}^{k\times k}$ denotes the identity
+matrix); see, for example, \cite[Section~6.2]{mcneilfreyembrechts2015}.
+Note that both, the multivariate Student $t$ distribution with degrees of freedom parameter $\nu>0$ and the multivariate Normal distribution are normal variance mixtures; in the former case, $W\sim IG(\nu/2, \nu/2)$ and in the latter case $W$ is a.s. constant. 
+
+
+For most functions in the package, the 'quantile function' of $W$ needs to be provded; the quantile function
+of $W$ is defined as
+$$ F_W^\leftarrow(u)=\inf\{w\in[0,\infty):F_W(w)\ge u\}. $$
+
+Also, all functions in the package require $\Sigma$ to be positive definite. In this case one can take $A\in\mathbb{R}^{d\times d}$ to be the (lower) Cholesky factor of $\Sigma$. 
+
+
+## 1 Evaluating the CDF
+
+An important but difficult task is to evaluate the cumulative distribution function (cdf) of a normal variance mixture distribution. To this end, the function `pnvmix()` internally approximates a $d$ dimensional integral using a randomized Quasi Monte-Carlo method. Due to the random nature, the result depends (slightly) on `.Random.seed`.
+
+### Two small examples 
+As a first example, consider a normal variance mixture where $W \sim Exp(3)$. We illustrate two approaches to use `pnvmix`:
+```{r}
+## Generate a random correlation matrix and a random upper limit in dimension d=5:
+set.seed(1)
+d <- 5
+A <- matrix(runif(d * d), ncol = d)
+P <- cov2cor(A %*% t(A))
+
+a <- -3 * runif(d) * sqrt(d) # random lower limit
+b <-  3 * runif(d) * sqrt(d) # random upper limit
+
+## Specify rate
+rate <- 3
+
+## Method 1: use R's qexp() function => provide a list for the argument 'mix':
+set.seed(42)
+p1 <- pnvmix(b, lower = a, mix = list("exp", rate = rate), scale = P)
+p1
+
+```
+```{r}
+## Method 2: define quantile function manually:
+## Note that we do not specify rate in the quantile function here, 
+## we can pass it conveniently using the ellipsis
+set.seed(42)
+p2 <- pnvmix(b, lower = a, mix = function(u, lambda) -log(1-u)/lambda, scale = P, 
+             lambda = rate)
+p2
+```
+
+... and we see that the results coincide. If higher precision is desired, this can be accomplished
+by using the argument `abstol` (whose default is 1e-3):
+```{r}
+p3 <- pnvmix(b, lower = a, mix = function(u, lambda) -log(1-u)/lambda, scale = P, 
+              lambda = rate, abstol = 1e-5)
+p3
+```
+
+Of course, the price to pay is that more iterations are needed, which increases run-time. 
+
+
+### The effect of algorithm specific parameters
+
+## 2 Evaluating the PDF
+
+## 3 (Quasi-) Random Number Generation
 
 We start by considering the following setup in the homogeneous case, that is, when
 all marginal distributions are equal.
@@ -31,5 +103,5 @@ plot(1:10, 10:1)
 if(doPDF) dev.off()
 ```
 
-### 1.1 Subheading
+
 

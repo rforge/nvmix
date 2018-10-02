@@ -86,7 +86,7 @@ dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d),
               if(!existsFunction(qmix))
                   stop("No function named '", qmix, "'.")
               function(u)
-                  do.call(qmix, c(u, mix[-1]))
+                  do.call(qmix, append(list(u), mix[-1])) ## EH: Fixed bug here. 
           } else if(is.function(mix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
               function(u)
                   mix(u, ...)

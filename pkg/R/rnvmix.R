@@ -104,7 +104,7 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
           qmix <- paste0("q", distr)
           if(!existsFunction(qmix))
             stop("No function named '", qmix, "'.")
-          do.call(qmix, c(U[,1], qmix[-1]))
+          do.call(qmix, append(list(U[,1]), mix[-1])) ## EH: Fixed bug here. 
         } else if(is.function(qmix)) { # 'qmix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
           qmix(U[,1],...)
         } else stop("'qmix' must be a character string, list, quantile function or n-vector of non-negative random variates.")
