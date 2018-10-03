@@ -102,10 +102,10 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = factorize(scale),
     been reached.}
   \item{\dots}{
     \describe{
-      \item{\code{dnvmix()}:}{additional arguments (e.g., parameters)
+      \item{for \code{dnvmix()}:}{additional arguments (e.g., parameters)
 	passed to the underlying mixing distribution when \code{mix}
 	is a \code{\link{character}} string or \code{\link{function}}.}
-      \item{\code{dStudent()}, \code{dNorm()}:}{additional arguments
+      \item{for \code{dStudent()}, \code{dNorm()}:}{additional arguments
         passed to the underlying \code{dnvmix()}.}
     }
   }
@@ -128,21 +128,21 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = factorize(scale),
 
   The number of rows of \code{factor} are the dimension \eqn{d} of
   the sample. Typically (but not necessarily), \code{factor} is square.
-  
+
   Internally, an iterative randomized Quasi-Monte Carlo approach is used
   to estimate the density. It is an iterative algorithm that evaluates
-  the integrand at a point-set with size as specified by \code{increment}) 
+  the integrand at a point-set with size as specified by \code{increment})
   in each iteration until the pre-specified error tolerance \code{abstol}
-  is reached for both, the density and the log-density. 
-  The attribute \code{"numiter"} gives the number of such 
+  is reached for both, the density and the log-density.
+  The attribute \code{"numiter"} gives the number of such
   iterations needed.
-  
+
   Care should be taken when changing the algorithm-specific parameters,
   notably \code{method}, \code{fun.eval[2]} and \code{B}.
   Error estimates will not be reliable for too small \code{B} and the
   performance of the algorithm depends heavily on the (quasi-)Monte
   Carlo point-set used.
-  
+
   If the absolute error tolerance \code{abstol} cannot be achieved with
   \code{fun.eval[2]} function evaluations, an additional warning will be
   returned.
