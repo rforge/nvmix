@@ -35,7 +35,7 @@ For most functions in the package, the 'quantile function' of $W$ needs to be pr
 of $W$ is defined as
 $$ F_W^\leftarrow(u)=\inf\{w\in[0,\infty):F_W(w)\ge u\}. $$
 
-Also, all functions in the package require $\Sigma$ to be positive definite. In this case one can take $A\in\mathbb{R}^{d\times d}$ to be the (lower) Cholesky factor of $\Sigma$. 
+Also, all functions in the package currently require $\Sigma$ to be positive definite. In this case one can take $A\in\mathbb{R}^{d\times d}$ to be the (lower) Cholesky factor of $\Sigma$. 
 
 
 ## 1 Evaluating the CDF
@@ -43,21 +43,24 @@ Also, all functions in the package require $\Sigma$ to be positive definite. In 
 An important but difficult task is to evaluate the cumulative distribution function (cdf) of a normal variance mixture distribution. To this end, the function `pnvmix()` internally approximates a $d$ dimensional integral using a randomized Quasi Monte-Carlo method. Due to the random nature, the result depends (slightly) on `.Random.seed`.
 
 ### Two small examples 
-As a first example, consider a normal variance mixture where $W \sim Exp(3)$. We illustrate two approaches to use `pnvmix`:
+As a first example, consider a normal variance mixture where $W \sim Exp(3)$. We illustrate two approaches how to use `pnvmix` to approximate $P(\mathbf{a} \leq \mathbf{X} \leq \mathbf{b})$:
+
 ```{r}
-## Generate a random correlation matrix and a random upper limit in dimension d=5:
+## Generate a random correlation matrix and random limits in dimension d=5:
 set.seed(42)
 d <- 5
 A <- matrix(runif(d * d), ncol = d)
 P <- cov2cor(A %*% t(A))
+
 b <-  3 * runif(d) * sqrt(d) # random upper limit
+a <- -3 * runif(d) * sqrt(d) # random lower limit
 
 ## Specify rate
-rate <- 3
+rate <- 1.9
 
 ## Method 1: use R's qexp() function => provide a list for the argument 'mix':
 set.seed(42)
-p1 <- pnvmix(b, mix = list("exp", rate = rate), scale = P)
+p1 <- pnvmix(b, lower = a, mix = list("exp", rate = rate), scale = P)
 p1
 
 ```
@@ -66,36 +69,38 @@ p1
 ## Note that we do not specify rate in the quantile function here, 
 ## we can pass it conveniently using the ellipsis
 set.seed(42)
-p2 <- pnvmix(b, mix = function(u, lambda) -log(1-u)/lambda, scale = P, 
+p2 <- pnvmix(b, lower = a, mix = function(u, lambda) -log(1-u)/lambda, scale = P, 
              lambda = rate)
 p2
 ```
 
 ... and we see that the results coincide. If higher precision is desired, this can be accomplished
-by using the argument `abstol` (whose default is 1e-3):
+by changing the argument `abstol` (whose default is 1e-3):
 ```{r}
-p3 <- pnvmix(b, mix = function(u, lambda) -log(1-u)/lambda, scale = P, 
+p3 <- pnvmix(b, lower = a, mix = function(u, lambda) -log(1-u)/lambda, scale = P, 
               lambda = rate, abstol = 1e-5)
 p3
 ```
 
 Of course, the price to pay is that more iterations are needed, which increases run-time. 
 
-As a next example, consider a normal variance mixture where $W$ is discrete. For instance, let $W$ such that $p_1 :=P(W=1)=0.5$, $p_2:=P(W=2)=0.3$ and $p_{3}:=P(W=3)=0.2$:
+As a next example, consider a normal variance mixture where $W$ is discrete. For instance, let $W$ such that $P(W=1)=0.5$, $P(W=5)=0.1$ and $P(W=10)=0.4$. We use the same parameters as above, but this time, we are interested in the one sided probabability $P( \mathbf{X} \leq \mathbf{b})$:
+
 ```{r}
 
 ## Define quantile function. 
 qW <- function(u){
-  (u <= 0.5) * 1 + ( u > 0.5 & u <= 0.8) * 2 + ( u > 0.8 ) * 3
+  (u <= 0.5) * 1 + ( u > 0.5 & u <= 0.6) * 5 + ( u > 0.6 ) * 10
 }
-## Call pnvmix
+## Call pnvmix; lower defaults to (-Inf,...,-Inf)
 p4 <- pnvmix(b, mix = qW, scale = P)
 p4
 
 ## This could also have been obtained as
-p5 <- 0.5 * pNorm(b, scale = P) + 0.3 * pNorm(b, scale = 2*P) +
-  0.2 * pNorm(b, scale = 3*P)
-## but this calls pNorm (and hence pnvmix()) three times, hence takes much longer. 
+p5 <- 0.5 * pNorm(b, scale = P) + 0.1 * pNorm(b, scale = 5*P) +
+  0.4 * pNorm(b, scale = 10*P)
+## but this calls pNorm (and hence pnvmix()) three times, hence takes much longer 
+## (especially in higher dimensions). 
 as.numeric(p5)
 ```
 
@@ -180,10 +185,6 @@ The above plot is done on $\log-\log$ scale; the numbers in the legend are the r
 ## 2 Evaluating the PDF
 
 ## 3 (Quasi-) Random Number Generation
-
-We start by considering the following setup in the homogeneous case, that is, when
-all marginal distributions are equal.
-
 
 
 
