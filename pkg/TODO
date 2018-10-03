@@ -5,7 +5,9 @@
 
 - MH: in dnvmix.Rd, the description of (...) (the ellipsis argument) looks odd - is 		that intended?
 - Write vignette nvmix_functionality.Rmd
-	EH: I'm on it. 
+	EH: I'm on it :)
+
+- EH: References in the manuals/vignette? Maybe the three publications of Genz and Bretz as well as the "normal people"?
 
 ## To be discussed:
 
@@ -40,6 +42,7 @@
 	EH: Will do. variance can be computed from error; numiter (or equivalently, total 	function evaluations) should just give an idea of how long it took to converge
 - DONE	EH: ?pnvmix describes 'precond'; can you add half a sentence
   	describing the idea behind the preconditioning, please?
+
 
 
 ### TODO #######################################################################
