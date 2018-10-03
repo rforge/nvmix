@@ -2,7 +2,7 @@
 
 ##' @title Density of a Multivariate Normal Variance Mixture
 ##' @param x (n, d)-matrix of evaluation points
-##' @param mix specification of the (mixture) distribution of W. This can be:
+##' @param qmix specification of the (mixture) distribution of W. This can be:
 ##'        1) a character string specifying a supported distribution (additional
 ##'           arguments of this distribution are passed via '...').
 ##'        2) a list of length at least one; the first argument specifies
@@ -37,7 +37,7 @@
 ##' @return n-vector with computed density values and attributes 'error'
 ##'         (error estimate) and 'numiter' (number of while-loop iterations)
 ##' @author Erik Hintz and Marius Hofert
-dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d), 
+dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d), 
                    factor = factorize(scale), # needs to be upper triangular!
                    method = c("sobol", "ghalton", "PRNG"),
                    abstol = 0.001, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
@@ -47,7 +47,7 @@ dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d),
     if(!is.matrix(x)) x <- rbind(x)
     d <- ncol(x) # dimension
     if(!is.matrix(scale)) scale <- as.matrix(scale)
-    stopifnot(length(loc) == d, dim(scale) == c(d, d), # note: 'mix' is tested later
+    stopifnot(length(loc) == d, dim(scale) == c(d, d), # note: 'qmix' is tested later
               abstol >= 0, CI.factor >= 0, length(fun.eval) == 2, fun.eval >= 0, B >= 1,
               is.logical(log))
     method <- match.arg(method)
@@ -56,16 +56,16 @@ dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d),
     ## If 'mix' is "constant" or "inverse.gamma", we use the analytical formulas
     const <- FALSE # logical indicating whether we have a multivariate normal
     inv.gam <- FALSE # logical indicating whether we have a multivariate t
-    qW <- if(is.character(mix)) { # 'mix' is a character vector specifying supported mixture distributions (utilizing '...')
-              mix <- match.arg(mix, choices = c("constant", "inverse.gamma"))
-              switch(mix,
+    qW <- if(is.character(qmix)) { # 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
+              qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
+              switch(qmix,
                      "constant" = {
                          const <- TRUE
                          function(u) 1
                      },
                      "inverse.gamma" = {
                          if(hasArg(df)) df <- list(...)$df else
-                                                               stop("'mix = \"inverse.gamma\"' requires 'df' to be provided.")
+                                                               stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
                          ## Still allow df = Inf (normal distribution)
                          stopifnot(is.numeric(df), length(df) == 1, df > 0)
                          if(is.finite(df)) {
@@ -79,18 +79,18 @@ dnvmix <- function(x, mix, loc = rep(0, d), scale = diag(d),
                              function(u) 1
                          }
                      },
-                     stop("Currently unsupported 'mix'"))
-          } else if(is.list(mix)) { # 'mix' is a list of the form (<character string>, <parameters>)
-              stopifnot(length(mix) >= 1, is.character(distr <- mix[[1]]))
-              qmix <- paste0("q", distr)
-              if(!existsFunction(qmix))
-                  stop("No function named '", qmix, "'.")
+                     stop("Currently unsupported 'qmix'"))
+          } else if(is.list(qmix)) { # 'mix' is a list of the form (<character string>, <parameters>)
+              stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
+              qmix. <- paste0("q", distr)
+              if(!existsFunction(qmix.))
+                  stop("No function named '", qmix., "'.")
               function(u)
-                  do.call(qmix, append(list(u), mix[-1])) ## EH: Fixed bug here. 
-          } else if(is.function(mix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
+                  do.call(qmix., append(list(u), qmix[-1])) ## EH: Fixed bug here. 
+          } else if(is.function(qmix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
               function(u)
-                  mix(u, ...)
-          } else stop("'mix' must be a character string, list or quantile function.")
+                  qmix(u, ...)
+          } else stop("'qmix' must be a character string, list or quantile function.")
 
     ## Build result object (log-density)
     n <- nrow(x)

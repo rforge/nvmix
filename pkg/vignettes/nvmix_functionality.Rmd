@@ -38,9 +38,9 @@ $$ F_W^\leftarrow(u)=\inf\{w\in[0,\infty):F_W(w)\ge u\}. $$
 Also, all functions in the package currently require $\Sigma$ to be positive definite. In this case one can take $A\in\mathbb{R}^{d\times d}$ to be the (lower) Cholesky factor of $\Sigma$. 
 
 
-## 1 Evaluating the CDF
+## 1 Evaluating the Distribution function 
 
-An important but difficult task is to evaluate the cumulative distribution function (cdf) of a normal variance mixture distribution. To this end, the function `pnvmix()` internally approximates a $d$ dimensional integral using a randomized Quasi Monte-Carlo method. Due to the random nature, the result depends (slightly) on `.Random.seed`.
+An important but difficult task is to evaluate the (cumulative) distribution function of a normal variance mixture distribution. To this end, the function `pnvmix()` internally approximates a $d$ dimensional integral using a randomized Quasi Monte-Carlo method. Due to the random nature, the result depends (slightly) on `.Random.seed`.
 
 ### Two small examples 
 As a first example, consider a normal variance mixture where $W \sim Exp(3)$. We illustrate two approaches how to use `pnvmix` to approximate $P(\mathbf{a} \leq \mathbf{X} \leq \mathbf{b})$:
@@ -60,26 +60,23 @@ rate <- 1.9
 
 ## Method 1: use R's qexp() function => provide a list for the argument 'mix':
 set.seed(42)
-p1 <- pnvmix(b, lower = a, mix = list("exp", rate = rate), scale = P)
-p1
+(p1 <- pnvmix(b, lower = a, qmix = list("exp", rate = rate), scale = P))
 
-```
-```{r}
 ## Method 2: define quantile function manually:
-## Note that we do not specify rate in the quantile function here, 
+## Note that we do not specify rate in the quantile function here,
 ## we can pass it conveniently using the ellipsis
 set.seed(42)
-p2 <- pnvmix(b, lower = a, mix = function(u, lambda) -log(1-u)/lambda, scale = P, 
-             lambda = rate)
-p2
+(p2 <- pnvmix(b, lower = a, qmix = function(u, lambda) -log(1-u)/lambda, scale = P,
+             lambda = rate))
+
+stopifnot(all.equal(p1, p2))
 ```
 
 ... and we see that the results coincide. If higher precision is desired, this can be accomplished
 by changing the argument `abstol` (whose default is 1e-3):
 ```{r}
-p3 <- pnvmix(b, lower = a, mix = function(u, lambda) -log(1-u)/lambda, scale = P, 
-              lambda = rate, abstol = 1e-5)
-p3
+pnvmix(b, lower = a, qmix = function(u, lambda) -log(1-u)/lambda, scale = P,
+       lambda = rate, abstol = 1e-5)
 ```
 
 Of course, the price to pay is that more iterations are needed, which increases run-time. 
@@ -88,29 +85,28 @@ As a next example, consider a normal variance mixture where $W$ is discrete. For
 
 ```{r}
 
-## Define quantile function. 
-qW <- function(u){
+## Define quantile function.
+qW <- function(u)
   (u <= 0.5) * 1 + ( u > 0.5 & u <= 0.6) * 5 + ( u > 0.6 ) * 10
-}
+
 ## Call pnvmix; lower defaults to (-Inf,...,-Inf)
-p4 <- pnvmix(b, mix = qW, scale = P)
-p4
+pnvmix(b, qmix = qW, scale = P)
+
 
 ## This could also have been obtained as
-p5 <- 0.5 * pNorm(b, scale = P) + 0.1 * pNorm(b, scale = 5*P) +
-  0.4 * pNorm(b, scale = 10*P)
-## but this calls pNorm (and hence pnvmix()) three times, hence takes much longer 
-## (especially in higher dimensions). 
-as.numeric(p5)
+as.numeric( 0.5 * pNorm(b, scale = P) + 0.1 * pNorm(b, scale = 5*P) +
+  0.4 * pNorm(b, scale = 10*P) )
+## but this calls pNorm (and hence pnvmix()) three times, hence takes much longer
+## (especially in higher dimensions).
 ```
 
-### The wrappers `pNorm()` and `pStudent()`
+### The Wrappers `pNorm()` and `pStudent()`
 
 As mentioned, the normal distribution as well as the $t$ distribution are important special cases of normal variance 
 mixture models. For these two cases, `pnorm()` and `pStudent` are user-friendly wrappers. Note that `pStudent` works for any degree of freedom parameter $\nu>0$ (not necessarily integer) - this functionality was to the best of our knowledge not available in `R` at the time of development of this package. 
 
 
-### The effect of algorithm specific parameters
+### The Effect of Algorithm Specific Parameters
 
 The function `pnvmix` (and hence also the wrappers `pStudent` and `pNorm`) give the user the possibility to change algorithm specific parameters. A few of them are:
 
@@ -124,40 +120,44 @@ We set `abstol = NULL` so that the algorithm runs until the number of function e
 
 ```{r, fig.align = "center", fig.width = 6, fig.height = 6, fig.show = "hold", warning=FALSE}
 if(doPDF) pdf(file = (file <- paste0("fig_.pdf")), width = 7, height = 7)
-maxiter <- 10
-max.fun.evals <- 3 * 2^8 * 2^seq(from = 1, to = maxiter, by = 1)
+
+## i iterations require 3 * 2^8 * 2^i function evaluations 
+maxiter <- 9
+max.fun.evals <- 3 * 2^8 * 2^seq(from = 1, to = maxiter, by = 1) 
 
 errors <- matrix(NA, ncol = length(max.fun.evals), nrow = 4)
 
 for(i in seq_along(max.fun.evals)){
   N.max <- max.fun.evals[i]
+  ## Get the corresponding errors. We set 'verbose = 0' to avoid warnings,
+  ## that will inevitably occur, since we set 'abstol = NULL'
   
-  # Sobol with preconditioning:
+  ## Sobol with preconditioning:
   set.seed(42)
-  errors[1,i] <- attr( pnvmix(b, mix = "inverse.gamma", scale = P,  df = 0.9,
-                              method = "sobol", precond = TRUE, abstol = NULL, 
-                              fun.eval = c(2^6, N.max)), "error")
-  # Sobol without preconditioning:
+  errors[1,i] <- attr( pnvmix(b, qmix = "inverse.gamma", scale = P,  df = 0.9,
+                              method = "sobol", precond = TRUE, abstol = NULL,
+                              fun.eval = c(2^6, N.max), verbose = FALSE), "error")
+  ## Sobol without preconditioning:
   set.seed(42)
-  errors[2,i] <- attr( pnvmix(b, mix = "inverse.gamma", scale = P,  df = 0.9,
-                              method = "sobol", precond = FALSE, abstol = NULL, 
-                              fun.eval = c(2^6, N.max)), "error")
-  # PRNG with preconditioning:
+  errors[2,i] <- attr( pnvmix(b, qmix = "inverse.gamma", scale = P,  df = 0.9,
+                              method = "sobol", precond = FALSE, abstol = NULL,
+                              fun.eval = c(2^6, N.max), verbose = FALSE), "error")
+  ## PRNG with preconditioning:
   set.seed(42)
-  errors[3,i] <- attr( pnvmix(b, mix = "inverse.gamma", scale = P,  df = 0.9,
-                              method = "PRNG", precond = TRUE, abstol = NULL, 
-                              fun.eval = c(2^6, N.max)), "error")
-  # PRNG without preconditioning:
+  errors[3,i] <- attr( pnvmix(b, qmix = "inverse.gamma", scale = P,  df = 0.9,
+                              method = "PRNG", precond = TRUE, abstol = NULL,
+                              fun.eval = c(2^6, N.max), verbose = FALSE), "error")
+  ## PRNG without preconditioning:
   set.seed(42)
-  errors[4,i] <- attr( pnvmix(b, mix = "inverse.gamma", scale = P,  df = 0.9,
-                              method = "PRNG", precond = FALSE, abstol = NULL, 
-                              fun.eval = c(2^6, N.max)), "error")
-  
+  errors[4,i] <- attr( pnvmix(b, qmix = "inverse.gamma", scale = P,  df = 0.9,
+                              method = "PRNG", precond = FALSE, abstol = NULL,
+                              fun.eval = c(2^6, N.max), verbose = FALSE), "error")
+
 }
 
-plot( max.fun.evals, errors[4,], type = "l", col = "blue", log = "xy", 
-      ylim= c( min(errors), max(errors)), ylab = "Estimated Error", 
-      xlab = "Nb. of function evaluations")
+plot( max.fun.evals, errors[4,], type = "l", col = "blue", log = "xy",
+      ylim= c( min(errors), max(errors)), ylab = "Estimated Error",
+      xlab = "Number of function evaluations")
 coeff = as.numeric(lm(log(errors[4,]) ~ log(max.fun.evals))$coeff[2])
 name1 <- paste("PRNG w.o. precond.,",toString(round(coeff,2)))
 
@@ -173,16 +173,17 @@ lines(max.fun.evals, errors[1,], col = "black")
 coeff = as.numeric(lm(log(errors[2,]) ~ log(max.fun.evals))$coeff[2])
 name4 <- paste("Sobol with precond.,",toString(round(coeff,2)))
 
-legend('topright', c(name1,name2,name3,name4), 
+legend('topright', c(name1,name2,name3,name4),
        col = c("blue","red","green","black"), lty = rep(1,4),
        bty="n")
+
 if(doPDF) dev.off()
 ```
 
 The above plot is done on $\log-\log$ scale; the numbers in the legend are the regression coefficients. We can see that in this example that Sobol clearly outperforms PRNG and that the preconditioning helps significantly reduce the error. 
 
 
-## 2 Evaluating the PDF
+## 2 Evaluating the Density Function 
 
 ## 3 (Quasi-) Random Number Generation
 

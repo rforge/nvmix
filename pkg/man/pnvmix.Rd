@@ -8,7 +8,7 @@
   (including Student \emph{t} and normal distributions).
 }
 \usage{
-pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sqrt.mix = NULL,
+pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, mean.sqrt.mix = NULL,
        loc = rep(0, d), scale = diag(d), standardized = FALSE,
        method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
        abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
@@ -31,7 +31,7 @@ pNorm(upper, lower = rep(-Inf, d),
   \item{lower}{\eqn{(n, d)}-\code{\link{matrix}} of lower integration limits
     (componentwise less than or equal to \code{upper});
     each row represents a \eqn{d}-vector of lower integration limits.}
-  \item{mix}{specification of the mixing variable \eqn{W}; see McNeil et
+  \item{qmix}{specification of the mixing variable \eqn{W}; see McNeil et
     al. (2015, Chapter 6). Supported are the following types of
     specification (see also the examples below):
     \describe{
@@ -124,7 +124,7 @@ pNorm(upper, lower = rep(-Inf, d),
     for producing a more verbose warning (for each set of provided
     integration bounds).}
   \item{\dots}{additional arguments (e.g., parameters) passed to the
-    underlying mixing distribution when \code{mix} is a
+    underlying mixing distribution when \code{qmix} is a
     \code{\link{character}} string or \code{\link{function}}.}
 }
 \value{
@@ -162,8 +162,8 @@ pNorm(upper, lower = rep(-Inf, d),
   returned.
 
   \code{pStudent()} and \code{pNorm()} are wrappers of
-  \code{pnvmix(, mix = "inverse.gamma", df = df)} and
-  \code{pnvmix(, mix = "constant")}, respectively.
+  \code{pnvmix(, qmix = "inverse.gamma", df = df)} and
+  \code{pnvmix(, qmix = "constant")}, respectively.
   In the univariate case, the functions
   \code{\link{pt}()} and \code{\link{pnorm}()} are used.
 }
@@ -190,13 +190,13 @@ a <- -3 * runif(d) * sqrt(d) # random lower limit
 b <-  3 * runif(d) * sqrt(d) # random upper limit
 df <- 0.5 # note that this is *non-integer*
 set.seed(1)
-pt1 <- pnvmix(b, lower = a, mix = "inverse.gamma", df = df, scale = P)
+pt1 <- pnvmix(b, lower = a, qmix = "inverse.gamma", df = df, scale = P)
 
 ## Here is a version providing the quantile function of the mixing distribution
 qW <- function(u, df) 1 / qgamma(u, shape = df/2, rate = df/2)
 mean.sqrt.mix <- sqrt(df) * gamma(df/2) / (sqrt(2) * gamma((df+1) / 2))
 set.seed(1)
-pt2 <- pnvmix(b, lower = a, mix = qW, mean.sqrt.mix = mean.sqrt.mix, df  = df,
+pt2 <- pnvmix(b, lower = a, qmix = qW, mean.sqrt.mix = mean.sqrt.mix, df  = df,
               scale = P)
 
 ## Compare
@@ -205,7 +205,7 @@ stopifnot(all.equal(pt1, pt2, tol = 7e-4, check.attributes = FALSE))
 ## mean.sqrt.mix will be approximated by QMC internally if not provided,
 ## so the results will differ slightly.
 set.seed(1)
-pt3 <- pnvmix(b, lower = a, mix = qW, df = df, scale = P)
+pt3 <- pnvmix(b, lower = a, qmix = qW, df = df, scale = P)
 stopifnot(all.equal(pt3, pt1, tol = 7e-4, check.attributes = FALSE))
 
 ## Case with missing data and a matrix of lower and upper bounds
@@ -213,7 +213,7 @@ a. <- matrix(rep(a, each = 4), ncol = d)
 b. <- matrix(rep(b, each = 4), ncol = d)
 a.[2,1] <- NA
 b.[3,2] <- NA
-pt <- pnvmix(b., lower = a., mix = "inverse.gamma", df = df, scale = P)
+pt <- pnvmix(b., lower = a., qmix = "inverse.gamma", df = df, scale = P)
 stopifnot(is.na(pt) == c(FALSE, TRUE, TRUE, FALSE))
 
 

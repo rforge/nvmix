@@ -1,5 +1,6 @@
 ### For next release ###########################################################
 
+
 ## Important
 
 - Write vignette nvmix_functionality.Rmd
@@ -14,6 +15,10 @@
 
 	EH: pnvmix(), rnvmix() and dnvmix() now return an error if the cholesky 		composition via chol(...) fails (I used tryCatch to have a nicer error).
 	I noticed that dnvmix() is supposed to return Inf if x = loc and scale does not 	have full rank. dnvmix() never did that because the execution was stopped when 		scale was not positive definite. It still stops (I put tryCatch also in 		factorize()). If the matrix doesn't have full rank, the density just does not 		exist and I think returning Inf/... is misleading - thoughts?
+
+
+
+
 - EH: Does it make sense to choose the default of fun.eval[2] differently?
       I feel it should be something like 1/abstol, so that if one plays
       with abstol, one has a reasonable chance not having to modify
@@ -21,14 +26,13 @@
       with fun.eval[2] = 1e8, the computations took forever.
 
 	EH: the default is set such that the algorithm terminates with reasonable 		tolerances (0.001, 0.0005, maybe 0.0001). Tolerances beyond that will take 		forever one way or another.
-- EH/MH: 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 	'mix' ('rmix'?)
+	My suggestion: Leave it for now, 
+
+
+- DONE	EH: 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 	'mix' ('rmix'?)
          for passing a RNG
-         => call other arguments 'mix' 'qmix' instead (check carefully)
-
-	EH: DONE for rnvmix(), has a few more arguments now. (rmix, qmix, method, skip)
-	Should 'mix' in 'pnvmix' and 'dmvmix' be called 'qmix' instead? For consistency?
-
-
+         => call other arguments 'mix' 'qmix' instead (check carefully).
+	dnvmix() and pnvmix() have 'qmix' (rather than 'mix') now; rnvmix() has both, 	'qmix' and 'rmix'
 - DONE  EH: rnvmix() should have 'skip' if method = 'sobol'
 - DONE  EH: renaming etc in dnvmix() similar to pnvmix()
 - DONE	EH: TODOs inside pnvmix()

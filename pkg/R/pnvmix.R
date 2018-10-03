@@ -108,7 +108,7 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture for a Single Observation
 ##' @param upper
 ##' @param lower
-##' @param mix
+##' @param qmix
 ##' @param mean.sqrt.mix
 ##' @param loc
 ##' @param scale
@@ -127,7 +127,7 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##'         - numiter: number of iterations needed
 ##' @note 'standardized' not needed anymore; that is being taken care of in pnvmix()        
 ##' @author Erik Hintz and Marius Hofert
-pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
+pnvmix1 <- function(upper, lower = rep(-Inf, d), qmix, mean.sqrt.mix = NULL,
                     loc = rep(0, d), scale = diag(d), cholScale = NULL, 
                     method = c("sobol", "ghalton", "PRNG"), precond = TRUE, 
                     abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), 
@@ -142,9 +142,9 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
     ## Define the quantile function of the mixing variable
     const <- FALSE # logical indicating whether we have a multivariate normal
     inv.gam <- FALSE # logical indicating whether we have a multivariate t
-    qW <- if(is.character(mix)) { # 'mix' is a character vector specifying supported mixture distributions (utilizing '...')
-              mix <- match.arg(mix, choices = c("constant", "inverse.gamma"))
-              switch(mix,
+    qW <- if(is.character(qmix)) { # 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
+              qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
+              switch(qmix,
                      "constant" = {
                          const <- TRUE
                          function(u) 1
@@ -153,7 +153,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
                          if(hasArg(df)) {
                              df <- list(...)$df
                          } else {
-                             stop("'mix = \"inverse.gamma\"' requires 'df' to be provided.")
+                             stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
                          }
                          ## Still allow df = Inf (normal distribution)
                          stopifnot(is.numeric(df), length(df) == 1, df > 0)
@@ -168,18 +168,18 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
                              function(u) 1
                          }
                      },
-                     stop("Currently unsupported 'mix'"))
-          } else if(is.list(mix)) { # 'mix' is a list of the form (<character string>, <parameters>)
-              stopifnot(length(mix) >= 1, is.character(distr <- mix[[1]]))
-              qmix <- paste0("q", distr)
-              if(!existsFunction(qmix))
-                  stop("No function named '", qmix, "'.")
+                     stop("Currently unsupported 'qmix'"))
+          } else if(is.list(qmix)) { # 'qmix' is a list of the form (<character string>, <parameters>)
+              stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
+              qmix. <- paste0("q", distr)
+              if(!existsFunction(qmix.))
+                  stop("No function named '", qmix., "'.")
               function(u)
-                do.call(qmix, append(list(u), mix[-1])) 
-          } else if(is.function(mix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
+                do.call(qmix., append(list(u), qmix[-1])) 
+          } else if(is.function(qmix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
               function(u)
-                  mix(u, ...)
-          } else stop("'mix' must be a character string, list or quantile function.")
+                  qmix(u, ...)
+          } else stop("'qmix' must be a character string, list or quantile function.")
 
     ## If d = 1, deal with multivariate normal or t via pnorm() and pt()
     if(d == 1){
@@ -373,7 +373,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture
 ##' @param upper d-vector of upper evaluation limits
 ##' @param lower d-vector of lower evaluation limits (<= upper)
-##' @param mix specification of the (mixture) distribution of W. This can be:
+##' @param qmix specification of the (mixture) distribution of W. This can be:
 ##'        1) a character string specifying a supported distribution (additional
 ##'           arguments of this distribution are passed via '...').
 ##'        2) a list of length at least one; the first argument specifies
@@ -418,7 +418,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return TODO
 ##' @author Erik Hintz and Marius Hofert
-pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sqrt.mix = NULL,
+pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, mean.sqrt.mix = NULL,
                    loc = rep(0, d), scale = diag(d), standardized = FALSE,
                    method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
                    abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
@@ -506,7 +506,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
         ## Compute result for ith row of lower and upper (in essence,
         ## because of the preconditioning, one has to treat each such
         ## row separately)
-        res1[[i]] <- pnvmix1(up, lower = low, mix = mix, mean.sqrt.mix = NULL,
+        res1[[i]] <- pnvmix1(up, lower = low, qmix = qmix, mean.sqrt.mix = mean.sqrt.mix,
                              loc = loc, scale = scale, cholScale = cholScaleFin,
                              method = method, precond = precond, abstol = abstol,
                              CI.factor = CI.factor, fun.eval = fun.eval, 

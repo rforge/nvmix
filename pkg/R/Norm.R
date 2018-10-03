@@ -19,7 +19,7 @@ dNorm <- function(x, loc = rep(0, d), scale = diag(d),
 {
     if(!is.matrix(x)) x <- rbind(x)
     d <- ncol(x)
-    dnvmix(x, mix = "constant", loc = loc, scale = scale,
+    dnvmix(x, qmix = "constant", loc = loc, scale = scale,
            factor = factor, log = log, verbose = verbose, ...)
 }
 
@@ -60,7 +60,7 @@ pNorm <- function(upper, lower = rep(-Inf, d),
                   verbose = TRUE)
 {
     d <- length(upper)
-    pnvmix(upper, lower = lower, mix = "constant", loc = loc, scale = scale,
+    pnvmix(upper, lower = lower, qmix = "constant", loc = loc, scale = scale,
            standardized = standardized, method = method, precond = precond,
            abstol = abstol, CI.factor = CI.factor, fun.eval = fun.eval, B = B,
            verbose = verbose)

@@ -8,7 +8,7 @@
   (including Student \emph{t} and normal densities).
 }
 \usage{
-dnvmix(x, mix, loc = rep(0, d), scale = diag(d),
+dnvmix(x, qmix, loc = rep(0, d), scale = diag(d),
        factor = factorize(scale), method = c("sobol", "ghalton", "PRNG"),
        abstol = 0.001, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
        log = FALSE, verbose = TRUE, ...)
@@ -20,7 +20,7 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = factorize(scale),
 }
 \arguments{
   \item{x}{\eqn{(n, d)}-\code{\link{matrix}} of evaluation points.}
-  \item{mix}{specification of the mixing variable \eqn{W}; see McNeil et
+  \item{qmix}{specification of the mixing variable \eqn{W}; see McNeil et
     al. (2015, Chapter 6). Supported are the following types of
     specification (see also the examples below):
     \describe{
@@ -103,7 +103,7 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = factorize(scale),
   \item{\dots}{
     \describe{
       \item{for \code{dnvmix()}:}{additional arguments (e.g., parameters)
-	passed to the underlying mixing distribution when \code{mix}
+	passed to the underlying mixing distribution when \code{qmix}
 	is a \code{\link{character}} string or \code{\link{function}}.}
       \item{for \code{dStudent()}, \code{dNorm()}:}{additional arguments
         passed to the underlying \code{dnvmix()}.}
@@ -148,8 +148,8 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = factorize(scale),
   returned.
 
   \code{dStudent()} and \code{dNorm()} are wrappers of
-  \code{dnvmix(, mix = "inverse.gamma", df = df)} and
-  \code{dnvmix(, mix = "constant")}, respectively.
+  \code{dnvmix(, qmix = "inverse.gamma", df = df)} and
+  \code{dnvmix(, qmix = "constant")}, respectively.
   In these cases, \code{dnvmix()} uses the closed formulas for the
   density of a multivariate Student \emph{t} and normal distribution,
   respectively.
@@ -175,19 +175,19 @@ P <- cov2cor(A \%*\% t(A))
 ## Evaluate a t_{3.5} density
 df <- 3.5
 x <- matrix(1:12/12, ncol = d) # evaluation points
-dt1 <- dnvmix(x, mix = "inverse.gamma", df = df, scale = P)
+dt1 <- dnvmix(x, qmix = "inverse.gamma", df = df, scale = P)
 stopifnot(all.equal(dt1, c(0.013266542, 0.011967156, 0.010760575, 0.009648682),
                     tol = 1e-7, check.attributes = FALSE))
 
 ## Here is a version providing the quantile function of the mixing distribution
 qW <- function(u, df) 1 / qgamma(u, shape = df/2, rate = df/2)
-dt2 <- dnvmix(x, mix = qW, df = df, scale = P)
+dt2 <- dnvmix(x, qmix = qW, df = df, scale = P)
 
 ## Compare
 stopifnot(all.equal(dt1, dt2, tol = 5e-4, check.attributes = FALSE))
 
 ## Evaluate a normal density
-dn <- dnvmix(x, mix = "constant", scale = P)
+dn <- dnvmix(x, qmix = "constant", scale = P)
 stopifnot(all.equal(dn, c(0.013083858, 0.011141923, 0.009389987, 0.007831596),
                     tol = 1e-7, check.attributes = FALSE))
 
@@ -195,12 +195,12 @@ stopifnot(all.equal(dn, c(0.013083858, 0.011141923, 0.009389987, 0.007831596),
 x. <- x
 x.[3,2] <- NA
 x.[4,3] <- NA
-dt <- dnvmix(x., mix = "inverse.gamma", df = df, scale = P)
+dt <- dnvmix(x., qmix = "inverse.gamma", df = df, scale = P)
 stopifnot(is.na(dt) == rep(c(FALSE, TRUE), each = 2))
 
 ## Univariate case
 x.. <- cbind(1:10/10) # (n = 10, 1)-matrix; note: vectors are taken as rows in dnvmix()
-dt1 <- dnvmix(x.., mix = "inverse.gamma", df = df, factor = 1)
+dt1 <- dnvmix(x.., qmix = "inverse.gamma", df = df, factor = 1)
 dt2 <- dt(as.vector(x..), df = df)
 stopifnot(all.equal(dt1, dt2, check.attributes = FALSE))
 
