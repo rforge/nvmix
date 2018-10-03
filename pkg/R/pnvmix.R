@@ -275,7 +275,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
                                  "ghalton" = {
                                      qrng::ghalton(n = current.n, d = d - 1, method = "generalized")
                                  },
-                                 "prng"    = {
+                                 "PRNG"    = {
                                      matrix(runif( current.n * (d - 1)), ncol = d - 1)
                                  })
                      ## First and last column contain 1s corresponding to "simulated" values from sqrt(mix)
@@ -292,7 +292,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), mix, mean.sqrt.mix = NULL,
                                  "ghalton" = {
                                      qrng::ghalton(n = current.n, d = d, method = "generalized")
                                  },
-                                 "prng"    = {
+                                 "PRNG"    = {
                                      matrix(runif( current.n * d), ncol = d)
                                  })
 
@@ -426,9 +426,10 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), mix, mean.sq
 {
     ## Checks
     if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
-    if(!is.matrix(lower)) lower <- rbind(lower) # 1-row matrix if lower is a vector
-    n <- nrow(upper) # number of evaluation points
+    n <- nrow(upper) # number of evaluation points  #EH: Fixed bug. (n,d) needs to be defined before lower is used.
     d <- ncol(upper) # dimension
+    if(!is.matrix(lower)) lower <- rbind(lower) # 1-row matrix if lower is a vector
+    
     if(!is.matrix(scale)) scale <- as.matrix(scale)
     stopifnot(dim(lower) == c(n, d), length(loc) == d, # note: 'mean.sqrt.mix' is tested in pnvmix1()
               dim(scale) == c(d, d), is.logical(standardized), is.logical(precond),
