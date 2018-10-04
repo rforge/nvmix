@@ -106,9 +106,11 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 }
 
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture for a Single Observation
+##' @note Internal function being called by pnvmix. Unless stated otherwise, the arguments are the same
+##'        as in pnvmix().  
 ##' @param upper
 ##' @param lower
-##' @param qmix
+##' @param qW quantile function of W. This has already been built and 'checked' in pnvmix()
 ##' @param mean.sqrt.mix
 ##' @param loc
 ##' @param scale
@@ -118,7 +120,8 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##' @param abstol
 ##' @param CI.factor
 ##' @param fun.eval
-##' @param increment TODO: document
+##' @param increment 
+##' @param const logical, TRUE if qW is constant (=> dealing with normal dist'n)
 ##' @param B
 ##' @param ...
 ##' @return list of length 3:
@@ -127,71 +130,19 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##'         - numiter: number of iterations needed
 ##' @note 'standardized' not needed anymore; that is being taken care of in pnvmix()        
 ##' @author Erik Hintz and Marius Hofert
-pnvmix1 <- function(upper, lower = rep(-Inf, d), qmix, mean.sqrt.mix = NULL,
+pnvmix1 <- function(upper, lower = rep(-Inf, d), qW, mean.sqrt.mix = NULL,
                     loc = rep(0, d), scale = diag(d), cholScale = NULL, 
                     method = c("sobol", "ghalton", "PRNG"), precond = TRUE, 
                     abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), 
-                    increment = c("doubling", "num.init"), B = 12, ...)
+                    increment = c("doubling", "num.init"), B = 12, 
+                    const = FALSE, ...)
 {
-    ## (Only) basic check; most checking was done in pnvmix()
+  
+    ## (Only) basic check; most checking  and building was done in pnvmix()
     d <- length(upper)
     stopifnot(length(lower) == d)
     if(any(lower == upper))
         return(list(value = 0, error = 0, numiter = 0))
-
-    ## Define the quantile function of the mixing variable
-    const <- FALSE # logical indicating whether we have a multivariate normal
-    inv.gam <- FALSE # logical indicating whether we have a multivariate t
-    qW <- if(is.character(qmix)) { # 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
-              qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
-              switch(qmix,
-                     "constant" = {
-                         const <- TRUE
-                         function(u) 1
-                     },
-                     "inverse.gamma" = {
-                         if(hasArg(df)) {
-                             df <- list(...)$df
-                         } else {
-                             stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
-                         }
-                         ## Still allow df = Inf (normal distribution)
-                         stopifnot(is.numeric(df), length(df) == 1, df > 0)
-                         if(is.finite(df)) {
-                             inv.gam <- TRUE
-                             df2 <- df / 2
-                             mean.sqrt.mix <- sqrt(df) * gamma(df2) / ( sqrt(2) * gamma( (df+1) / 2 ) ) # used for preconditioning
-                             function(u) 1 / qgamma(u, shape = df2, rate = df2)
-                         } else {
-                             const <- TRUE
-                             mean.sqrt.mix <- 1 # used for preconditioning
-                             function(u) 1
-                         }
-                     },
-                     stop("Currently unsupported 'qmix'"))
-          } else if(is.list(qmix)) { # 'qmix' is a list of the form (<character string>, <parameters>)
-              stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
-              qmix. <- paste0("q", distr)
-              if(!existsFunction(qmix.))
-                  stop("No function named '", qmix., "'.")
-              function(u)
-                do.call(qmix., append(list(u), qmix[-1])) 
-          } else if(is.function(qmix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
-              function(u)
-                  qmix(u, ...)
-          } else stop("'qmix' must be a character string, list or quantile function.")
-
-    ## If d = 1, deal with multivariate normal or t via pnorm() and pt()
-    if(d == 1){
-        if(const){
-            value <- pnorm(upper) - pnorm(lower)
-            return(list(value = value, error = 0, numiter = 0))
-        }
-        if(inv.gam){
-            value <- pt(upper, df = df) - pt(lower, df = df)
-            return(list(value = value, error = 0, numiter = 0))
-        }
-    }
 
     ## Preconditioning (resorting the limits; only for d > 2)
     if(is.null(cholScale)) cholScale <- t(chol(scale)) # get Cholesky factor if not provided (lower triangular)
@@ -440,7 +391,59 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, mean.s
     ## Setting abstol to a negative value will ensure that algorithm runs until fun.eval[2] function
     ## evaluations are done.
     if(is.null(abstol)) abstol <- -42
-
+    
+    ## Define the quantile function of the mixing variable.
+    const <- FALSE # logical indicating whether we have a multivariate normal
+    inv.gam <- FALSE # logical indicating whether we have a multivariate t
+    qW <- if(is.character(qmix)) { # 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
+      qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
+      switch(qmix,
+             "constant" = {
+               const <- TRUE
+               function(u) 1
+             },
+             "inverse.gamma" = {
+               if(hasArg(df)) {
+                 df <- list(...)$df
+               } else {
+                 stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
+               }
+               ## Still allow df = Inf (normal distribution)
+               stopifnot(is.numeric(df), length(df) == 1, df > 0)
+               if(is.finite(df)) {
+                 inv.gam <- TRUE
+                 df2 <- df / 2
+                 mean.sqrt.mix <- sqrt(df) * gamma(df2) / ( sqrt(2) * gamma( (df+1) / 2 ) ) # used for preconditioning
+                 function(u) 1 / qgamma(u, shape = df2, rate = df2)
+               } else {
+                 const <- TRUE
+                 mean.sqrt.mix <- 1 # used for preconditioning
+                 function(u) 1
+               }
+             },
+             stop("Currently unsupported 'qmix'"))
+    } else if(is.list(qmix)) { # 'qmix' is a list of the form (<character string>, <parameters>)
+      stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
+      qmix. <- paste0("q", distr)
+      if(!existsFunction(qmix.))
+        stop("No function named '", qmix., "'.")
+      function(u)
+        do.call(qmix., append(list(u), qmix[-1])) 
+    } else if(is.function(qmix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
+      function(u)
+        qmix(u, ...)
+    } else stop("'qmix' must be a character string, list or quantile function.")
+    
+    ## Grab / approximate mean.sqrt.mix, which will be needed for preconditioning in pnvmix1
+    ## This only depends on 'qmix', hence it is done (once) here in pnvmix.
+    if(precond && d > 2){
+      if(is.null(mean.sqrt.mix))
+        mean.sqrt.mix <- mean(sqrt(qW(qrng::sobol(n = 2^12, d = 1, randomize = TRUE))))
+      ## Check if provided/approximated mean.sqrt.mix is strictly positive 
+      if(mean.sqrt.mix <= 0)
+        stop("'mean.sqrt.mix' has to be positive (possibly after being generated in pnvmix())")
+    }
+   
     ## Build temporary result list
     res1 <- vector("list", length = n) # results from calls of pnvmix1()
 
@@ -483,8 +486,10 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, mean.s
         if(any(!lowupFin)) {
             low <- low[lowupFin]
             up  <- up [lowupFin]
-            scale <- scale[lowupFin, lowupFin, drop = FALSE]
+            scale <- scale[lowupFin, lowupFin, drop = FALSE] # update scale
+            Dinv <- Dinv[lowupFin, lowupFin, drop = FALSE]  # update Dinv
             cholScaleFin <- t(chol(scale)) # Cholesky factor changes!
+            d <- length(low) # Update dimension 
         } else {
             ## If no such component exists, set Choleksy factor correctly
             cholScaleFin <- cholScale 
@@ -502,15 +507,29 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, mean.s
             low[lowFin] <- as.vector(Dinv[lowFin, lowFin] %*% low[lowFin]) # only works for those values which are not +/- Inf
             up [upFin]  <- as.vector(Dinv[upFin,  upFin]  %*% up [upFin])
         }
-
+        
+        ## If d = 1, deal with multivariate normal or t via pnorm() and pt()
+        ## Note that everything has been standardized.  s 
+        if(d == 1){
+          if(const){
+            value <- pnorm(up) - pnorm(low)
+            res1[[i]] <- list(value = value, error = 0, numiter = 0)
+          }
+          if(inv.gam){
+            value <- pt(up, df = df) - pt(low, df = df)
+            res1[[i]] <- list(value = value, error = 0, numiter = 0)
+          }
+        }
+        
         ## Compute result for ith row of lower and upper (in essence,
         ## because of the preconditioning, one has to treat each such
         ## row separately)
-        res1[[i]] <- pnvmix1(up, lower = low, qmix = qmix, mean.sqrt.mix = mean.sqrt.mix,
+        res1[[i]] <- pnvmix1(up, lower = low, qW = qW, mean.sqrt.mix = mean.sqrt.mix,
                              loc = loc, scale = scale, cholScale = cholScaleFin,
                              method = method, precond = precond, abstol = abstol,
                              CI.factor = CI.factor, fun.eval = fun.eval, 
-                             increment = increment, B = B, ...)
+                             increment = increment, B = B, 
+                             const = const, inv.gam = inv.gam, ...)
 
         ## Check if desired precision was reached
         reached[i] <- res1[[i]]$error <= abstol
