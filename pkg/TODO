@@ -1,31 +1,46 @@
 ### Major changes    ###########################################################
 
- - There was a bug in rnvmix; it couldn't handle non-square 'factor' properly. Problem was that
-   a *d* dimensional normal was simulated, should be *k* dimensional. Also, 'loc' needs to be *k* (not d)
-   dimensional in this case. 
+ - There was a bug in rnvmix; it couldn't handle non-square 'factor' properly.
+   [MH: Correct, never tested that.]
+   Problem was that a *d* dimensional normal was simulated, should be *k* dimensional.
+   [MH: Correct]
+   Also, 'loc' needs to be *k* (not d) dimensional in this case.
+   [MH: A should be (d,k), so the outcome must be d-dimensional and thus also
+        loc must be d-dimensional]
 
    Note:
     *in the paper: A (which somewhat corresponds to our'factor') is a (d,k) matrix such that A A^T = scale.
-     This is the definition in the QRM book. 
+     This is the definition in the QRM book.
+     [MH: ... and the one we should follow (anything else is confusing)]
      The resulting nvmix dist'n has thus dimension *d*.
-    *in rnvmix: 'factor' is a (d,k) matrix such that A^T A = scale. 
+     [MH: correct]
+    *in rnvmix: 'factor' is a (d,k) matrix such that A^T A = scale.
      The resulting nvmix dist'n has thus dimension *k*
+     [MH: ... this is because chol() by default gives you an upper triangular Cholesky factor.
+          For performance reasons, I wanted to avoid doing t(A) in the original code.
+	  Maybe we can still avoid it? If not, do the t(), this is still better than loc being k-dimensional]
 
-   I have left it the way it was (i.e. A^T A = scale) and fixed the bug. 
-   I originally wanted to change it to make it consistent with the paper, 
-   but it seems to be accepted that a factor is a matrix such that A^T A = scale. 
-   If you'd like it to be changed, that'd be fine for me, too, though. In this case, factorize() needs 
-   to be changed as well. 
+   I have left it the way it was (i.e. A^T A = scale) and fixed the bug.
+   I originally wanted to change it to make it consistent with the paper,
+   but it seems to be accepted that a factor is a matrix such that A^T A = scale.
+   [MH: still, it's too confusing to be different from the literature]
+   If you'd like it to be changed, that'd be fine for me, too, though. In this case, factorize() needs
+   to be changed as well.
+   [MH: yeah, should be changed (not sure whether also already in factorize [stay closer to R behavior?]).]
 
    Another remark:
-    If rnvmix() is called with a *singular* scale, an error is thrown. If the user wishes to sample
-    from that singular distribution, they *have to* provide 'factor'. 
-   
- - tests created => using package testthat() (quite convenient, I think)
+    If rnvmix() is called with a *singular* scale, an error is thrown.
+    [MH: How is that tested? couldn't immediately find. rnvmix() should be fast, no (too) long testing...]
+    If the user wishes to sample from that singular distribution, they *have to* provide 'factor'.
+    [MH: sounds ok]
 
- - qW as well as mean.sqrt.mix are built in pnvmix and then passed as an argument 
+ - tests created => using package testthat() (quite convenient, I think)
+   [MH: Wouldn't do... or just for us. Problem: dependence on a package. Hmmm... maybe ok here]
+
+ - qW as well as mean.sqrt.mix are built in pnvmix and then passed as an argument
    to pnvmix1() => makes it faster if upper is a matrix; since qW and mean.sqrt.mix
    don't change with upper/lower, it probably makes sense to build them once.
+   [MH: sounds good]
 
 
 ### For next release ###########################################################
@@ -48,7 +63,7 @@
 	EH: the default is set such that the algorithm terminates with reasonable
         tolerances (0.001, 0.0005, maybe 0.0001). Tolerances beyond that will take
         forever one way or another.
-	My suggestion: Leave it for now. 
+	My suggestion: Leave it for now.
 
 
 - DONE	EH: 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 	'mix' ('rmix'?)
