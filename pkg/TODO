@@ -1,3 +1,12 @@
+### Major changes    ###########################################################
+
+ - tests created => using package testthat() (quite convenient, I think)
+ - qW as well as mean.sqrt.mix are built in pnvmix and then passed as an argument 
+   to pnvmix1() => makes it faster if upper is a matrix; since qW and mean.sqrt.mix
+   don't change with upper/lower, it probably makes sense to build them once.
+ - Cholesky factor built in pnvmix and then passed to pnvmix1, same reason as above.
+
+
 ### For next release ###########################################################
 
 
@@ -7,6 +16,7 @@
 	EH: I'm on it :)
 
 - EH: References in the manuals/vignette? Maybe the three publications of Genz and Bretz as well as the "normal people"?
+
 
 ## To be discussed:
 

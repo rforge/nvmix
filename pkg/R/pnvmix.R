@@ -486,12 +486,20 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, mean.s
         upFin  <- is.finite(up)
         lowupFin <- lowFin | upFin # at least one finite limit
         if(any(!lowupFin)) {
+            ## Update low, up
             low <- low[lowupFin]
             up  <- up [lowupFin]
+            ## Grab (new) dimension. If 0, then all upper are +Inf, all lower are -Inf
+            ## => Return 0
+            d <- length(low) # Update dimension 
+            if(d==0){
+              res1[[i]] <- list(value = 1, error = 0, numiter = 0)
+              next 
+            }
+            ## Update scale, Dinv etc
             scale <- scale[lowupFin, lowupFin, drop = FALSE] # update scale
             Dinv <- Dinv[lowupFin, lowupFin, drop = FALSE]  # update Dinv
             cholScaleFin <- t(chol(scale)) # Cholesky factor changes!
-            d <- length(low) # Update dimension 
         } else {
             ## If no such component exists, set Choleksy factor correctly
             cholScaleFin <- cholScale 
@@ -516,10 +524,12 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, mean.s
           if(const){
             value <- pnorm(up) - pnorm(low)
             res1[[i]] <- list(value = value, error = 0, numiter = 0)
+            next
           }
           if(inv.gam){
             value <- pt(up, df = df) - pt(low, df = df)
             res1[[i]] <- list(value = value, error = 0, numiter = 0)
+            next
           }
         }
         
