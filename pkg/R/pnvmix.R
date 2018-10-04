@@ -106,8 +106,8 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 }
 
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture for a Single Observation
-##' @note Internal function being called by pnvmix. Unless stated otherwise, the arguments are the same
-##'        as in pnvmix().  
+##' @note Internal function being called by pnvmix. Unless a parameter has a description, 
+##'        it is the same as in pnvmix() 
 ##' @param upper
 ##' @param lower
 ##' @param qW quantile function of W. This has already been built and 'checked' in pnvmix()
@@ -128,9 +128,8 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##'         - value: computed probability
 ##'         - error: error estimate
 ##'         - numiter: number of iterations needed
-##' @note 'standardized' not needed anymore; that is being taken care of in pnvmix()        
 ##' @author Erik Hintz and Marius Hofert
-pnvmix1 <- function(upper, lower = rep(-Inf, d), qW, mean.sqrt.mix = NULL,
+pnvmix1 <- function(upper, lower = rep(-Inf, d), qW = NULL, mean.sqrt.mix,
                     loc = rep(0, d), scale = diag(d), cholScale = NULL, 
                     method = c("sobol", "ghalton", "PRNG"), precond = TRUE, 
                     abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), 
@@ -138,20 +137,20 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), qW, mean.sqrt.mix = NULL,
                     const = FALSE, ...)
 {
   
-    ## (Only) basic check; most checking  and building was done in pnvmix()
+    ## (Only) basic check; most checking and building was done in pnvmix()
     d <- length(upper)
-    stopifnot(length(lower) == d)
+    stopifnot(length(lower) == d, is.function(qW))
     if(any(lower == upper))
         return(list(value = 0, error = 0, numiter = 0))
-
-    ## Preconditioning (resorting the limits; only for d > 2)
+    
+    ## Get Cholesky factor if not provided (lower triangular)
+    ## This is only needed if the internal function pnvmix1() is called directly,
+    ## if pnvmix() is used, it was determined there. 
     if(is.null(cholScale)) cholScale <- t(chol(scale)) # get Cholesky factor if not provided (lower triangular)
     
+    ## Preconditioning (resorting the limits; only for d > 2)    
     if(precond && d > 2) {
-        if(is.null(mean.sqrt.mix)) # approximate E(sqrt(W))
-            mean.sqrt.mix <- mean(sqrt(qW(qrng::sobol(n = 5000, d = 1, randomize = TRUE))))
-        if(any(mean.sqrt.mix <= 0))
-            stop("'mean.sqrt.mix' has to be positive (possibly after being generated in pnvmix())")
+       ## Note that mean.sqrt.mix has already been calculated in pnvmix() 
         temp <- precond(lower = lower, upper = upper, scale = scale,
                         cholScale = cholScale, mean.sqrt.mix = mean.sqrt.mix)
         lower <- temp$lower
@@ -159,7 +158,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), qW, mean.sqrt.mix = NULL,
         cholScale <- temp$cholScale
     }
 
-    ##
+
     ## Define some basics needed for the while loop below:
     ##
     ## Error is calculated as CI.factor * sd( estimates) / sqrt(B);
@@ -367,7 +366,10 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), qW, mean.sqrt.mix = NULL,
 ##'        indicating whether a warning is given if the required precision
 ##'        'abstol' has not been reached.
 ##' @param ... additional arguments passed to the underlying mixing distribution
-##' @return TODO
+##' @return list of length 3:
+##'         - value: computed probability
+##'         - error: error estimate
+##'         - numiter: number of iterations needed
 ##' @author Erik Hintz and Marius Hofert
 pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, mean.sqrt.mix = NULL,
                    loc = rep(0, d), scale = diag(d), standardized = FALSE,
