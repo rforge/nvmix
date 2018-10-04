@@ -18,10 +18,10 @@ dStudent <- function(x, df, loc = rep(0, d), scale = diag(d),
                      factor = factorize(scale), # needs to be triangular!
                      log = FALSE, verbose = TRUE, ...)
 {
-    if(!is.matrix(x)) x <- rbind(x)
-    d <- ncol(x)
-    dnvmix(x, qmix = "inverse.gamma", loc = loc, scale = scale,
-           factor = factor, log = log, verbose = verbose, df = df, ...)
+  if(!is.matrix(x)) x <- rbind(x)
+  d <- ncol(x)
+  dnvmix(x, qmix = "inverse.gamma", loc = loc, scale = scale,
+         factor = factor, log = log, verbose = verbose, df = df, ...)
 }
 
 ##' @title Distribution Function of the Multivariate Student t Distribution
@@ -61,11 +61,11 @@ pStudent <- function(upper, lower = rep(-Inf, d),
                      abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
                      verbose = TRUE)
 {
-    d <- length(upper)
-    pnvmix(upper, lower = lower, qmix = "inverse.gamma", loc = loc, scale = scale,
-           standardized = standardized, method = method, precond = precond,
-           abstol = abstol, CI.factor = CI.factor, fun.eval = fun.eval, B = B,
-           verbose = verbose, df = df)
+  d <- length(upper)
+  pnvmix(upper, lower = lower, qmix = "inverse.gamma", loc = loc, scale = scale,
+         standardized = standardized, method = method, precond = precond,
+         abstol = abstol, CI.factor = CI.factor, fun.eval = fun.eval, B = B,
+         verbose = verbose, df = df)
 }
 
 ##' @title Random Number Generator for the Multivariate Student t Distribution
@@ -78,10 +78,16 @@ pStudent <- function(upper, lower = rep(-Inf, d),
 ##'        correctly!)
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Marius Hofert, Erik Hintz
-rStudent <- function(n, df, loc = rep(0, d), scale = diag(2),
+rStudent <- function(n, df, loc = rep(0, k), scale = diag(2),
                      factor = factorize(scale), method = c("PRNG", "sobol", "ghalton"), skip = 0) # needs to be triangular!
 {
-    d <- nrow(as.matrix(factor))
-    rnvmix(n, qmix = "inverse.gamma", loc = loc, scale = scale, factor = factor, df = df,
-           method = method, skip = skip)
+  ## 'factor' is a (d,k) matrix  => 'scale' is (k,k), and we need d-dimensional normal. 
+  d <- nrow(factor <- as.matrix(factor))
+  
+  
+  
+  k <- ncol(factor)
+  
+  rnvmix(n, qmix = "inverse.gamma", loc = loc, scale = scale, factor = factor, df = df,
+         method = method, skip = skip)
 }

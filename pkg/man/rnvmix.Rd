@@ -8,13 +8,13 @@
   mixtures (including Student \emph{t} and normal distributions).
 }
 \usage{
-rnvmix(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2), 
+rnvmix(n, rmix = NULL, qmix = NULL, loc = rep(0, k), scale = diag(2), 
        factor = factorize(scale), method = c("PRNG", "sobol", "ghalton"),
        skip = 0, ...)
 
-rStudent(n, df, loc = rep(0, d), scale = diag(2), factor = factorize(scale),
+rStudent(n, df, loc = rep(0, k), scale = diag(2), factor = factorize(scale),
          method = c("PRNG", "sobol", "ghalton"), skip = 0)
-rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = factorize(scale),
+rNorm   (n,     loc = rep(0, k), scale = diag(2), factor = factorize(scale),
          method = c("PRNG", "sobol", "ghalton"), skip = 0)
 }
 \arguments{

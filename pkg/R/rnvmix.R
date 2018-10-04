@@ -24,7 +24,7 @@
 ##' @param loc d-vector (location != mean vector here)
 ##' @param scale (d, d)-covariance matrix (scale != covariance matrix here)
 ##' @param factor factor R of the covariance matrix 'scale' such that R^T R
-##'        = 'scale'
+##'        = 'scale'. If factor is (d,k) => resulting nvmix is k dimensional
 ##' @param method character string indicating the method to be used:
 ##'         - "sobol":   Sobol sequence
 ##'         - "ghalton": generalized Halton sequence
@@ -44,13 +44,16 @@
 ##'         + "Runuran": faster if n large and parameters fixed; based on density
 ##'         + "GIGrvg":  faster if n small and often called with several parameters
 ##'         see examples of 'GIGrvg' for both methods
-rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2),
+rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, k), scale = diag(2),
                    factor = factorize(scale), method = c("PRNG", "sobol", "ghalton"), 
                    skip = 0, ...)
 {
     ## Checks
+    ## 'factor' is a (d,k) matrix  => 'scale' is (k,k), and we need d-dimensional normal. 
     d <- nrow(factor <- as.matrix(factor))
-    stopifnot(n >= 1, df > 0)
+    k <- ncol(factor)
+    
+    stopifnot(n >= 1)
     
     method <- match.arg(method)
     
@@ -65,7 +68,6 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
     if(inversion){
       ## In this case, we need qmix to be provided and use inversion
       if(is.null(qmix)) stop("'qmix' needs to be provided for methods 'sobol' and 'ghalton'")
-      inversion <- TRUE
       
       ## Get low discrepancy pointset
       U <- switch(method,
@@ -146,17 +148,15 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
           rmix
         } else stop("'rmix' must be a character string, list, random number generator or n-vector of non-negative random variates.")
       }
-  
-
     
-    ## Generate Z ~ N(0, I)
+    ## Generate Z ~ N(0, Id)
     if(!inversion){
       Z <- matrix(rnorm(n * d), ncol = d) # (n, d)-matrix of N(0, 1)
     } else {
-      Z <- qnorm( U[, 2:(d+1)] ) # (n, d)-matrix of N(0, 1
+      Z <- qnorm( U[, 2:(d+1)] ) # (n, d)-matrix of N(0, 1)
     }
     ## Generate Y ~ N(0, scale)
-    Y <- Z %*% factor # (n, d) %*% (d, k) = (n, k)-matrix of N(0, scale); allows for different k
+    Y <- Z %*% factor # (n, d) %*% (d, k) = (n, k)-matrix of N(0, scale); allows k different from d
     ## Generate X ~ M_k(0, Sigma, LS[F_W])
     X <- sqrt(W) * Y # also fine for different k
     ## Generate X ~ M_k(mu, Sigma, LS[F_W])

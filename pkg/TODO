@@ -1,14 +1,34 @@
 ### Major changes    ###########################################################
 
+ - There was a bug in rnvmix; it couldn't handle non-square 'factor' properly. Problem was that
+   a *d* dimensional normal was simulated, should be *k* dimensional. Also, 'loc' needs to be *k* (not d)
+   dimensional in this case. 
+
+   Note:
+    *in the paper: A (which somewhat corresponds to our'factor') is a (d,k) matrix such that A A^T = scale.
+     This is the definition in the QRM book. 
+     The resulting nvmix dist'n has thus dimension *d*.
+    *in rnvmix: 'factor' is a (d,k) matrix such that A^T A = scale. 
+     The resulting nvmix dist'n has thus dimension *k*
+
+   I have left it the way it was (i.e. A^T A = scale) and fixed the bug. 
+   I originally wanted to change it to make it consistent with the paper, 
+   but it seems to be accepted that a factor is a matrix such that A^T A = scale. 
+   If you'd like it to be changed, that'd be fine for me, too, though. In this case, factorize() needs 
+   to be changed as well. 
+
+   Another remark:
+    If rnvmix() is called with a *singular* scale, an error is thrown. If the user wishes to sample
+    from that singular distribution, they *have to* provide 'factor'. 
+   
  - tests created => using package testthat() (quite convenient, I think)
+
  - qW as well as mean.sqrt.mix are built in pnvmix and then passed as an argument 
    to pnvmix1() => makes it faster if upper is a matrix; since qW and mean.sqrt.mix
    don't change with upper/lower, it probably makes sense to build them once.
- - Cholesky factor built in pnvmix and then passed to pnvmix1, same reason as above.
 
 
 ### For next release ###########################################################
-
 
 ## Important
 
@@ -18,25 +38,17 @@
 - EH: References in the manuals/vignette? Maybe the three publications of Genz and Bretz as well as the "normal people"?
 
 
-## To be discussed:
 
-- EH: incorporate the case of a singular scale matrix
-      (or at least give better error message)
+- DONE? Does it make sense to choose the default of fun.eval[2] differently?
+        I feel it should be something like 1/abstol, so that if one plays
+        with abstol, one has a reasonable chance not having to modify
+        fun.eval[2]. I realized this when choosing abstol = 1e-8 (then
+        with fun.eval[2] = 1e8, the computations took forever.
 
-	EH: pnvmix(), rnvmix() and dnvmix() now return an error if the cholesky 		composition via chol(...) fails (I used tryCatch to have a nicer error).
-	I noticed that dnvmix() is supposed to return Inf if x = loc and scale does not 	have full rank. dnvmix() never did that because the execution was stopped when 		scale was not positive definite. It still stops (I put tryCatch also in 		factorize()). If the matrix doesn't have full rank, the density just does not 		exist and I think returning Inf/... is misleading - thoughts?
-
-
-
-
-- EH: Does it make sense to choose the default of fun.eval[2] differently?
-      I feel it should be something like 1/abstol, so that if one plays
-      with abstol, one has a reasonable chance not having to modify
-      fun.eval[2]. I realized this when choosing abstol = 1e-8 (then
-      with fun.eval[2] = 1e8, the computations took forever.
-
-	EH: the default is set such that the algorithm terminates with reasonable 		tolerances (0.001, 0.0005, maybe 0.0001). Tolerances beyond that will take 		forever one way or another.
-	My suggestion: Leave it for now, 
+	EH: the default is set such that the algorithm terminates with reasonable
+        tolerances (0.001, 0.0005, maybe 0.0001). Tolerances beyond that will take
+        forever one way or another.
+	My suggestion: Leave it for now. 
 
 
 - DONE	EH: 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 	'mix' ('rmix'?)
