@@ -40,7 +40,7 @@ Also, all functions in the package currently require $\Sigma$ to be positive def
 
 ## 1 Evaluating the Distribution function 
 
-An important but difficult task is to evaluate the (cumulative) distribution function of a normal variance mixture distribution. To this end, the function `pnvmix()` internally approximates a $d$ dimensional integral using a randomized Quasi Monte-Carlo method. Due to the random nature, the result depends (slightly) on `.Random.seed`.
+An important but difficult task is to evaluate the (cumulative) distribution function of a normal variance mixture distribution. To this end, the function `pnvmix()` internally approximates a $d$ dimensional integral using a randomized Quasi Monte-Carlo method. Due to the random nature, the result depends (slightly) on `.Random.seed`. Currently, `pnvmix()` only accepts a positive definite `scale` matrix. 
 
 ### Two small examples 
 As a first example, consider a normal variance mixture where $W \sim Exp(3)$. We illustrate two approaches how to use `pnvmix` to approximate $P(\mathbf{a} \leq \mathbf{X} \leq \mathbf{b})$:
@@ -184,6 +184,29 @@ The above plot is done on $\log-\log$ scale; the numbers in the legend are the r
 
 
 ## 2 Evaluating the Density Function 
+
+Another important task is to evaluate the density function of a normal variance mixture distribution. This is particularly important for likelihood based methods. To this end, the function `dnvmix()` internally approximates a $1$ dimensional integral using a randomized Quasi Monte-Carlo method. Due to the random nature, the result depends (slightly) on `.Random.seed`. Note that if $\Sigma$ is singular, the density is not defined.
+
+Note the argument `log` in `dnvmix()`: Rather than estimating the density, internally the *log* density is estimated and only if `log = FALSE` (the default), the actual density is returned. This is usually more stable than estimating the density and then applying the $\log()$ function; also note that for many applications, interest actually lies in the log density, for instance when approximating the log-likelihood. 
+
+We give a small example using $W$ such that $P(W=1)=0.5$, $P(W=5)=0.1$ and $P(W=10)=0.4$. 
+
+```{r}
+## we use qW from before
+## Evaluate at the following 3 points simulatenously:
+x <- matrix(1:15/15, ncol = d) 
+
+## Density
+set.seed(1)
+(d1 <- dnvmix(x, qmix = qW, scale = P))
+
+## Log Density
+set.seed(1)
+(d2 <- dnvmix(x, qmix = qW, scale = P, log = TRUE))
+
+```
+
+
 
 ## 3 (Quasi-) Random Number Generation
 

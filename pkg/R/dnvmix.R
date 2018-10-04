@@ -43,163 +43,171 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
                    abstol = 0.001, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
                    log = FALSE, verbose = TRUE, ...)
 {
-    ## Checks
-    if(!is.matrix(x)) x <- rbind(x)
-    d <- ncol(x) # dimension
-    if(!is.matrix(scale)) scale <- as.matrix(scale)
-    stopifnot(length(loc) == d, dim(scale) == c(d, d), # note: 'qmix' is tested later
-              abstol >= 0, CI.factor >= 0, length(fun.eval) == 2, fun.eval >= 0, B >= 1,
-              is.logical(log))
-    method <- match.arg(method)
-
-    ## Define the quantile function of the mixing variable
-    ## If 'mix' is "constant" or "inverse.gamma", we use the analytical formulas
-    const <- FALSE # logical indicating whether we have a multivariate normal
-    inv.gam <- FALSE # logical indicating whether we have a multivariate t
-    qW <- if(is.character(qmix)) { # 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
-              qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
-              switch(qmix,
-                     "constant" = {
-                         const <- TRUE
-                         function(u) 1
-                     },
-                     "inverse.gamma" = {
-                         if(hasArg(df)) df <- list(...)$df else
-                                                               stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
-                         ## Still allow df = Inf (normal distribution)
-                         stopifnot(is.numeric(df), length(df) == 1, df > 0)
-                         if(is.finite(df)) {
-                             inv.gam <- TRUE
-                             df2 <- df / 2
-                             mean.sqrt.mix <- sqrt(df) * gamma(df2) / ( sqrt(2) * gamma( (df+1) / 2 ) ) # used for preconditioning
-                             function(u) 1 / qgamma(u, shape = df2, rate = df2)
-                         } else {
-                             const <- TRUE
-                             mean.sqrt.mix <- 1 # used for preconditioning
-                             function(u) 1
-                         }
-                     },
-                     stop("Currently unsupported 'qmix'"))
-          } else if(is.list(qmix)) { # 'mix' is a list of the form (<character string>, <parameters>)
-              stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
-              qmix. <- paste0("q", distr)
-              if(!existsFunction(qmix.))
-                  stop("No function named '", qmix., "'.")
-              function(u)
-                  do.call(qmix., append(list(u), qmix[-1])) ## EH: Fixed bug here. 
-          } else if(is.function(qmix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
-              function(u)
-                  qmix(u, ...)
-          } else stop("'qmix' must be a character string, list or quantile function.")
-
-    ## Build result object (log-density)
-    n <- nrow(x)
-    lres <- rep(-Inf, n) # n-vector of results
-    notNA <- rowSums(is.na(x)) == 0
-    lres[!notNA] <- NA
-    x <- x[notNA,] # non-missing data (rows)
-
-    ## Actual computation
-    if(inherits(factor, "error") || is.null(factor)) { # if 'factor' has a problem
-        lres[notNA & (rowSums(x == loc) == d)] <- Inf # if a row of x is equal to the location vector; TODO: why??? density there should be finite, right?
-    } else {
-        ## Solve R^T * z = x - mu for z, so z = (R^T)^{-1} * (x - mu) (a (d, d)-matrix)
-        ## => z^2 (=> componentwise) = z^T z = (x - mu)^T * ((R^T)^{-1})^T (R^T)^{-1} (x - mu)
-        ##                           = z^T z = (x - mu)^T * R^{-1} (R^T)^{-1} (x - mu)
-        ##                           = (x - mu)^T * (R^T R)^{-1} * (x - mu)
-        ##                           = (x - mu)^T * scale^{-1} * (x - mu) = quadratic form
-        z <- backsolve(factor, t(x) - loc, transpose = TRUE) # TODO: can't we work with transpose = FALSE and avoid transposing 'x'?
-        maha2 <- colSums(z^2) # = sum(z^T z); n-vector of squared Mahalanobis distances from x to mu w.r.t. scale
-        ## TODO: can't we do this with mahalanobis()?
-        ## log(sqrt(det(scale))) = log(det(scale))/2 = log(det(R^T R))/2 = log(det(R)^2)/2
-        ##                       = log(prod(diag(R))) = sum(log(diag(R)))
-        lrdet <- sum(log(diag(factor)))
-
-        ## Counters 
-        total.fun.evals <- 0 # total.fun.evals will count the total number of function evaluations
-        numiter <- 0 # initialize counter; this will count the number of iterations in the while loop
-
-        ## Deal with the different distributions
-        if(inv.gam) { # multivariate t
-            df.d.2 <- (df + d) / 2
-            lres[notNA] <- lgamma(df.d.2) - lgamma(df/2) - (d/2) * log(df * pi) - lrdet - df.d.2 * log1p(maha2 / df)
-            error <- 0
-        } else if(const) { # multivariate normal
-            lres[notNA] <- -(d/2) * log(2 * pi) - lrdet - maha2/2
-            error <- 0
-        } else { # general case of a multivariate normal variance mixture (RQMC)
-
-            ## Basics
-            CI.factor <- CI.factor / sqrt(B) # instead of dividing sigma by sqrt(B) each time
-            current.n <- fun.eval[1] # initial n
-            rqmc.estimates <- matrix(0, ncol = n, nrow = B) # matrix to store RQMC estimates
-            error <- abstol + 42 # initialize error to something bigger than abstol so that we can enter the while loop
-            useskip <- 0 # will need that because the first iteration is a little different from all the others
-            denom <- 1
-
-            ## Make sure seed exists for 'method' being "sobol"
-            if(method == "sobol") {
-                if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
-                seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used
-            }
-
-            ## Main loop
-            while(error > abstol && total.fun.evals < fun.eval[2]) {
-                if(method == "sobol") .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
-
-                ## Get B RQCM estimates
-                for(l in 1:B) {
-                    ## Get the point set
-                    U <- switch(method,
-                                "sobol"   = {
-                                    qrng::sobol(current.n, d = 1, randomize = TRUE, skip = (useskip * current.n))
-                                },
-                                "gHalton" = {
-                                    qrng::ghalton(current.n, d = 1, method = "generalized")
-                                },
-                                "prng"    = {
-                                    cbind(runif(current.n)) # 1-column matrix
-                                })
-                    W <- qW(U) # current.n-vector of W's
-
-                    ## exp-log trick
-                    b <- - (d/2) * log(2 * pi * W) - lrdet - outer(1/W, maha2 / 2) # (current.n, n)-matrix, each column corresponds to "one x"
-                    bmax <- apply(b, 2, max) # n-vector of maximal b's
-                    rqmc.estimates[l,] <- (rqmc.estimates[l,] - log(current.n) + bmax +
-                               log(colSums(exp(b - rep(bmax, each = current.n))))) / denom
-                }
-
-                ## Update various variables
-                total.fun.evals <- total.fun.evals + B * current.n
-
-                ## Change denom and useskip; this is done exactly once, namely in the first iteration.
-                if(numiter == 0){
-                    denom <- 2
-                    useskip <- 1
-
-                } else {
-                    ## Increase the sample size n; this is done in all iterations except the first
-                    current.n <- 2 * current.n
-                }
-
-                ## Compute error measures and update counter
-                sig <- max(apply(rqmc.estimates, 2, sd)) # get standard deviation of the column with the largest standard deviation
-                error <- CI.factor * sig # update error. Note that this CI.factor is actually CI.factor/sqrt(N)
-                numiter <- numiter + 1 # update counter
-                
-                ## Update abserr to ensure that the precision is reached for *both* log-density and density
-                abstol <- abstol / max(1, max(exp(colMeans(rqmc.estimates)))) 
-            } # while()
-
-            ## Finalize
-            if(verbose && (error > abstol))
-                warning("'abstol' not reached; consider increasing 'fun.eval[2]'")
-            lres[notNA] <- colMeans(rqmc.estimates)
+  ## Checks
+  if(!is.matrix(x)) x <- rbind(x)
+  d <- ncol(x) # dimension
+  if(!is.matrix(scale)) scale <- as.matrix(scale)
+  stopifnot(length(loc) == d, dim(scale) == c(d, d), # note: 'qmix' is tested later
+            abstol >= 0, CI.factor >= 0, length(fun.eval) == 2, fun.eval >= 0, B >= 1,
+            is.logical(log))
+  method <- match.arg(method)
+  
+  ## Define the quantile function of the mixing variable
+  ## If 'mix' is "constant" or "inverse.gamma", we use the analytical formulas
+  const <- FALSE # logical indicating whether we have a multivariate normal
+  inv.gam <- FALSE # logical indicating whether we have a multivariate t
+  qW <- if(is.character(qmix)) { # 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
+    qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
+    switch(qmix,
+           "constant" = {
+             const <- TRUE
+             function(u) 1
+           },
+           "inverse.gamma" = {
+             if(hasArg(df)) df <- list(...)$df else
+               stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
+             ## Still allow df = Inf (normal distribution)
+             stopifnot(is.numeric(df), length(df) == 1, df > 0)
+             if(is.finite(df)) {
+               inv.gam <- TRUE
+               df2 <- df / 2
+               mean.sqrt.mix <- sqrt(df) * gamma(df2) / ( sqrt(2) * gamma( (df+1) / 2 ) ) # used for preconditioning
+               function(u) 1 / qgamma(u, shape = df2, rate = df2)
+             } else {
+               const <- TRUE
+               mean.sqrt.mix <- 1 # used for preconditioning
+               function(u) 1
+             }
+           },
+           stop("Currently unsupported 'qmix'"))
+  } else if(is.list(qmix)) { # 'mix' is a list of the form (<character string>, <parameters>)
+    stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
+    qmix. <- paste0("q", distr)
+    if(!existsFunction(qmix.))
+      stop("No function named '", qmix., "'.")
+    function(u)
+      do.call(qmix., append(list(u), qmix[-1])) ## EH: Fixed bug here. 
+  } else if(is.function(qmix)) { # 'mix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
+    function(u)
+      qmix(u, ...)
+  } else stop("'qmix' must be a character string, list or quantile function.")
+  
+  ## Build result object (log-density)
+  n <- nrow(x)
+  lres <- rep(-Inf, n) # n-vector of results
+  notNA <- rowSums(is.na(x)) == 0
+  lres[!notNA] <- NA
+  x <- x[notNA,] # non-missing data (rows)
+  
+  ## Actual computation
+  if(inherits(factor, "error") || is.null(factor)) { # if 'factor' has a problem
+    lres[notNA & (rowSums(x == loc) == d)] <- Inf # if a row of x is equal to the location vector; TODO: why??? density there should be finite, right?
+  } else {
+    ## Solve R^T * z = x - mu for z, so z = (R^T)^{-1} * (x - mu) (a (d, d)-matrix)
+    ## => z^2 (=> componentwise) = z^T z = (x - mu)^T * ((R^T)^{-1})^T (R^T)^{-1} (x - mu)
+    ##                           = z^T z = (x - mu)^T * R^{-1} (R^T)^{-1} (x - mu)
+    ##                           = (x - mu)^T * (R^T R)^{-1} * (x - mu)
+    ##                           = (x - mu)^T * scale^{-1} * (x - mu) = quadratic form
+    z <- backsolve(factor, t(x) - loc, transpose = TRUE) # TODO: can't we work with transpose = FALSE and avoid transposing 'x'?
+    maha2 <- colSums(z^2) # = sum(z^T z); n-vector of squared Mahalanobis distances from x to mu w.r.t. scale
+    ## TODO: can't we do this with mahalanobis()?
+    ## log(sqrt(det(scale))) = log(det(scale))/2 = log(det(R^T R))/2 = log(det(R)^2)/2
+    ##                       = log(prod(diag(R))) = sum(log(diag(R)))
+    lrdet <- sum(log(diag(factor)))
+    
+    ## Counters 
+    total.fun.evals <- 0 # total.fun.evals will count the total number of function evaluations
+    numiter <- 0 # initialize counter; this will count the number of iterations in the while loop
+    
+    ## Deal with the different distributions
+    if(inv.gam) { # multivariate t
+      df.d.2 <- (df + d) / 2
+      lres[notNA] <- lgamma(df.d.2) - lgamma(df/2) - (d/2) * log(df * pi) - lrdet - df.d.2 * log1p(maha2 / df)
+      error <- 0
+    } else if(const) { # multivariate normal
+      lres[notNA] <- -(d/2) * log(2 * pi) - lrdet - maha2/2
+      error <- 0
+    } else { # general case of a multivariate normal variance mixture (RQMC)
+      
+      ## Basics
+      CI.factor <- CI.factor / sqrt(B) # instead of dividing sigma by sqrt(B) each time
+      current.n <- fun.eval[1] # initial n
+      rqmc.estimates <- matrix(0, ncol = n, nrow = B) # matrix to store RQMC estimates
+      error <- abstol + 42 # initialize error to something bigger than abstol so that we can enter the while loop
+      useskip <- 0 # will need that because the first iteration is a little different from all the others
+      denom <- 1
+      
+      ## Make sure seed exists for 'method' being "sobol"
+      if(method == "sobol") {
+        if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
+        seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used
+      }
+      
+      ## Main loop
+      while(error > abstol && total.fun.evals < fun.eval[2]) {
+        if(method == "sobol") .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
+        
+        ## Get B RQCM estimates
+        for(l in 1:B) {
+          ## Get the point set
+          U <- switch(method,
+                      "sobol"   = {
+                        qrng::sobol(current.n, d = 1, randomize = TRUE, skip = (useskip * current.n))
+                      },
+                      "gHalton" = {
+                        qrng::ghalton(current.n, d = 1, method = "generalized")
+                      },
+                      "prng"    = {
+                        cbind(runif(current.n)) # 1-column matrix
+                      })
+          W <- qW(U) # current.n-vector of W's
+          
+          ## exp-log trick
+          b <- - (d/2) * log(2 * pi * W) - lrdet - outer(1/W, maha2 / 2) # (current.n, n)-matrix, each column corresponds to "one x"
+          bmax <- apply(b, 2, max) # n-vector of maximal b's
+          rqmc.estimates[l,] <- (rqmc.estimates[l,] - log(current.n) + bmax +
+                                   log(colSums(exp(b - rep(bmax, each = current.n))))) / denom
         }
+        
+        ## Update various variables
+        total.fun.evals <- total.fun.evals + B * current.n
+        
+        ## Change denom and useskip; this is done exactly once, namely in the first iteration.
+        if(numiter == 0){
+          denom <- 2
+          useskip <- 1
+          
+        } else {
+          ## Increase the sample size n; this is done in all iterations except the first
+          current.n <- 2 * current.n
+        }
+        
+        ## Compute error measures and update counter
+        sig <- max(apply(rqmc.estimates, 2, sd)) # get standard deviation of the column with the largest standard deviation
+        error <- CI.factor * sig # update error. Note that this CI.factor is actually CI.factor/sqrt(N)
+        numiter <- numiter + 1 # update counter
+        
+        ## Update abserr to ensure that the precision is reached for *both* log-density and density
+        log.estimates <- colMeans(rqmc.estimates)
+        abstol <- abstol / max(1, max(exp(log.estimates)))
+        
+      } # while()
+      
+      ## Finalize
+      lres[notNA] <- log.estimates 
+      
+      ## If 'log = FALSE' need to adjust error estimate. 
+      ## This is a conservative error estimate. 
+      if(!log) error <- error * max( exp(max( lres[notNA])), 1) 
+      
+      ## Finalize
+      if(verbose && (error > abstol))
+        warning("'abstol' not reached; consider increasing 'fun.eval[2]'")
     }
-
-    ## Return
-    attr(lres, "error")   <- error
-    attr(lres, "numiter") <- numiter
-    if(log) lres else exp(lres)
+  }
+  
+  ## Return
+  attr(lres, "error")   <- error
+  attr(lres, "numiter") <- numiter
+  if(log) lres else exp(lres) 
 }
