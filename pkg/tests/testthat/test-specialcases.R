@@ -37,7 +37,7 @@ test_that("pStudent deals with 'df = Inf'.", {
 test_that("rnvmix can have non-square 'factor'.", {
   A <- matrix( c(1,0,
                  0,1,
-                 0,1), ncol = 3)
+                 0,1), ncol = 2, byrow = TRUE)
   
   expect_equal( dim(rnvmix(n, rmix = "constant", factor = A)), c(n, 3))
   expect_equal( dim(rnvmix(n, rmix = "constant", factor = t(A))), c(n, 2))

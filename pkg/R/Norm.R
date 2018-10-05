@@ -70,17 +70,17 @@ pNorm <- function(upper, lower = rep(-Inf, d),
 ##' @param n sample size
 ##' @param loc d-vector (location = mean vector here)
 ##' @param scale (d, d)-covariance matrix (scale = covariance matrix here)
-##' @param factor *upper triangular* factor R of the covariance matrix 'scale'
-##'        such that R^T R = 'scale' here (otherwise det(scale) not computed
-##'        correctly!)
+##' @param factor factor R of the covariance matrix 'scale' with d rows
+##'        such that R R^T = 'scale'.
 ##' @return (n, d)-matrix with N(loc, scale) samples
 ##' @author Marius Hofert, Erik Hintz
-rNorm <- function(n, loc = rep(0, k), scale = diag(2),
-                  factor = factorize(scale), method = c("PRNG", "sobol", "ghalton"), skip = 0) # needs to be triangular!
+rNorm <- function(n, loc = rep(0, d), scale = diag(2),
+                  factor = NULL, method = c("PRNG", "sobol", "ghalton"), skip = 0) # needs to be triangular!
 {
-  ## 'factor' is a (d,k) matrix  => 'scale' is (k,k), and we need d-dimensional normal. 
-  d <- nrow(factor <- as.matrix(factor))
-  k <- ncol(factor)
-  
+  if(!is.null(factor)){
+    d <- nrow(factor <- as.matrix(factor))
+  } else {
+    d <- nrow(scale <- as.matrix(scale))
+  }
   rnvmix(n, qmix = "constant", loc = loc, scale = scale, factor = factor, method = method, skip = skip)
 }

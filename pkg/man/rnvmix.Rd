@@ -8,13 +8,13 @@
   mixtures (including Student \emph{t} and normal distributions).
 }
 \usage{
-rnvmix(n, rmix = NULL, qmix = NULL, loc = rep(0, k), scale = diag(2), 
-       factor = factorize(scale), method = c("PRNG", "sobol", "ghalton"),
+rnvmix(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2), 
+       factor = NULL, method = c("PRNG", "sobol", "ghalton"),
        skip = 0, ...)
 
-rStudent(n, df, loc = rep(0, k), scale = diag(2), factor = factorize(scale),
+rStudent(n, df, loc = rep(0, d), scale = diag(2), factor = NULL,
          method = c("PRNG", "sobol", "ghalton"), skip = 0)
-rNorm   (n,     loc = rep(0, k), scale = diag(2), factor = factorize(scale),
+rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = NULL,
          method = c("PRNG", "sobol", "ghalton"), skip = 0)
 }
 \arguments{
@@ -94,12 +94,16 @@ rNorm   (n,     loc = rep(0, k), scale = diag(2), factor = factorize(scale),
     this equals the covariance matrix of a random vector following
     the specified normal variance mixture distribution divided by
     the expectation of the mixing variable \eqn{W} if (and only if) the
-    former exists.}
+    former exists. \code{scale} must be positive definite; sampling from
+    singular normal variance mixtures can be achieved by providing the
+    \code{factor}.}
   \item{factor}{factorization \code{\link{matrix}} \eqn{R} with \eqn{d}
-    rows such that \eqn{R^T R} equals \code{scale}. \eqn{R} is internally
+    rows such that \eqn{R R^T} equals \code{scale}. \eqn{R^T} is internally
     multiplied from the right to an \eqn{(n, d)}-matrix of independent
     standard normals to obtain a sample from a multivariate normal
-    with zero mean vector and covariance matrix \code{scale}.}
+    with zero mean vector and covariance matrix \code{scale}. Note that
+    \code{factor} does not need to be a square matrix; hence it can be 
+    used to sample from singular normal variance mixtures.}
     \item{method}{\code{\link{character}} string indicating the method
     to be used to obtain the sample. Available are:
     \describe{
@@ -173,7 +177,7 @@ n <- 1000
 set.seed(271)
 X <- rnvmix(n, rmix = "inverse.gamma", df = df, scale = P) # providing scale
 set.seed(271)
-X. <- rnvmix(n, rmix = "inverse.gamma", df = df, factor = chol(P)) # providing the factor
+X. <- rnvmix(n, rmix = "inverse.gamma", df = df, factor = t(chol(P))) # providing the factor
 stopifnot(all.equal(X, X.))
 
 ## Checking 'df = Inf'
@@ -193,26 +197,26 @@ stopifnot(all.equal(X.1d, X.1d.))
 ## Checking different ways of providing 'mix'
 ## 1) By providing a character string (and corresponding ellipsis arguments)
 set.seed(271)
-X.mix1 <- rnvmix(n, rmix = "inverse.gamma", df = df, factor = P)
+X.mix1 <- rnvmix(n, rmix = "inverse.gamma", df = df, scale = P)
 ## 2) By providing a list; the first element has to be an existing distribution
 ##    with random number generator available with prefix "r"
 rinverse.gamma <- function(n, df) 1 / rgamma(n, shape = df/2, rate = df/2)
 set.seed(271)
-X.mix2 <- rnvmix(n, rmix = list("inverse.gamma", df = df), factor = P)
+X.mix2 <- rnvmix(n, rmix = list("inverse.gamma", df = df), scale = P)
 ## 3) The same without extra arguments (need the extra list() here to
 ##    distinguish from Case 1))
 rinverseGamma <- function(n) 1 / rgamma(n, shape = df/2, rate = df/2)
 set.seed(271)
-X.mix3 <- rnvmix(n, rmix = list("inverseGamma"), factor = P)
+X.mix3 <- rnvmix(n, rmix = list("inverseGamma"), scale = P)
 ## 4) By providing a quantile function
 ##    Note: P(1/Y <= x) = P(Y >= 1/x) = 1-F_Y(1/x) = y <=> x = 1/F_Y^-(1-y)
 set.seed(271)
 X.mix4 <- rnvmix(n, qmix = function(p) 1/qgamma(1-p, shape = df/2, rate = df/2),
-                 factor = P)
+                 scale = P)
 ## 5) By providing random variates
 set.seed(271) # if seed is set here, results are comparable to the above methods
 W <- rinverse.gamma(n, df = df)
-X.mix5 <- rnvmix(n, rmix = W, factor = P)
+X.mix5 <- rnvmix(n, rmix = W, scale = P)
 ## Compare
 ## Note that X.mix4 is not 'all equal' with X.mix1 (or the other samples)
 ## since rgamma() != qgamma(runif()) (or qgamma(1-runif()))
@@ -240,7 +244,7 @@ n <- 1000
 set.seed(271)
 X.n  <- rNorm(n, scale = P) # providing scale
 set.seed(271)
-X.n. <- rNorm(n, factor = chol(P)) # providing the factor
+X.n. <- rNorm(n, factor = t(chol(P))) # providing the factor
 stopifnot(all.equal(X.n, X.n.))
 
 ## Univariate case (dimension = number of rows of 'factor' = 1 here)
@@ -256,7 +260,7 @@ n <- 1000
 set.seed(271)
 X.t  <- rStudent(n, df = df, scale = P) # providing scale
 set.seed(271)
-X.t. <- rStudent(n, df = df, factor = chol(P)) # providing the factor
+X.t. <- rStudent(n, df = df, factor = t(chol(P))) # providing the factor
 stopifnot(all.equal(X.t, X.t.))
 
 ## Univariate case (dimension = number of rows of 'factor' = 1 here)

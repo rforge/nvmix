@@ -73,20 +73,18 @@ pStudent <- function(upper, lower = rep(-Inf, d),
 ##' @param df degrees of freedom > 0; if df = Inf, the normal density is returned
 ##' @param loc d-vector (location != mean vector here)
 ##' @param scale (d, d)-covariance matrix (scale != covariance matrix here)
-##' @param factor *upper triangular* factor R of the covariance matrix 'scale'
-##'        such that R^T R = 'scale' here (otherwise det(scale) not computed
-##'        correctly!)
+##' @param factor factor R of the covariance matrix 'scale' with d rows
+##'        such that R R^T = 'scale'.
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Marius Hofert, Erik Hintz
-rStudent <- function(n, df, loc = rep(0, k), scale = diag(2),
-                     factor = factorize(scale), method = c("PRNG", "sobol", "ghalton"), skip = 0) # needs to be triangular!
+rStudent <- function(n, df, loc = rep(0, d), scale = diag(2),
+                     factor = NULL, method = c("PRNG", "sobol", "ghalton"), skip = 0) 
 {
-  ## 'factor' is a (d,k) matrix  => 'scale' is (k,k), and we need d-dimensional normal. 
-  d <- nrow(factor <- as.matrix(factor))
-  
-  
-  
-  k <- ncol(factor)
+  if(!is.null(factor)){
+    d <- nrow(factor <- as.matrix(factor))
+  } else {
+    d <- nrow(scale <- as.matrix(scale))
+  }
   
   rnvmix(n, qmix = "inverse.gamma", loc = loc, scale = scale, factor = factor, df = df,
          method = method, skip = skip)
