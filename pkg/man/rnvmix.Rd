@@ -153,7 +153,7 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = NULL,
   \code{rnvmix(, mix = "inverse.gamma", df = df)} and
   \code{rnvmix(, mix = "constant", df = df)}, respectively.
 }
-\author{Marius Hofert}
+\author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
   McNeil, A. J., Frey, R., and Embrechts, P. (2015).
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
