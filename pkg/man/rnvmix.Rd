@@ -122,8 +122,8 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = NULL,
   see also example below.
   }
   \item{\dots}{additional arguments (e.g., parameters) passed to the
-    underlying mixing distribution when \code{mix} is a
-    \code{\link{character}} string or function.}
+    underlying mixing distribution when \code{rmix} (or \code{qmix}) is a
+    \code{\link{character}} string or \code{\link{function}}.}
 }
 \value{
   \code{rnvmix()} returns an \eqn{(n, d)}-\code{\link{matrix}}
