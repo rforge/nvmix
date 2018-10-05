@@ -12,8 +12,8 @@
 ##'        3) a function being interpreted as the quantile function F_W^-.
 ##' @param loc d-vector (location vector)
 ##' @param scale (d, d)-covariance matrix (scale matrix)
-##' @param factor *upper triangular* factor R of the covariance matrix 'scale'
-##'        such that R^T R = 'scale' here (otherwise det(scale) not computed
+##' @param factor *lower triangular* factor L of the covariance matrix 'scale'
+##'        such that L L^T = 'scale' here (otherwise det(scale) not computed
 ##'        correctly!)
 ##' @param method character string indicating the method to be used:
 ##'         - "sobol":   Sobol sequence
@@ -38,7 +38,7 @@
 ##'         (error estimate) and 'numiter' (number of while-loop iterations)
 ##' @author Erik Hintz and Marius Hofert
 dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d), 
-                   factor = factorize(scale), # needs to be upper triangular!
+                   factor = NULL, # needs to be lower triangular!
                    method = c("sobol", "ghalton", "PRNG"),
                    abstol = 0.001, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
                    log = FALSE, verbose = TRUE, ...)
@@ -51,6 +51,12 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
             abstol >= 0, CI.factor >= 0, length(fun.eval) == 2, fun.eval >= 0, B >= 1,
             is.logical(log))
   method <- match.arg(method)
+  
+  ## If factor is not provided, determine *lower* triangular matrix 'factor'
+  if(is.null(factor)){
+    factor <- tryCatch(t(chol(scale)), error = function(error) error)
+    if(inherits(factor, "error")) stop(paste("Error occured when calling 'chol(scale)':", factor$message))
+  }
   
   ## Define the quantile function of the mixing variable
   ## If 'mix' is "constant" or "inverse.gamma", we use the analytical formulas
@@ -72,7 +78,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
                inv.gam <- TRUE
                df2 <- df / 2
                mean.sqrt.mix <- sqrt(df) * gamma(df2) / ( sqrt(2) * gamma( (df+1) / 2 ) ) # used for preconditioning
-               function(u) 1 / qgamma(u, shape = df2, rate = df2)
+               function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
              } else {
                const <- TRUE
                mean.sqrt.mix <- 1 # used for preconditioning
@@ -100,111 +106,115 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   x <- x[notNA,] # non-missing data (rows)
   
   ## Actual computation
-  if(inherits(factor, "error") || is.null(factor)) { # if 'factor' has a problem
-    lres[notNA & (rowSums(x == loc) == d)] <- Inf # if a row of x is equal to the location vector; TODO: why??? density there should be finite, right?
-  } else {
-    ## Solve R^T * z = x - mu for z, so z = (R^T)^{-1} * (x - mu) (a (d, d)-matrix)
-    ## => z^2 (=> componentwise) = z^T z = (x - mu)^T * ((R^T)^{-1})^T (R^T)^{-1} (x - mu)
-    ##                           = z^T z = (x - mu)^T * R^{-1} (R^T)^{-1} (x - mu)
-    ##                           = (x - mu)^T * (R^T R)^{-1} * (x - mu)
-    ##                           = (x - mu)^T * scale^{-1} * (x - mu) = quadratic form
-    z <- backsolve(factor, t(x) - loc, transpose = TRUE) # TODO: can't we work with transpose = FALSE and avoid transposing 'x'?
-    maha2 <- colSums(z^2) # = sum(z^T z); n-vector of squared Mahalanobis distances from x to mu w.r.t. scale
-    ## TODO: can't we do this with mahalanobis()?
-    ## log(sqrt(det(scale))) = log(det(scale))/2 = log(det(R^T R))/2 = log(det(R)^2)/2
-    ##                       = log(prod(diag(R))) = sum(log(diag(R)))
-    lrdet <- sum(log(diag(factor)))
+  
+  ## Recall that 'scale' is *lower triangular*. For short, let 'scale' = L
+  ## Solve L * z = x_i - mu for z, so z = L^{-1} * (x_i - mu)   (d vector)
+  ## => z^2 (=> componentwise) = z^T z = (x_i - mu)^T * (L^{-1})^T L^{-1} (x_i - mu)
+  ##                           = z^T z = (x_i - mu)^T * (L L^T )^{-1} (x_i - mu)
+  ##                           = (x_i - mu)^T * scale^{-1} * (x_i - mu) = quadratic form
+  ## Now do this for *all* x_i simultaneously using that L is lower triangular:
+  ## Forwardsolve: "right hand sides" of equation must be in the *columns*, thus t(x)
+  z <- forwardsolve(factor, t(x) - loc, transpose = FALSE) 
+  maha2 <- colSums(z^2) # = sum(z^T z); n-vector of squared Mahalanobis distances from x to mu w.r.t. scale
+  ## TODO: can't we do this with mahalanobis()? EH: we could, but how would we calculate det(scale) then? I believe (not checked) 
+  ##       having 'factor' and using it for both, the maha distance and the determinant is more efficient. 
+  
+  ## log(sqrt(det(scale))) = log(det(scale))/2 = log(det(R^T R))/2 = log(det(R)^2)/2
+  ##                       = log(prod(diag(R))) = sum(log(diag(R)))
+  lrdet <- sum(log(diag(factor)))
+  if(!is.finite(lrdet)) stop(paste("Density not defined for singular 'scale' "))
+  
+  ## Counters 
+  total.fun.evals <- 0 # total.fun.evals will count the total number of function evaluations
+  numiter <- 0 # initialize counter; this will count the number of iterations in the while loop
+  
+  ## Deal with the different distributions
+  if(inv.gam) { # multivariate t
+    df.d.2 <- (df + d) / 2
+    lres[notNA] <- lgamma(df.d.2) - lgamma(df/2) - (d/2) * log(df * pi) - lrdet - df.d.2 * log1p(maha2 / df)
+    error <- 0
+  } else if(const) { # multivariate normal
+    lres[notNA] <- -(d/2) * log(2 * pi) - lrdet - maha2/2
+    error <- 0
+  } else { # general case of a multivariate normal variance mixture (RQMC)
     
-    ## Counters 
-    total.fun.evals <- 0 # total.fun.evals will count the total number of function evaluations
-    numiter <- 0 # initialize counter; this will count the number of iterations in the while loop
+    ## Basics
+    CI.factor <- CI.factor / sqrt(B) # instead of dividing sigma by sqrt(B) each time
+    current.n <- fun.eval[1] # initial n
+    rqmc.estimates <- matrix(0, ncol = n, nrow = B) # matrix to store RQMC estimates
+    error <- abstol + 42 # initialize error to something bigger than abstol so that we can enter the while loop
+    useskip <- 0 # will need that because the first iteration is a little different from all the others
+    denom <- 1
     
-    ## Deal with the different distributions
-    if(inv.gam) { # multivariate t
-      df.d.2 <- (df + d) / 2
-      lres[notNA] <- lgamma(df.d.2) - lgamma(df/2) - (d/2) * log(df * pi) - lrdet - df.d.2 * log1p(maha2 / df)
-      error <- 0
-    } else if(const) { # multivariate normal
-      lres[notNA] <- -(d/2) * log(2 * pi) - lrdet - maha2/2
-      error <- 0
-    } else { # general case of a multivariate normal variance mixture (RQMC)
+    ## Make sure seed exists for 'method' being "sobol"
+    if(method == "sobol") {
+      if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
+      seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used
+    }
+    
+    ## Main loop
+    while(error > abstol && total.fun.evals < fun.eval[2]) {
       
-      ## Basics
-      CI.factor <- CI.factor / sqrt(B) # instead of dividing sigma by sqrt(B) each time
-      current.n <- fun.eval[1] # initial n
-      rqmc.estimates <- matrix(0, ncol = n, nrow = B) # matrix to store RQMC estimates
-      error <- abstol + 42 # initialize error to something bigger than abstol so that we can enter the while loop
-      useskip <- 0 # will need that because the first iteration is a little different from all the others
-      denom <- 1
+      if(method == "sobol") .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
       
-      ## Make sure seed exists for 'method' being "sobol"
-      if(method == "sobol") {
-        if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
-        seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used
+      ## Get B RQCM estimates
+      for(l in 1:B) {
+        ## Get the point set
+        U <- switch(method,
+                    "sobol"   = {
+                      qrng::sobol(current.n, d = 1, randomize = TRUE, skip = (useskip * current.n))
+                    },
+                    "gHalton" = {
+                      qrng::ghalton(current.n, d = 1, method = "generalized")
+                    },
+                    "prng"    = {
+                      cbind(runif(current.n)) # 1-column matrix
+                    })
+        W <- qW(U) # current.n-vector of W's
+        
+        ## exp-log trick
+        b <- - (d/2) * log(2 * pi * W) - lrdet - outer(1/W, maha2 / 2) # (current.n, n)-matrix, each column corresponds to "one x"
+        bmax <- apply(b, 2, max) # n-vector of maximal b's
+        rqmc.estimates[l,] <- (rqmc.estimates[l,] - log(current.n) + bmax +
+                                 log(colSums(exp(b - rep(bmax, each = current.n))))) / denom
       }
       
-      ## Main loop
-      while(error > abstol && total.fun.evals < fun.eval[2]) {
-        if(method == "sobol") .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
-        
-        ## Get B RQCM estimates
-        for(l in 1:B) {
-          ## Get the point set
-          U <- switch(method,
-                      "sobol"   = {
-                        qrng::sobol(current.n, d = 1, randomize = TRUE, skip = (useskip * current.n))
-                      },
-                      "gHalton" = {
-                        qrng::ghalton(current.n, d = 1, method = "generalized")
-                      },
-                      "prng"    = {
-                        cbind(runif(current.n)) # 1-column matrix
-                      })
-          W <- qW(U) # current.n-vector of W's
-          
-          ## exp-log trick
-          b <- - (d/2) * log(2 * pi * W) - lrdet - outer(1/W, maha2 / 2) # (current.n, n)-matrix, each column corresponds to "one x"
-          bmax <- apply(b, 2, max) # n-vector of maximal b's
-          rqmc.estimates[l,] <- (rqmc.estimates[l,] - log(current.n) + bmax +
-                                   log(colSums(exp(b - rep(bmax, each = current.n))))) / denom
-        }
-        
-        ## Update various variables
-        total.fun.evals <- total.fun.evals + B * current.n
-        
-        ## Change denom and useskip; this is done exactly once, namely in the first iteration.
-        if(numiter == 0){
-          denom <- 2
-          useskip <- 1
-          
-        } else {
-          ## Increase the sample size n; this is done in all iterations except the first
-          current.n <- 2 * current.n
-        }
-        
-        ## Compute error measures and update counter
-        sig <- max(apply(rqmc.estimates, 2, sd)) # get standard deviation of the column with the largest standard deviation
-        error <- CI.factor * sig # update error. Note that this CI.factor is actually CI.factor/sqrt(N)
-        numiter <- numiter + 1 # update counter
-        
-        ## Update abserr to ensure that the precision is reached for *both* log-density and density
-        log.estimates <- colMeans(rqmc.estimates)
-        abstol <- abstol / max(1, max(exp(log.estimates)))
-        
-      } # while()
+      ## Update various variables
+      total.fun.evals <- total.fun.evals + B * current.n
       
-      ## Finalize
-      lres[notNA] <- log.estimates 
+      ## Change denom and useskip; this is done exactly once, namely in the first iteration.
+      if(numiter == 0){
+        denom <- 2
+        useskip <- 1
+        
+      } else {
+        ## Increase the sample size n; this is done in all iterations except the first
+        current.n <- 2 * current.n
+      }
       
-      ## If 'log = FALSE' need to adjust error estimate. 
-      ## This is a conservative error estimate. 
-      if(!log) error <- error * max( exp(max( lres[notNA])), 1) 
+      ## Compute error measures and update counter
+      sig <- max(apply(rqmc.estimates, 2, sd)) # get standard deviation of the column with the largest standard deviation
+      error <- CI.factor * sig # update error. Note that this CI.factor is actually CI.factor/sqrt(N)
+      numiter <- numiter + 1 # update counter
       
-      ## Finalize
-      if(verbose && (error > abstol))
-        warning("'abstol' not reached; consider increasing 'fun.eval[2]'")
-    }
+      ## Update abserr to ensure that the precision is reached for *both* log-density and density
+      log.estimates <- colMeans(rqmc.estimates)
+      abstol <- abstol / max(1, max(exp(log.estimates)))
+      
+    } # while()
+    
+    ## Finalize
+    lres[notNA] <- log.estimates 
+    
+    ## If 'log = FALSE' need to adjust error estimate. 
+    ## This is a conservative error estimate. 
+    if(!log) error <- error * max( exp(max( lres[notNA])), 1) 
+    
+    ## Finalize
+    if(verbose && (error > abstol))
+      warning("'abstol' not reached; consider increasing 'fun.eval[2]'")
   }
+  
   
   ## Return
   attr(lres, "error")   <- error

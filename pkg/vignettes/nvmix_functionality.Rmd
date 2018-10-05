@@ -12,6 +12,8 @@ vignette: >
 ---
 ```{r, message = FALSE}
 library(nvmix)
+#library(plotly)
+#library(scatterplot3d)
 doPDF <- FALSE
 ```
 
@@ -81,21 +83,21 @@ pnvmix(b, lower = a, qmix = function(u, lambda) -log(1-u)/lambda, scale = P,
 
 Of course, the price to pay is that more iterations are needed, which increases run-time. 
 
-As a next example, consider a normal variance mixture where $W$ is discrete. For instance, let $W$ such that $P(W=1)=0.5$, $P(W=5)=0.1$ and $P(W=10)=0.4$. We use the same parameters as above, but this time, we are interested in the one sided probabability $P( \mathbf{X} \leq \mathbf{b})$:
+As a next example, consider a normal variance mixture where $W$ is discrete. For instance, let $W$ such that $P(W=1)=0.3$, $P(W=3)=0.4$ and $P(W=5)=0.3$. We use the same parameters as above, but this time, we are interested in the one sided probabability $P( \mathbf{X} \leq \mathbf{b})$:
 
 ```{r}
 
 ## Define quantile function.
 qW <- function(u)
-  (u <= 0.5) * 1 + ( u > 0.5 & u <= 0.6) * 5 + ( u > 0.6 ) * 10
+  (u <= 0.3) * 1 + ( u > 0.3 & u <= 0.7) * 3 + ( u > 0.7 ) * 5
 
 ## Call pnvmix; lower defaults to (-Inf,...,-Inf)
 pnvmix(b, qmix = qW, scale = P)
 
 
 ## This could also have been obtained as
-as.numeric( 0.5 * pNorm(b, scale = P) + 0.1 * pNorm(b, scale = 5*P) +
-  0.4 * pNorm(b, scale = 10*P) )
+as.numeric( 0.3 * pNorm(b, scale = P) + 0.4 * pNorm(b, scale = 3*P) +
+  0.3 * pNorm(b, scale = 5*P) )
 ## but this calls pNorm (and hence pnvmix()) three times, hence takes much longer
 ## (especially in higher dimensions).
 ```
@@ -212,6 +214,47 @@ The error estimate given is the *worst case* error for all the inputs, i.e. the 
 
 ## 3 (Quasi-) Random Number Generation
 
+The function `rnvmix` provides a flexible tool to sample from (multivariate) normal variance mixtures. The structure is similar to the one of `dnvmix()` and `pnvmix()`. The user can specify the argument `qmix` (which, as usual, corresponds to the quantile function of $W$) or, alternatively, the argument `rmix`, which corresponds to a random number generator for $W$. The advantage is that there may be distributions for which it is hard to find the quantile function, but for which sampling (e.g. by acceptance/rejection or stochastic representations) is easy. 
+
+Consider the first example, where $W\sim Exp(1.9)$:
+```{r, fig.align = "center", fig.width = 6, fig.height = 6, fig.show = "hold"}
+## Sample size
+n <- 500 
+
+## We use P = diag(2), which is the default
+set.seed(42)
+r1 <- rnvmix(n, rmix = list("exp", rate = rate))
+plot(r1, xlab = "X1", ylab = "X2")
+```
+
+Another important argument of `rnvmix` is `method`. This can be either `"PRNG"` for classical random sampling or `"sobol"` or `"ghalton"` which corresponds to inversion of a low-discrepancy pointset. If `method` is not `PRNG`, `qmix` must be provided. 
+
+Let us revisit the example from before, where $W$ was discrete.
+
+```{r, fig.align = "center", fig.width = 9, fig.height = 6, fig.show = "hold"}
+r2 <- rnvmix(n, qmix = qW)
+r3 <- rnvmix(n, qmix = qW, method = "ghalton")
+par(mfrow=c(1,2))
+plot(r2, xlab = "X1", ylab = "X2", main = "Pseudo-random sample")
+plot(r3, xlab = "X1", ylab = "X2", main = "Quasi-random sample")
+```
 
 
+Unlike `pnvmix()` and `dnvmix()`, `rnvmix()` can handle singular normal variance mixtures. In this case, the matrix `factor` (which is a matrix $A$ such that $AA^T=\Sigma$) has to be provided. In the following example, we consider a $t$ distribution; here we can use the wrapper `rStudent()`:
+```{r, fig.align = "center", fig.width = 9, fig.height = 6, fig.show = "hold"}
+## Specify degrees of freedom
+df <- 3.5 
 
+## Specify factor
+factor <- matrix( c(1,0,0,1,0,1), ncol = 2, byrow = TRUE)
+
+## The corresponding 'scale' matrix is then
+tcrossprod(factor)
+
+## Now sample:
+#r4 <- rStudent(n, df = df, factor = factor)
+#scatterplot3d(r4, angle = 40)
+
+#X1.=as.data.frame(r4)
+#plot_ly(X1.,x=X1.[,1],y=X1.[,2],z=X1.[,3],type="scatter3d",mode='markers',opacity=0.3,name="Fibonacci lattice")
+```

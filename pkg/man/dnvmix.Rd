@@ -9,13 +9,13 @@
 }
 \usage{
 dnvmix(x, qmix, loc = rep(0, d), scale = diag(d),
-       factor = factorize(scale), method = c("sobol", "ghalton", "PRNG"),
+       factor = NULL, method = c("sobol", "ghalton", "PRNG"),
        abstol = 0.001, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
        log = FALSE, verbose = TRUE, ...)
 
-dStudent(x, df, loc = rep(0, d), scale = diag(d), factor = factorize(scale),
+dStudent(x, df, loc = rep(0, d), scale = diag(d), factor = NULL,
          log = FALSE, verbose = TRUE, ...)
-dNorm(x, loc = rep(0, d), scale = diag(d), factor = factorize(scale),
+dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
       log = FALSE, verbose = TRUE, ...)
 }
 \arguments{
@@ -63,13 +63,7 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = factorize(scale),
     the expecation of the mixing variable \eqn{W} if (and only if) the
     former exists.}
   \item{factor}{factorization \code{\link{matrix}} \eqn{R} with \eqn{d}
-    rows such that \eqn{R^T R} equals \code{scale}. \eqn{R} is internally
-    multiplied from the right to an \eqn{(n, d)}-matrix of independent
-    standard normals to obtain a sample from a multivariate normal
-    with zero mean vector and covariance matrix \code{scale}.
-    Although not tested (for efficiency reasons), \code{factor} has
-    to be \strong{upper triangular} (otherwise the determinant
-    of \code{scale} involved in the density is not computed correctly).}
+    rows such that \eqn{R R^T} equals \code{scale}.}
   \item{method}{\code{\link{character}} string indicating the method
     to be used to compute the integral. Available are:
     \describe{

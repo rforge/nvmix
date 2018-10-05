@@ -5,7 +5,7 @@
 ##' @param df degrees of freedom > 0; if df = Inf, the normal density is returned
 ##' @param loc d-vector (location != mean vector here)
 ##' @param scale (d, d)-covariance matrix, positive definite (scale != covariance matrix here)
-##' @param factor *upper triangular* factor R of the covariance matrix 'scale'
+##' @param factor *lower triangular* factor R of the covariance matrix 'scale'
 ##'        such that R^T R = 'scale' here (otherwise det(scale) not computed
 ##'        correctly!)
 ##' @param log logical indicating whether the logarithmic density is computed
@@ -15,7 +15,7 @@
 ##' @return n-vector of t_nu(loc, scale) density values
 ##' @author Erik Hintz and Marius Hofert
 dStudent <- function(x, df, loc = rep(0, d), scale = diag(d),
-                     factor = factorize(scale), # needs to be triangular!
+                     factor = NULL, # needs to be triangular!
                      log = FALSE, verbose = TRUE, ...)
 {
   if(!is.matrix(x)) x <- rbind(x)

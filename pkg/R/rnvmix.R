@@ -50,10 +50,11 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
 {
   ## Checks
   ## If 'scale' provided and not factor, we let 'factor' be a (d,d) *upper* triangular matrix
-  ## so that we can multiply from the right later. If 'scale' is not positive definite, 
-  ## factorize() will give an error (as the default method is the ordinary chol() function).
+  ## so that we can multiply from the right later. If 'scale' is not positive definite, catch 
+  ## and print the error passed from 'chol(x)'
   if(is.null(factor)){
-    factor <- factorize(scale)
+    factor <- tryCatch(chol(scale), error = function(error) error)
+    if(inherits(factor, "error")) stop(paste("Error occured when calling 'chol(scale)':", factor$message))
     d <- nrow(factor)
     k <- d
   } else {
@@ -108,7 +109,7 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
                stopifnot(is.numeric(df), length(df) == 1, df > 0)
                if(is.finite(df)) {
                  df2 <- df/2
-                 1 / qgamma(U[,1], shape = df2, rate = df2)
+                 1 / qgamma(1 - U[,1], shape = df2, rate = df2)
                } else {
                  rep(1, n)
                }
@@ -116,10 +117,10 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
              stop("Currently unsupported 'qmix'"))
     } else if(is.list(qmix)) { # 'qmix' is a list of the form (<character string>, <parameters>)
       stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
-      qmix <- paste0("q", distr)
-      if(!existsFunction(qmix))
-        stop("No function named '", qmix, "'.")
-      do.call(qmix, append(list(U[,1]), mix[-1])) ## EH: Fixed bug here. 
+      qmix. <- paste0("q", distr)
+      if(!existsFunction(qmix.))
+        stop("No function named '", qmix., "'.")
+      do.call(qmix., append(list(U[,1]), qmix[-1])) ## EH: Fixed bug here. 
     } else if(is.function(qmix)) { # 'qmix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
       qmix(U[,1],...)
     } else stop("'qmix' must be a character string, list, quantile function or n-vector of non-negative random variates.")

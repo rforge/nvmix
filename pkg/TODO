@@ -10,7 +10,9 @@
    *NOTE*: As a result, the default of factor is NULL now because I did not touch 'factorize'. 
    I could have written factor = t(factorize(scale)) but then rnvmix() transposes that factor 
    again, so two transposes cancelling each other (not pretty, not efficient). 
-   Leaving factor = factorize(scale) would be very confusing for the user.
+   Leaving factor = factorize(scale) (without changing 'factorize') can be very confusing for 
+   the user (and perhaps for me, too) as this would contradict our definition of 'factor'.
+
    I understand that this is probably not the most elegant solution, but I think it works for
    now and we can for the next release think about what to do with 'factorize'. 
 
@@ -26,8 +28,6 @@
 ### For next release ###########################################################
 
 ## Important
-
-- EH: 'factor' in rnvmix changed; now change it in dnvmix
 
 - EH:  Write vignette nvmix_functionality.Rmd
 
@@ -61,7 +61,7 @@
 
 
 ### DONE #######################################################################
-
+-DONE  'factor' in rnvmix/dnvmix changed to be consistent with paper
 -DONE   There was a bug in rnvmix; it couldn't handle non-square 'factor' properly.
         [MH: Correct, never tested that.]
         Problem was that a *d* dimensional normal was simulated, should be *k* dimensional.
