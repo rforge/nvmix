@@ -144,7 +144,7 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = NULL,
 
   The default factorization used to obtain \code{factor} is the Cholesky
   decomposition via \code{\link{chol}()}. To this end, \code{scale}
-  needs to have full rank. See \code{\link{factorize}()} for other options.
+  needs to have full rank.
 
   The number of rows of \code{factor} are the dimension \eqn{d} of
   the sample. Typically (but not necessarily), \code{factor} is square.

@@ -13,7 +13,7 @@ vignette: >
 ```{r, message = FALSE}
 library(nvmix)
 #library(plotly)
-#library(scatterplot3d)
+library(scatterplot3d)
 doPDF <- FALSE
 ```
 
@@ -252,9 +252,10 @@ factor <- matrix( c(1,0,0,1,0,1), ncol = 2, byrow = TRUE)
 tcrossprod(factor)
 
 ## Now sample:
-#r4 <- rStudent(n, df = df, factor = factor)
-#scatterplot3d(r4, angle = 40)
+r4 <- rStudent(n, df = df, factor = factor)
+#persp(x= r4[,1], y = r4[,2], z = r4[,3])
 
-#X1.=as.data.frame(r4)
+X1.=as.data.frame(r4)
 #plot_ly(X1.,x=X1.[,1],y=X1.[,2],z=X1.[,3],type="scatter3d",mode='markers',opacity=0.3,name="Fibonacci lattice")
+scatterplot3d(r4[,1], r4[,2], r4[,3])
 ```
