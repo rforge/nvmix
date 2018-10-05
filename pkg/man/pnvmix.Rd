@@ -19,11 +19,11 @@ pStudent(upper, lower = rep(-Inf, d),
          method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
          abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
          verbose = TRUE)
-pNorm(upper, lower = rep(-Inf, d),
-      loc = rep(0, d), scale = diag(d), standardized = FALSE,
-      method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
-      abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
-      verbose = TRUE)
+pNorm   (upper, lower = rep(-Inf, d),
+         loc = rep(0, d), scale = diag(d), standardized = FALSE,
+         method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
+         abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
+         verbose = TRUE)
 }
 \arguments{
   \item{upper}{\eqn{(n, d)}-\code{\link{matrix}} of upper integration limits;
@@ -91,7 +91,7 @@ pNorm(upper, lower = rep(-Inf, d),
   \item{precond}{\code{\link{logical}} indicating whether preconditioning
     is applied, that is, reordering of the integration variables. If \code{TRUE},
     integration limits as well as \code{scale} are internally re-ordered in 
-    a way such that the overall variance of the integrand is smaller than 
+    a way such that the overall variance of the integrand is usually smaller than 
     with the original ordering; this usually leads smaller run-times.}
   \item{abstol}{non-negative \code{\link{numeric}} providing the
     absolute precision required; if \code{abstol} is zero,
@@ -216,6 +216,9 @@ b.[3,2] <- NA
 pt <- pnvmix(b., lower = a., qmix = "inverse.gamma", df = df, scale = P)
 stopifnot(is.na(pt) == c(FALSE, TRUE, TRUE, FALSE))
 
+## Case where upper = (Inf,..,Inf) and lower = (-Inf,...,-Inf)
+stopifnot(all.equal(pnvmix(upper = rep(Inf, d), qmix = "constant"), 1, 
+ check.attributes = FALSE))
 
 ### Examples for pStudent() and pNorm() ########################################
 
@@ -228,5 +231,13 @@ stopifnot(all.equal(pt, 0.6180, tol = 5e-5, check.attributes = FALSE))
 set.seed(271)
 pn <- pNorm(b, lower = a, scale = P)
 stopifnot(all.equal(pn, 0.7001, tol = 1e-4, check.attributes = FALSE))
+
+## pStudent deals correctly with df = Inf:
+set.seed(1)
+p.St.dfInf <- pStudent(b, df = Inf, scale = P)
+set.seed(1)
+p.Norm <- pNorm(b, scale = P)
+stopifnot(all.equal(p.St.dfInf, p.Norm, check.attributes = FALSE))
+  
 }
 \keyword{distribution}

@@ -15,8 +15,8 @@ dnvmix(x, qmix, loc = rep(0, d), scale = diag(d),
 
 dStudent(x, df, loc = rep(0, d), scale = diag(d), factor = NULL,
          log = FALSE, verbose = TRUE, ...)
-dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
-      log = FALSE, verbose = TRUE, ...)
+dNorm   (x, loc = rep(0, d), scale = diag(d), factor = NULL,
+         log = FALSE, verbose = TRUE, ...)
 }
 \arguments{
   \item{x}{\eqn{(n, d)}-\code{\link{matrix}} of evaluation points.}
@@ -125,7 +125,7 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
 
   Internally, an iterative randomized Quasi-Monte Carlo approach is used
   to estimate the density. It is an iterative algorithm that evaluates
-  the integrand at a point-set with size as specified by \code{increment})
+  the integrand at a randomized Sobol point-set 
   in each iteration until the pre-specified error tolerance \code{abstol}
   is reached for both, the density and the log-density.
   The attribute \code{"numiter"} gives the number of such
@@ -148,7 +148,7 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
   density of a multivariate Student \emph{t} and normal distribution,
   respectively.
 }
-\author{Erik Hintz and Marius Hofert}
+\author{Erik Hintz, Marius Hofert and Christiane Lemieux.}
 \references{
   McNeil, A. J., Frey, R., and Embrechts, P. (2015).
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.

@@ -45,7 +45,8 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = NULL,
         this can be the parameter \code{rate}.}
       \item{\code{\link{function}}:}{\code{\link{function}}
 	interpreted as a random number generator of the mixing
-	variable \eqn{W}.}
+	variable \eqn{W}; additional arguments (such as parameters)
+        can be passed via the ellipsis argument.}
       \item{\code{\link{numeric}}:}{\code{\link{numeric}} vector
 	of length \code{n} providing a random sample of the mixing
 	variable \eqn{W}.}
@@ -79,7 +80,8 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = NULL,
 	interpreted as the quantile function of the mixing
 	variable \eqn{W}; internally, sampling is then done with the
 	inversion method by applying \code{function} to U(0,1)
-	random variates.}
+	random variates. Additional arguments (such as parameters)
+        can be passed via the ellipsis argument.}
     }
   }  
   \item{df}{degress of freedom (positive real or \code{Inf} in which case
@@ -111,7 +113,7 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = NULL,
       \item{\code{"sobol"}:}{randomized Sobol sequence.}
       \item{\code{"ghalton"}:}{generalized Halton sequence.}
     }
-    If \code{method = "PRNQ"}, either \code{qmix} or \code{rmix} can be
+    If \code{method = "PRNG"}, either \code{qmix} or \code{rmix} can be
     provided. If both are provided, \code{rmix} is used and \code{qmix}
     ignored. For the other two methods, sampling is done via inversion, 
     hence \code{qmix} has to be provided and \code{rmix} is ignored. 
@@ -144,14 +146,15 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = NULL,
 
   The default factorization used to obtain \code{factor} is the Cholesky
   decomposition via \code{\link{chol}()}. To this end, \code{scale}
-  needs to have full rank.
+  needs to have full rank. Sampling from a singular normal variance
+  mixture distribution can be achieved by providing \code{scale}. 
 
   The number of rows of \code{factor} are the dimension \eqn{d} of
   the sample. Typically (but not necessarily), \code{factor} is square.
 
   \code{rStudent()} and \code{rNorm()} are wrappers of
-  \code{rnvmix(, mix = "inverse.gamma", df = df)} and
-  \code{rnvmix(, mix = "constant", df = df)}, respectively.
+  \code{rnvmix(, qmix = "inverse.gamma", df = df)} and
+  \code{rnvmix(, qmix = "constant", df = df)}, respectively. 
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
@@ -224,7 +227,12 @@ stopifnot(all.equal(X.mix2, X.mix1),
           all.equal(X.mix3, X.mix1),
           all.equal(X.mix5, X.mix1))
 
-
+## For a singular normal variance mixture:
+## Need to provide factor 
+A <- matrix( c(1, 0, 0, 1, 0, 1), ncol = 2, byrow = TRUE)
+stopifnot( all.equal( dim(rnvmix(n, rmix = "constant", factor = A)),    c(n, 3)))
+stopifnot( all.equal( dim(rnvmix(n, rmix = "constant", factor = t(A))), c(n, 2)))
+  
 ## Using 'skip'. Need to reset the seed everytime to get the same shifts in 'sobol'.
 ## Note that when using method = 'sobol', we have to provide 'qmix' instead of 'rmix'.
 set.seed(271)

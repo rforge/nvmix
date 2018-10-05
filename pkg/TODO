@@ -29,11 +29,6 @@
 
 ## Important
 
-- EH:  Write vignette nvmix_functionality.Rmd
-
-- EH:  Send Marius the references for the manuals/vignette? 
-       Maybe the three publications of Genz and Bretz as well as the "normal people"?
-
 - DONE? Does it make sense to choose the default of fun.eval[2] differently?
         I feel it should be something like 1/abstol, so that if one plays
         with abstol, one has a reasonable chance not having to modify
@@ -61,6 +56,7 @@
 
 
 ### DONE #######################################################################
+-DONE   Write vignette nvmix_functionality.Rmd
 -DONE  'factor' in rnvmix/dnvmix changed to be consistent with paper
 -DONE   There was a bug in rnvmix; it couldn't handle non-square 'factor' properly.
         [MH: Correct, never tested that.]

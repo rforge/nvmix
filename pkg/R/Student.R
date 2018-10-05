@@ -54,6 +54,8 @@ dStudent <- function(x, df, loc = rep(0, d), scale = diag(d),
 ##' @param B number of randomizations to get error estimates.
 ##' @param verbose logical indicating whether a warning is given if the required
 ##'        precision 'abstol' (see dnvmix()) has not been reached.
+##' @return numeric vector with the computed probabilities and attributes "error" 
+##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pStudent <- function(upper, lower = rep(-Inf, d),
                      df, loc = rep(0, d), scale = diag(d), standardized = FALSE,
@@ -70,7 +72,7 @@ pStudent <- function(upper, lower = rep(-Inf, d),
 
 ##' @title Random Number Generator for the Multivariate Student t Distribution
 ##' @param n sample size
-##' @param df degrees of freedom > 0; if df = Inf, the normal density is returned
+##' @param df degrees of freedom > 0; if df = Inf, sample from a Normal dist'n is returned
 ##' @param loc d-vector (location != mean vector here)
 ##' @param scale (d, d)-covariance matrix (scale != covariance matrix here)
 ##' @param factor factor R of the covariance matrix 'scale' with d rows
@@ -86,6 +88,7 @@ rStudent <- function(n, df, loc = rep(0, d), scale = diag(2),
     d <- nrow(scale <- as.matrix(scale))
   }
   
-  rnvmix(n, qmix = "inverse.gamma", loc = loc, scale = scale, factor = factor, df = df,
+  rnvmix(n, qmix = "inverse.gamma", rmix = "inverse.gamma",
+         loc = loc, scale = scale, factor = factor, df = df,
          method = method, skip = skip)
 }

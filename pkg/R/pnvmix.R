@@ -108,8 +108,8 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture for a Single Observation
 ##' @note Internal function being called by pnvmix. Unless a parameter has a description, 
 ##'        it is the same as in pnvmix() 
-##' @param upper
-##' @param lower
+##' @param upper d vector
+##' @param lower d vector 
 ##' @param qW quantile function of W. This has already been built and 'checked' in pnvmix()
 ##' @param mean.sqrt.mix
 ##' @param loc
@@ -321,8 +321,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), qW = NULL, mean.sqrt.mix,
 }
 
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture
-##' @param upper d-vector of upper evaluation limits
-##' @param lower d-vector of lower evaluation limits (<= upper)
+##' @param upper (n,d) matrix of upper evaluation limits
+##' @param lower (n,d) matrix of lower evaluation limits (<= upper)
 ##' @param qmix specification of the (mixture) distribution of W. This can be:
 ##'        1) a character string specifying a supported distribution (additional
 ##'           arguments of this distribution are passed via '...').
@@ -343,7 +343,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), qW = NULL, mean.sqrt.mix,
 ##'         - "ghalton": generalized Halton sequence
 ##'         - "prng":    pure Monte Carlo
 ##' @param precond logical; if TRUE (recommended), variable reordering
-##'        as described in Genz and Bretz (2002, pp. 955--956) is performed.
+##'        similar to Genz and Bretz (2002, pp. 955--956) is performed.
 ##'        Variable reordering can lead to a significant variance reduction
 ##'        and decrease in computational time.
 ##' @param abstol numeric >= 0 providing the absolute precision required.
@@ -366,10 +366,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), qW = NULL, mean.sqrt.mix,
 ##'        indicating whether a warning is given if the required precision
 ##'        'abstol' has not been reached.
 ##' @param ... additional arguments passed to the underlying mixing distribution
-##' @return list of length 3:
-##'         - value: computed probability
-##'         - error: error estimate
-##'         - numiter: number of iterations needed
+##' @return numeric vector with the computed probabilities and attributes "error" 
+##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, mean.sqrt.mix = NULL,
                    loc = rep(0, d), scale = diag(d), standardized = FALSE,
@@ -379,7 +377,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, mean.s
 {
   ## Checks
   if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
-  n <- nrow(upper) # number of evaluation points  #EH: Fixed bug. (n,d) needs to be defined before lower is used.
+  n <- nrow(upper) # number of evaluation points  
   d <- ncol(upper) # dimension
   if(!is.matrix(lower)) lower <- rbind(lower) # 1-row matrix if lower is a vector
   

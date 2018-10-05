@@ -10,7 +10,8 @@
 ##'           the base name of an existing distribution which can be sampled
 ##'           with prefix "r", the other elements denote additional parameters
 ##'           passed to this "rmix" random number generator.
-##'        3) function being interpreted as the quantile function F_W^-.
+##'        3) function being interpreted as a random number generator of W.
+##'           Additional arguments can be passed via '...'
 ##'        4) n-vector containing a random sample from W.
 ##' @param qmix specification of the quantile function of the  (mixture) distribution 
 ##'        of W. This needs to be supplied for the methods "sobol" and "ghalton".This can be:
@@ -19,16 +20,17 @@
 ##'        2) list of length at least one; the first argument specifies
 ##'           the base name of an existing distribution which can be sampled
 ##'           with prefix "q", the other elements denote additional parameters
-##'           passed to this "rmix" random number generator.
+##'           passed to this "qmix" random number generator.
 ##'        3) function being interpreted as the quantile function F_W^-.
+##'           Additional arguments can be passed via '...'
 ##' @param loc d-vector (location != mean vector here)
 ##' @param scale (d, d)-covariance matrix (scale != covariance matrix here)
 ##' @param factor factor R of the covariance matrix 'scale' such that RR^T
 ##'        = 'scale'. If factor is (d,k) => resulting scale is d dimensional
 ##' @param method character string indicating the method to be used:
+##'         - "PRNG":    pure Monte Carlo
 ##'         - "sobol":   Sobol sequence
 ##'         - "ghalton": generalized Halton sequence
-##'         - "PRNG":    pure Monte Carlo
 ##'         Note: For the methods "sobol" and "ghalotn", qmix() must be provided
 ##'         and rmix() is ignored. For the method "PRNG", either qmix() or rmix()
 ##'         needs to be provided. If both are provided, qmix() is ignored and

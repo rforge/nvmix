@@ -36,7 +36,7 @@ dNorm <- function(x, loc = rep(0, d), scale = diag(d),
 ##'         - "ghalton": generalized Halton sequence
 ##'         - "prng":    pure Monte Carlo
 ##' @param precond logical; if TRUE (recommended), variable reordering
-##'        as described in Genz and Bretz (2002, pp. 955--956) is performed.
+##'        similar to Genz and Bretz (2002, pp. 955--956) is performed.
 ##'        Variable reordering can lead to a significant variance reduction
 ##'        and decrease in computational time.
 ##' @param abstol numeric >= 0 providing the absolute precision required.
@@ -52,6 +52,8 @@ dNorm <- function(x, loc = rep(0, d), scale = diag(d),
 ##' @param B number of randomizations to get error estimates.
 ##' @param verbose logical indicating whether a warning is given if the required
 ##'        precision 'abstol' (see dnvmix()) has not been reached.
+##' @return numeric vector with the computed probabilities and attributes "error" 
+##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pNorm <- function(upper, lower = rep(-Inf, d),
                   loc = rep(0, d), scale = diag(d), standardized = FALSE,
@@ -73,7 +75,7 @@ pNorm <- function(upper, lower = rep(-Inf, d),
 ##' @param factor factor R of the covariance matrix 'scale' with d rows
 ##'        such that R R^T = 'scale'.
 ##' @return (n, d)-matrix with N(loc, scale) samples
-##' @author Marius Hofert, Erik Hintz
+##' @author Marius Hofert and Erik Hintz
 rNorm <- function(n, loc = rep(0, d), scale = diag(2),
                   factor = NULL, method = c("PRNG", "sobol", "ghalton"), skip = 0) # needs to be triangular!
 {
@@ -82,5 +84,7 @@ rNorm <- function(n, loc = rep(0, d), scale = diag(2),
   } else {
     d <- nrow(scale <- as.matrix(scale))
   }
-  rnvmix(n, qmix = "constant", loc = loc, scale = scale, factor = factor, method = method, skip = skip)
+  rnvmix(n, qmix = "constant", rmix = "constant", 
+         loc = loc, scale = scale, factor = factor, 
+         method = method, skip = skip)
 }
