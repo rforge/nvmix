@@ -8,33 +8,33 @@
   mixtures (including Student \emph{t} and normal distributions).
 }
 \usage{
-rnvmix(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2), 
+rnvmix(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2),
        factor = NULL, method = c("PRNG", "sobol", "ghalton"),
        skip = 0, ...)
 
 rStudent(n, df, loc = rep(0, d), scale = diag(2), factor = NULL,
          method = c("PRNG", "sobol", "ghalton"), skip = 0)
-rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = NULL,
-         method = c("PRNG", "sobol", "ghalton"), skip = 0)
+rNorm(n, loc = rep(0, d), scale = diag(2), factor = NULL,
+      method = c("PRNG", "sobol", "ghalton"), skip = 0)
 }
 \arguments{
   \item{n}{sample size \eqn{n} (positive integer).}
-  \item{rmix}{specification of the mixing variable \eqn{W} via a random number
-  generator; see McNeil et al. (2015, Chapter 6). This argument is ignored for 
-  \code{method="sobol"} and \code{method="ghalton"}. Supported are the 
-  following types of specification (see also the examples below):
+  \item{rmix}{specification of the mixing variable \eqn{W}, see McNeil
+    et al. (2015, Chapter 6), via a random number generator.
+    This argument is ignored for \code{method = "sobol"} and
+    \code{method = "ghalton"}. Supported are the
+    following types of specification (see also the examples below):
     \describe{
       \item{\code{\link{character}}:}{\code{\link{character}} string
 	specifying a supported distribution; currently available are
         \code{"constant"} (in which case \eqn{W = 1} and thus a sample
 	from the multivariate normal distribution with mean vector
 	\code{loc} and covariance matrix \code{scale} results) and
-	\code{"inverse.gamma"} (in which case \eqn{W} is drawn from
-	an inverse gamma distribution with shape and rate parameters
-	\code{df}/2 resulting in a sample from the multivariate
-	Student \emph{t} distribution with degrees of freedom
-	\code{df} (\code{df} needs to be provided via
-	the ellipsis argument, see the examples below).}
+	\code{"inverse.gamma"} (in which case \eqn{W} is
+	inverse gamma distributed with shape and rate parameters
+	\code{df}/2 and thus the multivariate
+	Student \emph{t} distribution with \code{df} degrees of freedom
+	(required to be provided via the ellipsis argument) results).}
       \item{\code{\link{list}}:}{\code{\link{list}} of length at least
 	one, where the first component is a \code{\link{character}}
 	string specifying the base name of a distribution which can be
@@ -42,7 +42,7 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = NULL,
         for which \code{"rexp"} exists for sampling. If the list is
         of length larger than one, the remaining elements contain
         additional parameters of the distribution; for \code{"exp"},
-        this can be the parameter \code{rate}.}
+	for example, this can be the parameter \code{rate}.}
       \item{\code{\link{function}}:}{\code{\link{function}}
 	interpreted as a random number generator of the mixing
 	variable \eqn{W}; additional arguments (such as parameters)
@@ -53,21 +53,20 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = NULL,
     }
   }
   \item{qmix}{specification of the mixing variable \eqn{W} via a quantile
-  function; see McNeil et al. (2015, Chapter 6). This argument is required for 
-  \code{method="sobol"} and \code{method="ghalton"}. Supported are the 
-  following types of specification (see also the examples below):
+    function; see McNeil et al. (2015, Chapter 6). This argument is required for
+    \code{method = "sobol"} and \code{method = "ghalton"}. Supported are the
+    following types of specification (see also the examples below):
     \describe{
       \item{\code{\link{character}}:}{\code{\link{character}} string
 	specifying a supported distribution; currently available are
         \code{"constant"} (in which case \eqn{W = 1} and thus a sample
 	from the multivariate normal distribution with mean vector
 	\code{loc} and covariance matrix \code{scale} results) and
-	\code{"inverse.gamma"} (in which case \eqn{W} is drawn from
-	an inverse gamma distribution with shape and rate parameters
-	\code{df}/2 resulting in a sample from the multivariate
-	Student \emph{t} distribution with degrees of freedom
-	\code{df} (\code{df} needs to be provided via
-	the ellipsis argument, see the examples below).}
+	\code{"inverse.gamma"} (in which case \eqn{W} is
+	inverse gamma distributed with shape and rate parameters
+	\code{df}/2 and thus the multivariate
+	Student \emph{t} distribution with \code{df} degrees of freedom
+	(required to be provided via the ellipsis argument) results).}
       \item{\code{\link{list}}:}{\code{\link{list}} of length at least
 	one, where the first component is a \code{\link{character}}
 	string specifying the base name of a distribution which can be
@@ -75,54 +74,55 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = NULL,
         for which \code{"qexp"} exists for sampling. If the list is
         of length larger than one, the remaining elements contain
         additional parameters of the distribution; for \code{"exp"},
-        this can be the parameter \code{rate}.}
+	for example, this can be the parameter \code{rate}.}
       \item{\code{\link{function}}:}{\code{\link{function}}
 	interpreted as the quantile function of the mixing
 	variable \eqn{W}; internally, sampling is then done with the
-	inversion method by applying \code{function} to U(0,1)
-	random variates. Additional arguments (such as parameters)
-        can be passed via the ellipsis argument.}
+	inversion method by applying the provided function to U(0,1)
+	random variates.}
     }
-  }  
-  \item{df}{degress of freedom (positive real or \code{Inf} in which case
-    the distribution is interpreted as multivariate normal with mean
-    vector \code{loc} and covariance matrix \code{scale}).}
+  }
+  \item{df}{positive degress of freedom; can also be \code{Inf} in which
+    case the distribution is interpreted as the multivariate normal
+    distribution with mean vector \code{loc} and covariance matrix
+    \code{scale}).}
   \item{loc}{location vector of dimension \eqn{d}; this equals the mean
     vector of a random vector following the specified normal variance
-    mixture distribution if (and only if) the latter exists.}
+    mixture distribution if and only if the latter exists.}
   \item{scale}{scale matrix (a covariance matrix entering the
-    distribution as a parameter) of dimension \eqn{(d, d)} (\eqn{d = 2}
-    per default);
+    distribution as a parameter) of dimension \eqn{(d, d)} (defaults to
+    \eqn{d = 2});
     this equals the covariance matrix of a random vector following
     the specified normal variance mixture distribution divided by
-    the expectation of the mixing variable \eqn{W} if (and only if) the
-    former exists. \code{scale} must be positive definite; sampling from
-    singular normal variance mixtures can be achieved by providing the
+    the expecation of the mixing variable \eqn{W} if and only if the
+    former exists.
+    Note that \code{scale} must be positive definite; sampling from
+    singular normal variance mixtures can be achieved by providing
     \code{factor}.}
   \item{factor}{factorization \code{\link{matrix}} \eqn{R} with \eqn{d}
     rows such that \eqn{R R^T} equals \code{scale}. \eqn{R^T} is internally
     multiplied from the right to an \eqn{(n, d)}-matrix of independent
     standard normals to obtain a sample from a multivariate normal
     with zero mean vector and covariance matrix \code{scale}. Note that
-    \code{factor} does not need to be a square matrix; hence it can be 
+    \code{factor} does not need to be a square matrix; hence it can be
     used to sample from singular normal variance mixtures.}
-    \item{method}{\code{\link{character}} string indicating the method
+  \item{method}{\code{\link{character}} string indicating the method
     to be used to obtain the sample. Available are:
     \describe{
-      \item{\code{"PRNG"}:}{pseudo-random numbers.}
-      \item{\code{"sobol"}:}{randomized Sobol sequence.}
-      \item{\code{"ghalton"}:}{generalized Halton sequence.}
+      \item{\code{"PRNG"}:}{pseudo-random numbers}
+      \item{\code{"sobol"}:}{Sobol' sequence}
+      \item{\code{"ghalton"}:}{generalized Halton sequence}
     }
     If \code{method = "PRNG"}, either \code{qmix} or \code{rmix} can be
     provided. If both are provided, \code{rmix} is used and \code{qmix}
-    ignored. For the other two methods, sampling is done via inversion, 
-    hence \code{qmix} has to be provided and \code{rmix} is ignored. 
+    ignored. For the other two methods, sampling is done via inversion,
+    hence \code{qmix} has to be provided and \code{rmix} is ignored.
   }
-  \item{skip}{integer, numer of points to be skipped when \code{method='sobol'},
-  see also example below.
+  \item{skip}{\code{\link{integer}} specifying the number of points
+    to be skipped when \code{method = "sobol"}, see also example below.
   }
-  \item{\dots}{additional arguments (e.g., parameters) passed to the
-    underlying mixing distribution when \code{rmix} (or \code{qmix}) is a
+  \item{\dots}{additional arguments (for example, parameters) passed to the
+    underlying mixing distribution when \code{rmix} or \code{qmix} is a
     \code{\link{character}} string or \code{\link{function}}.}
 }
 \value{
@@ -146,15 +146,17 @@ rNorm   (n,     loc = rep(0, d), scale = diag(2), factor = NULL,
 
   The default factorization used to obtain \code{factor} is the Cholesky
   decomposition via \code{\link{chol}()}. To this end, \code{scale}
-  needs to have full rank. Sampling from a singular normal variance
-  mixture distribution can be achieved by providing \code{scale}. 
+  needs to have full rank.
 
-  The number of rows of \code{factor} are the dimension \eqn{d} of
+  Sampling from a singular normal variance mixture distribution can be
+  achieved by providing \code{scale}.
+
+  The number of rows of \code{factor} equals the dimension \eqn{d} of
   the sample. Typically (but not necessarily), \code{factor} is square.
 
   \code{rStudent()} and \code{rNorm()} are wrappers of
   \code{rnvmix(, qmix = "inverse.gamma", df = df)} and
-  \code{rnvmix(, qmix = "constant", df = df)}, respectively. 
+  \code{rnvmix(, qmix = "constant", df = df)}, respectively.
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
@@ -178,12 +180,12 @@ P <- cov2cor(A \%*\% t(A))
 df <- 3.5
 n <- 1000
 set.seed(271)
-X <- rnvmix(n, rmix = "inverse.gamma", df = df, scale = P) # providing scale
+X  <- rnvmix(n, rmix = "inverse.gamma", df = df, scale = P) # providing scale
 set.seed(271)
 X. <- rnvmix(n, rmix = "inverse.gamma", df = df, factor = t(chol(P))) # providing the factor
 stopifnot(all.equal(X, X.))
 
-## Checking 'df = Inf'
+## Checking df = Inf
 set.seed(271)
 X <- rnvmix(n, rmix = "constant", scale = P) # normal
 set.seed(271)
@@ -220,29 +222,29 @@ X.mix4 <- rnvmix(n, qmix = function(p) 1/qgamma(1-p, shape = df/2, rate = df/2),
 set.seed(271) # if seed is set here, results are comparable to the above methods
 W <- rinverse.gamma(n, df = df)
 X.mix5 <- rnvmix(n, rmix = W, scale = P)
-## Compare
-## Note that X.mix4 is not 'all equal' with X.mix1 (or the other samples)
+## Compare (note that X.mix4 is not 'all equal' with X.mix1 or the other samples)
 ## since rgamma() != qgamma(runif()) (or qgamma(1-runif()))
 stopifnot(all.equal(X.mix2, X.mix1),
           all.equal(X.mix3, X.mix1),
           all.equal(X.mix5, X.mix1))
 
 ## For a singular normal variance mixture:
-## Need to provide factor 
+## Need to provide 'factor'
 A <- matrix( c(1, 0, 0, 1, 0, 1), ncol = 2, byrow = TRUE)
-stopifnot( all.equal( dim(rnvmix(n, rmix = "constant", factor = A)),    c(n, 3)))
-stopifnot( all.equal( dim(rnvmix(n, rmix = "constant", factor = t(A))), c(n, 2)))
-  
-## Using 'skip'. Need to reset the seed everytime to get the same shifts in 'sobol'.
-## Note that when using method = 'sobol', we have to provide 'qmix' instead of 'rmix'.
+stopifnot(all.equal(dim(rnvmix(n, rmix = "constant", factor = A)),    c(n, 3)))
+stopifnot(all.equal(dim(rnvmix(n, rmix = "constant", factor = t(A))), c(n, 2)))
+
+## Using 'skip'. Need to reset the seed everytime to get the same shifts in "sobol".
+## Note that when using method = "sobol", we have to provide 'qmix' instead of 'rmix'.
 set.seed(271)
-X.skip0 <- rnvmix(n, qmix = "inverse.gamma", df = df, scale = P, method = 'sobol') 
+X.skip0 <- rnvmix(n, qmix = "inverse.gamma", df = df, scale = P, method = "sobol")
 set.seed(271)
-X.skip1 <- rnvmix(n, qmix = "inverse.gamma", df = df, scale = P, method = 'sobol', skip = n) 
+X.skip1 <- rnvmix(n, qmix = "inverse.gamma", df = df, scale = P, method = "sobol",
+                  skip = n)
 set.seed(271)
-X.withoutskip <- rnvmix(2*n, qmix = "inverse.gamma", df = df, scale = P, method = 'sobol') 
+X.wo.skip <- rnvmix(2*n, qmix = "inverse.gamma", df = df, scale = P, method = "sobol")
 X.skip <- rbind(X.skip0, X.skip1)
-all.equal(X.withoutskip, X.skip)
+all.equal(X.wo.skip, X.skip)
 
 
 ### Examples for rStudent() and rNorm() ########################################

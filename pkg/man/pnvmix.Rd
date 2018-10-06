@@ -14,16 +14,14 @@ pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, mean.sqrt.mix = NU
        abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
        increment = c("doubling", "num.init"), B = 12, verbose = TRUE, ...)
 
-pStudent(upper, lower = rep(-Inf, d),
-         df, loc = rep(0, d), scale = diag(d), standardized = FALSE,
-         method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
-         abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
-         verbose = TRUE)
-pNorm   (upper, lower = rep(-Inf, d),
-         loc = rep(0, d), scale = diag(d), standardized = FALSE,
-         method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
-         abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
-         verbose = TRUE)
+pStudent(upper, lower = rep(-Inf, d), df, loc = rep(0, d), scale = diag(d),
+         standardized = FALSE, method = c("sobol", "ghalton", "PRNG"),
+         precond = TRUE, abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
+         B = 12, verbose = TRUE)
+pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
+      standardized = FALSE, method = c("sobol", "ghalton", "PRNG"),
+      precond = TRUE, abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
+      B = 12, verbose = TRUE)
 }
 \arguments{
   \item{upper}{\eqn{(n, d)}-\code{\link{matrix}} of upper integration limits;
@@ -34,8 +32,7 @@ pNorm   (upper, lower = rep(-Inf, d),
   \item{qmix}{specification of the mixing variable \eqn{W}; see McNeil et
     al. (2015, Chapter 6). Supported are the following types of
     specification (see also the examples below):
-    \describe{
-      \item{\code{\link{character}}:}{\code{\link{character}} string
+    \describe{\item{\code{\link{character}}:}{\code{\link{character}} string
 	specifying a supported distribution; currently available are
         \code{"constant"} (in which case \eqn{W = 1} and thus
 	the multivariate normal distribution with mean vector
@@ -43,10 +40,8 @@ pNorm   (upper, lower = rep(-Inf, d),
 	\code{"inverse.gamma"} (in which case \eqn{W} is
 	inverse gamma distributed with shape and rate parameters
 	\code{df}/2 and thus the multivariate
-	Student \emph{t} distribution with degrees of freedom
-	\code{df} (required to be provided via
-	the ellipsis argument) results); additional arguments
-	(such as parameters) can be passed via the ellipsis argument.}
+	Student \emph{t} distribution with \code{df} degrees of freedom
+	(required to be provided via the ellipsis argument) results).}
       \item{\code{\link{list}}:}{\code{\link{list}} of length at least
 	one, where the first component is a \code{\link{character}}
 	string specifying the base name of a distribution whose
@@ -54,11 +49,10 @@ pNorm   (upper, lower = rep(-Inf, d),
 	an example is \code{"exp"} for which \code{"qexp"} exists.
 	If the list is of length larger than one, the remaining elements
 	contain additional parameters of the distribution; for \code{"exp"},
-        this can be the parameter \code{rate}.}
+        for example, this can be the parameter \code{rate}.}
       \item{\code{\link{function}}:}{\code{\link{function}}
 	interpreted as the quantile function of the mixing
-	variable \eqn{W}; additional arguments (such as parameters)
-        can be passed via the ellipsis argument.}
+	variable \eqn{W}.}
     }
   }
   \item{mean.sqrt.mix}{expectation of the square root \eqn{\sqrt(W)} of
@@ -66,36 +60,38 @@ pNorm   (upper, lower = rep(-Inf, d),
     estimated via QMC; this is only needed for determining the reordering
     of the integration bounds, so a rather crude approximation
     is fine.}
-  \item{df}{degress of freedom (positive real or \code{Inf} in which case
-    the distribution is interpreted as multivariate normal with mean
-    vector \code{loc} and covariance matrix \code{scale}).}
+  \item{df}{positive degress of freedom; can also be \code{Inf} in which
+    case the distribution is interpreted as the multivariate normal
+    distribution with mean vector \code{loc} and covariance matrix
+    \code{scale}).}
   \item{loc}{location vector of dimension \eqn{d}; this equals the mean
     vector of a random vector following the specified normal variance
-    mixture distribution if (and only if) the latter exists.}
+    mixture distribution if and only if the latter exists.}
   \item{scale}{scale matrix (a covariance matrix entering the
     distribution as a parameter) of dimension \eqn{(d, d)};
     this equals the covariance matrix of a random vector following
     the specified normal variance mixture distribution divided by
-    the expecation of the mixing variable \eqn{W} if (and only if) the
+    the expecation of the mixing variable \eqn{W} if and only if the
     former exists.}
   \item{standardized}{\code{logical} indicating whether \code{scale} is
     assumed to be a correlation matrix.}
   \item{method}{\code{\link{character}} string indicating the method
     to be used to compute the integral. Available are:
     \describe{
-      \item{\code{"sobol"}:}{}
-      \item{\code{"ghalton"}:}{}
-      \item{\code{"PRNG"}:}{}
+      \item{\code{"sobol"}:}{Sobol' sequence}
+      \item{\code{"ghalton"}:}{generalized Halton sequence}
+      \item{\code{"PRNG"}:}{plain Monte Carlo based on a pseudo-random
+         number generator}
     }
   }
   \item{precond}{\code{\link{logical}} indicating whether preconditioning
     is applied, that is, reordering of the integration variables. If \code{TRUE},
-    integration limits as well as \code{scale} are internally re-ordered in 
-    a way such that the overall variance of the integrand is usually smaller than 
+    integration limits as well as \code{scale} are internally re-ordered in
+    a way such that the overall variance of the integrand is usually smaller than
     with the original ordering; this usually leads smaller run-times.}
   \item{abstol}{non-negative \code{\link{numeric}} providing the
-    absolute precision required; if \code{abstol} is zero,
-    the algorithm will run until the total number of function
+    absolute precision required; if \code{abstol = 0},
+    the algorithm will typically run until the total number of function
     evaluations exceeds \code{fun.eval[2]}.}
   \item{CI.factor}{multiplier of the Monte Carlo confidence interval
     bounds.  The algorithm runs until \code{CI.factor} times the estimated
@@ -112,45 +108,48 @@ pNorm   (upper, lower = rep(-Inf, d),
       \item{\code{"doubling"}:}{next iteration has as many sample points
 	as all the previous iterations combined.}
       \item{\code{"num.init"}:}{all iterations use an additional
-	\code{fun.eval[1]} many points.}
+	\code{fun.eval[1]}-many points.}
     }
   }
-  \item{B}{number of randomizations to get an error estimate in the
-    randomized quasi-Monte Carlo approach.}
-  \item{verbose}{\code{\link{logical}}
+  \item{B}{number of randomizations for obtaining an error estimate in the
+    randomized quasi-Monte Carlo (RQMC) approach.}
+  \item{verbose}{% *not* the same as in ?dnvmix()
+    \code{\link{logical}}
     indicating whether a warning is given if the required precision
     \code{abstol} has not been reached; can also be an \code{\link{integer}}
     in which case 0 is \code{FALSE}, 1 is \code{TRUE} and 2 stands
     for producing a more verbose warning (for each set of provided
     integration bounds).}
-  \item{\dots}{additional arguments (e.g., parameters) passed to the
+  \item{\dots}{additional arguments (for example, parameters) passed to the
     underlying mixing distribution when \code{qmix} is a
     \code{\link{character}} string or \code{\link{function}}.}
 }
 \value{
   \code{pnvmix()}, \code{pStudent()} and \code{pNorm()} return
-  a \code{\link{numeric}} vector with the computed probabilities
-  and attributes \code{"error"} (error estimate of the RQMC estimator)
-  and  \code{"numiter"} (number of iterations).
+  a \code{\link{numeric}} \eqn{n}-vector with the computed probabilities
+  and corresponding attributes \code{"error"} (error estimates of the
+  RQMC estimator) and \code{"numiter"} (number of iterations).
 }
 \details{
   One should highlight that evaluating normal variance mixtures
-  in general and the multivariate Student \emph{t} distribution
-  for non-integer degrees of freedom in particular are non-trivial
-  tasks which, at the time of development of \pkg{nvmix}, was
-  not available in \R before.
+  is a non-trivial tasks which, at the time of development of
+  \pkg{nvmix}, was not available in \R before, not even
+  the special case of a multivariate Student \emph{t} distribution
+  for non-integer degrees of freedom, which frequently appears in
+  applications in finance, insurance and risk management after
+  estimating such distributions.
 
   Note that the procedures call underlying C code. Currently,
   dimensions \eqn{d\ge 16510}{d >= 16510} are not supported for the
   default method \code{sobol}.
 
-  Internally, an iterative randomized Quasi-Monte Carlo approach is used
-  to estimate the probability. It is an iterative algorithm that evaluates
-  the integrand at a point-set with size as specified by \code{increment}) 
+  Internally, an iterative randomized Quasi-Monte Carlo (RQMC) approach is used
+  to estimate the probabilities. It is an iterative algorithm that evaluates
+  the integrand at a point-set with size as specified by \code{increment})
   in each iteration until the pre-specified error tolerance \code{abstol}
-  is reached. The attribute \code{"numiter"} gives the number of such 
+  is reached. The attribute \code{"numiter"} gives the number of such
   iterations needed.
-  
+
   Care should be taken when changing the algorithm-specific parameters,
   notably \code{method}, \code{precond}, \code{fun.eval[2]} and \code{B}.
   Error estimates will not be reliable for too small \code{B} and the
@@ -158,8 +157,8 @@ pNorm   (upper, lower = rep(-Inf, d),
   Carlo point-set used.
 
   If the absolute error tolerance \code{abstol} cannot be achieved with
-  \code{fun.eval[2]} function evaluations, an additional warning will be
-  returned.
+  \code{fun.eval[2]} function evaluations, an additional warning is
+  thrown.
 
   \code{pStudent()} and \code{pNorm()} are wrappers of
   \code{pnvmix(, qmix = "inverse.gamma", df = df)} and
@@ -217,7 +216,7 @@ pt <- pnvmix(b., lower = a., qmix = "inverse.gamma", df = df, scale = P)
 stopifnot(is.na(pt) == c(FALSE, TRUE, TRUE, FALSE))
 
 ## Case where upper = (Inf,..,Inf) and lower = (-Inf,...,-Inf)
-stopifnot(all.equal(pnvmix(upper = rep(Inf, d), qmix = "constant"), 1, 
+stopifnot(all.equal(pnvmix(upper = rep(Inf, d), qmix = "constant"), 1,
  check.attributes = FALSE))
 
 ### Examples for pStudent() and pNorm() ########################################
@@ -238,6 +237,5 @@ p.St.dfInf <- pStudent(b, df = Inf, scale = P)
 set.seed(1)
 p.Norm <- pNorm(b, scale = P)
 stopifnot(all.equal(p.St.dfInf, p.Norm, check.attributes = FALSE))
-  
 }
 \keyword{distribution}

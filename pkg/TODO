@@ -35,21 +35,32 @@
   already provides an informative error message ("... is not positive definite").
   Could still change that for next release but too much overhead/code for my taste.
 - renamed all 'cholScale' to 'factor' (as we used that notion in dnvmix(), rnvmix().
+- ?dnvmix, ?pnvmix and ?dnvmix could have a bit more documentation on the argument 'method'
+  (there was none, I added a bit more). Are the 'sobol' and 'ghalton' methods *randomized*?
+  This was given for some but not all methods. I went with the "least common multiple".
+- Also use spaces in the .Rd, so \code{abstol = 0.00...} instead of \code{abstol=0.00...}
+- Avoid abbreviations like 'e.g.' on the help files.
+- Use proper quotation marks on the .Rd files (as in code): method = "sobol", not
+  method = 'sobol', but okay to speak of the argument 'method' just its *value*
+  is a (double-quoted) character string
 
 ## Questions
 - why do we need 'const' (now: is.const.mix) and can't handle that with a corresponding
   quantile function?
 - does the code correctly pick up the case where W is constant but not 1?
   (this theoretically changes the distribution)
-- dnvmix() works differently (lower triangular 'factor') than rnvmix(). Why?
-  in rnvmix() we even use t(<chol(...)>), so could simply go to lower triangular
-  here. Is it that we would need to transpose the output again? should mention
-  this. Still, two arguments with the same name but different meaning is
-  extremely prone to errors
+- After dnvmix(), pnvmix() and the literature, it seems to make all the sense
+  in the world to also make rnvmix()'s factor a *lower* triangular matrix
+  (even if it uses another t() -- this would be much less confusing, we
+  even use t(chol()) already in some case inside rnvmix() and
+  two arguments with the same name but different meaning is
+  extremely prone to errors).
 
 
 ### For the next release #######################################################
 
+0) Please document in the .Rd via '% see ?pnvmix' all arguments on ?rnvmix and ?dnvmix
+   which are actually the same as on ?pnvmix (several reasons for that).
 1) Estimation
 2) Singular matrices
 
