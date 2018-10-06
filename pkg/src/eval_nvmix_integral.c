@@ -19,26 +19,23 @@
  * @param ONE   largest number x < 1 such that x != 1
  * @return mean estimate mean(f(U)) of E(f(U)) using antithetic variates
  * @note lower and upper can have -/+Inf entries. While pnorm() would give the
-         correct result, it safes time to check each time if the argument is -/+Inf
+ correct result, it safes time to check each time if the argument is -/+Inf
  *       and setting the value to 0/1 rather than calling pnorm().
  * @author Erik Hintz and Marius Hofert
  */
 double eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int d,
                              double *cholScale, double ZERO, double ONE)
 {
-    
-    /* "variablename"org stands for "original", "variablename"ant stands for their
-     antithetic value */
-    
     double yorg[d-1], sqrtmixorg, dorg, difforg, forg, scprodorg;
     double yant[d-1], sqrtmixant, dant, diffant, fant, scprodant;
+    /* Note: <name>org stands for "original", <name>ant for antithetic */
     /* y:       vector to save phi^{-1}(dj+uj(ej-dj)) */
     /* sqrtmix: used to store sqrt(F_w^{-1}(u_0)) */
     /* d:       current values of di from the paper */
     /* diff:    current values of (ei-di) from the paper */
     /* f:       current value of (e1-d1) * (e2-d2) * ... * (ei-di) */
     /* scprod:  scalar product sum cholScale_{ij} y_j */
-    
+
     double tmp; /* to store temporary values */
     double mean = 0; /* to store the result */
     int i, j, l; /* counters for loops */

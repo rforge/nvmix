@@ -2,7 +2,7 @@
 
 ##' @title Random Number Generator for Multivariate Normal Variance Mixtures
 ##' @param n sample size
-##' @param rmix specification of random number generator of the  (mixture) distribution 
+##' @param rmix specification of random number generator of the  (mixture) distribution
 ##'        of W. This can be:
 ##'        1) character string specifying a supported distribution (additional
 ##'           arguments of this distribution are passed via '...').
@@ -13,7 +13,7 @@
 ##'        3) function being interpreted as a random number generator of W.
 ##'           Additional arguments can be passed via '...'
 ##'        4) n-vector containing a random sample from W.
-##' @param qmix specification of the quantile function of the  (mixture) distribution 
+##' @param qmix specification of the quantile function of the  (mixture) distribution
 ##'        of W. This needs to be supplied for the methods "sobol" and "ghalton".This can be:
 ##'        1) character string specifying a supported distribution (additional
 ##'           arguments of this distribution are passed via '...').
@@ -34,8 +34,8 @@
 ##'         Note: For the methods "sobol" and "ghalotn", qmix() must be provided
 ##'         and rmix() is ignored. For the method "PRNG", either qmix() or rmix()
 ##'         needs to be provided. If both are provided, qmix() is ignored and
-##'         rmix() is used. 
-##' @param skip numeric integer. How many points should be skipped when method='sobol'?        
+##'         rmix() is used.
+##' @param skip numeric integer. How many points should be skipped when method='sobol'?
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return (n, d)-matrix with NVM(loc,scale, F_W) samples
 ##' @author Marius Hofert and Erik Hintz
@@ -47,135 +47,134 @@
 ##'         + "GIGrvg":  faster if n small and often called with several parameters
 ##'         see examples of 'GIGrvg' for both methods
 rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2),
-                   factor = NULL, method = c("PRNG", "sobol", "ghalton"), 
+                   factor = NULL, method = c("PRNG", "sobol", "ghalton"),
                    skip = 0, ...)
 {
-  ## Checks
-  ## If 'scale' provided and not factor, we let 'factor' be a (d,d) *upper* triangular matrix
-  ## so that we can multiply from the right later. If 'scale' is not positive definite, catch 
-  ## and print the error passed from 'chol(x)'
-  if(is.null(factor)){
-    factor <- tryCatch(chol(scale), error = function(error) error)
-    if(inherits(factor, "error")) stop(paste("Error occured when calling 'chol(scale)':", factor$message))
-    d <- nrow(factor)
-    k <- d
-  } else {
-    ## If 'factor' is a provided (d,k) matrix  => 'scale' is (d,d) 
-    ## We already transpose 'factor' so that we can multiply from the right later.
-    d <- nrow(factor <- as.matrix(factor))
-    k <- ncol(factor)
-    factor <- t(factor) # (k,d) matrix
-  }
-  
-  stopifnot(n >= 1)
-  
-  method <- match.arg(method)
-  
-  ## Determine if inversion is to be used 
-  inversion <- FALSE
-  ## This is the case if the method used is "sobol" or "ghalton"
-  if(method != "PRNG") inversion <- TRUE
-  ## Or if the method is  "PRNQ" but rmix was not provivded
-  if(method == "PRNG" && is.null(rmix)) inversion <- TRUE
-  
-  ## Get realizations of W in each case.
-  if(inversion){
-    ## In this case, we need qmix to be provided and use inversion
-    if(is.null(qmix)) stop("'qmix' needs to be provided for methods 'sobol' and 'ghalton'")
-    
-    ## Get low discrepancy pointset
-    ## Note that we need a k dimensional normal dist'n later, hence need k+1 uniforms 
-    ## since the first one is being used to get realizations of W
-    U <- switch(method,
-                "sobol" = {
-                  qrng::sobol(n, d = k + 1, randomize = TRUE, skip = skip)
-                },
-                "ghalton" = {
-                  qrng::ghalton(n, d = k + 1, method = "generalized")
-                },
-                "PRNG" = {
-                  matrix(runif( n* (k + 1)), ncol = k + 1)
-                })  # (n, k+1) matrix 
-    
-    ## get quasi realizations using qmix
-    W <- if(is.character(qmix)) { # 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
-      qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
-      switch(qmix,
-             "constant" = {
-               rep(1, n)
-             },
-             "inverse.gamma" = {
-               if(hasArg(df)) df <- list(...)$df else
-                 stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
-               ## Still allow df = Inf (normal distribution)
-               stopifnot(is.numeric(df), length(df) == 1, df > 0)
-               if(is.finite(df)) {
-                 df2 <- df/2
-                 1 / qgamma(1 - U[,1], shape = df2, rate = df2)
-               } else {
-                 rep(1, n)
-               }
-             },
-             stop("Currently unsupported 'qmix'"))
-    } else if(is.list(qmix)) { # 'qmix' is a list of the form (<character string>, <parameters>)
-      stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
-      qmix. <- paste0("q", distr)
-      if(!existsFunction(qmix.))
-        stop("No function named '", qmix., "'.")
-      do.call(qmix., append(list(U[,1]), qmix[-1])) ## EH: Fixed bug here. 
-    } else if(is.function(qmix)) { # 'qmix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
-      qmix(U[,1],...)
-    } else stop("'qmix' must be a character string, list, quantile function or n-vector of non-negative random variates.")
-    
-  } else {
-    
-    ## In this case, method == "PRNG" and we do not need inversion. 
-    ## Get realizations from rmix:
-    if(is.null(rmix)) stop("'rmix() needs to be provided.")
-    
-    W <- if(is.character(rmix)) { # 'rmix' is a character vector specifying supported mixture distributions (utilizing '...')
-      rmix <- match.arg(rmix, choices = c("constant", "inverse.gamma"))
-      switch(rmix,
-             "constant" = {
-               rep(1, n)
-             },
-             "inverse.gamma" = {
-               if(hasArg(df)) df <- list(...)$df else
-                 stop("'rmix = \"inverse.gamma\"' requires 'df' to be provided.")
-               ## Still allow df = Inf (normal distribution)
-               stopifnot(is.numeric(df), length(df) == 1, df > 0)
-               if(is.finite(df)) {
-                 df2 <- df/2
-                 1 / rgamma(n, shape = df2, rate = df2)
-               } else {
-                 rep(1, n)
-               }
-             },
-             stop("Currently unsupported 'rmix'"))
-    } else if(is.list(rmix)) { # 'rmix' is a list of the form (<character string>, <parameters>)
-      stopifnot(length(rmix) >= 1, is.character(distr <- rmix[[1]]))
-      mix <- paste0("r", distr)
-      if(!existsFunction(mix))
-        stop("No function named '", rmix, "'.")
-      do.call(mix, c(n, rmix[-1]))
-    } else if(is.function(rmix)) {
-      rmix(n, ...)# 'rmix' is interpreted as a random number generator for W 
-    } else if(is.numeric(rmix) && length(rmix) == n && all(rmix >= 0)) { # 'mix' is the vector of realizations of W
-      rmix
-    } else stop("'rmix' must be a character string, list, random number generator or n-vector of non-negative random variates.")
-  }
-  
-  ## Generate Z ~ N(0, Ik)
-  if(!inversion){
-    Z <- matrix(rnorm(n * k), ncol = k) # (n, k)-matrix of N(0, 1)
-  } else {
-    Z <- qnorm( U[, 2:(k+1)] ) # (n, k)-matrix of N(0, 1)
-  }
-  ## Generate Y ~ N_d(0, scale)
-  ## Recall that factor had been transposed, i.e. factor is (k,d)
-  Y <- Z %*% factor # (n, k) %*% (k, d) = (n, d)-matrix of N(0, scale)
-  ## Generate X ~ M_d(0, Sigma, LS[F_W])
-  X <- sqrt(W) * Y # also fine for different k
-  ## Generate X ~ M_d(mu, Sigma, LS[F_W])
-  sweep(X, 2, loc, "+")
+    ## Checks
+    stopifnot(n >= 1)
+    ## If 'scale' but not 'factor' is provided, let 'factor' be *upper* triangular.
+    ## (to multiply from the right later).
+    ## Note: this differs from dnvmix()
+    if(is.null(factor)){
+        factor <- chol(scale) # *upper* triangular
+        d <- nrow(factor)
+        k <- d
+    } else {
+        ## If 'factor' is a provided (d,k) matrix  => 'scale' is (d,d)
+        ## We already transpose 'factor' so that we can multiply with it from
+        ## the right later
+        d <- nrow(factor <- as.matrix(factor))
+        k <- ncol(factor)
+        factor <- t(factor) # (k,d) matrix
+    }
+    method <- match.arg(method)
+
+    ## Determine if inversion is to be used
+    inversion <- FALSE
+    ## This is the case if the method used is "sobol" or "ghalton"
+    if(method != "PRNG") inversion <- TRUE
+    ## Or if the method is  "PRNQ" but rmix was not provivded
+    if(method == "PRNG" && is.null(rmix)) inversion <- TRUE
+
+    ## Get realizations of W in each case.
+    if(inversion){
+
+        ## In this case, we need qmix to be provided and use inversion
+        if(is.null(qmix)) stop("'qmix' needs to be provided for methods 'sobol' and 'ghalton'")
+
+        ## Get low discrepancy pointset
+        ## Note that we need a k dimensional normal dist'n later, hence need k+1 uniforms
+        ## since the first one is being used to get realizations of W
+        U <- switch(method,
+                    "sobol" = {
+                        qrng::sobol(n, d = k + 1, randomize = TRUE, skip = skip)
+                    },
+                    "ghalton" = {
+                        qrng::ghalton(n, d = k + 1, method = "generalized")
+                    },
+                    "PRNG" = {
+                        matrix(runif( n* (k + 1)), ncol = k + 1)
+                    })  # (n, k+1) matrix
+
+        ## get quasi realizations using qmix
+        W <- if(is.character(qmix)) { # 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
+                 qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
+                 switch(qmix,
+                        "constant" = {
+                            rep(1, n)
+                        },
+                        "inverse.gamma" = {
+                            if(hasArg(df)) df <- list(...)$df else
+                                                                  stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
+                            ## Still allow df = Inf (normal distribution)
+                            stopifnot(is.numeric(df), length(df) == 1, df > 0)
+                            if(is.finite(df)) {
+                                df2 <- df/2
+                                1 / qgamma(1 - U[,1], shape = df2, rate = df2)
+                            } else {
+                                rep(1, n)
+                            }
+                        },
+                        stop("Currently unsupported 'qmix'"))
+             } else if(is.list(qmix)) { # 'qmix' is a list of the form (<character string>, <parameters>)
+                 stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
+                 qmix. <- paste0("q", distr)
+                 if(!existsFunction(qmix.))
+                     stop("No function named '", qmix., "'.")
+                 do.call(qmix., append(list(U[,1]), qmix[-1]))
+             } else if(is.function(qmix)) { # 'qmix' is interpreted as the quantile function F_W^- of the mixture distribution F_W of W
+                 qmix(U[,1],...)
+             } else stop("'qmix' must be a character string, list, quantile function or n-vector of non-negative random variates.")
+
+    } else {
+
+        ## In this case, method == "PRNG" and we do not need inversion.
+        ## Get realizations from rmix:
+        if(is.null(rmix)) stop("'rmix() needs to be provided.")
+
+        W <- if(is.character(rmix)) { # 'rmix' is a character vector specifying supported mixture distributions (utilizing '...')
+                 rmix <- match.arg(rmix, choices = c("constant", "inverse.gamma"))
+                 switch(rmix,
+                        "constant" = {
+                            rep(1, n)
+                        },
+                        "inverse.gamma" = {
+                            if(hasArg(df)) df <- list(...)$df else
+                                                                  stop("'rmix = \"inverse.gamma\"' requires 'df' to be provided.")
+                            ## Still allow df = Inf (normal distribution)
+                            stopifnot(is.numeric(df), length(df) == 1, df > 0)
+                            if(is.finite(df)) {
+                                df2 <- df/2
+                                1 / rgamma(n, shape = df2, rate = df2)
+                            } else {
+                                rep(1, n)
+                            }
+                        },
+                        stop("Currently unsupported 'rmix'"))
+             } else if(is.list(rmix)) { # 'rmix' is a list of the form (<character string>, <parameters>)
+                 stopifnot(length(rmix) >= 1, is.character(distr <- rmix[[1]]))
+                 mix <- paste0("r", distr)
+                 if(!existsFunction(mix))
+                     stop("No function named '", rmix, "'.")
+                 do.call(mix, c(n, rmix[-1]))
+             } else if(is.function(rmix)) {
+                 rmix(n, ...)# 'rmix' is interpreted as a random number generator for W
+             } else if(is.numeric(rmix) && length(rmix) == n && all(rmix >= 0)) { # 'mix' is the vector of realizations of W
+                 rmix
+             } else stop("'rmix' must be a character string, list, random number generator or n-vector of non-negative random variates.")
+    }
+
+    ## Generate Z ~ N(0, I_k)
+    if(!inversion){
+        Z <- matrix(rnorm(n * k), ncol = k) # (n, k)-matrix of N(0, 1)
+    } else {
+        Z <- qnorm( U[, 2:(k+1)] ) # (n, k)-matrix of N(0, 1)
+    }
+    ## Generate Y ~ N_d(0, scale)
+    ## Recall that factor had been transposed, i.e. factor is (k,d)
+    Y <- Z %*% factor # (n, k) %*% (k, d) = (n, d)-matrix of N(0, scale)
+    ## Generate X ~ M_d(0, Sigma, LS[F_W])
+    X <- sqrt(W) * Y # also fine for different k
+    ## Generate X ~ M_d(mu, Sigma, LS[F_W])
+    sweep(X, 2, loc, "+")
 }

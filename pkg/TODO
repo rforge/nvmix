@@ -1,50 +1,59 @@
-### Major changes    ###########################################################
+### For first release ##########################################################
 
- - in rnvmix() (and their wrappers), factor is now a matrix R such that R R^T = scale.
-   (=> consistent with paper).
-   Internally, if 'factor' is not provided, it will be determined as the upper triangular
-   Cholesky factor and not changed so that we can multiply from the right. If 'factor' is
-   provided, it will be transposed, so that we can multiply from the right. This avoids 
-   transposing Z which is usually much larger than R. 
+## Comments after fine-tuning for first release
+- give more meaningful names than 'const' ("don't call a dog 'dog', give him
+  a meaningful name"); I renamed it to 'is.const.mix' and put it next to 'qmix'
+  where it (logically) belongs
+- document arguments (pnvmix1()) that are already documented in another function
+  (pnvmix()) via 'see ?pnvmix()'
+- re-indented files: someone needs to learn Emacs :-) (or use right settings in
+  R Studio to obtain 4 blanks indent per level). A good editor also gives you
+  'parentheses matching', so no need to do ( ( ( (a + b) / 2 )))
+- use 'if' as a function, so
+  if() a <- b else a <- c should be a <- if() b else c
+  (see 'next.estimate', for example)
+- keep order in Roxygen heads (@note should come last)
+- *within* functions, separate larger pieces of code by '## <title ####... ###'
+  rather than empty lines (also good reminder of adhering to the 80-column rule)
+- avoid ':' in leading comments (clear that they refer to the code thereafter)
+- avoid comments 'EH' in code
+- make comments shorter so that ideally can be done 'inline' next to the
+  corresponding statement (avoid searching for corresponding comment)
+- make inline comments shorter to ideally fit in the 80-column rule. Example:
+  "initialize error to something bigger than abstol so that we can enter the while loop"
+  => "initialize error to > abstol to enter while loop"
+- thanks for looking into the mahalanobis() problem
+- removed tryCatch() from 'factorize()': I think this was 'legacy code', it would
+  be bad to just do the around chol() (as it was) as then not always the same
+  object type is returned.
+- 'archived' factorize() as not needed at the moment
+- I omitted all tryCatch() for the following reason:
+  We mostly used it as tryCatch(t(chol(...))). There is no point in doing that
+  as t() will fail if chol(...) fails and the error message is semi-cryptic
+  then. We would need to do tryCatch(chol(...)), then, in case of *no* error,
+  pick out the resulting matrix and transpose it. Too complicated given that chol()
+  already provides an informative error message ("... is not positive definite").
+  Could still change that for next release but too much overhead/code for my taste.
 
-   *NOTE*: As a result, the default of factor is NULL now because I did not touch 'factorize'. 
-   I could have written factor = t(factorize(scale)) but then rnvmix() transposes that factor 
-   again, so two transposes cancelling each other (not pretty, not efficient). 
-   Leaving factor = factorize(scale) (without changing 'factorize') can be very confusing for 
-   the user (and perhaps for me, too) as this would contradict our definition of 'factor'.
-
-   I understand that this is probably not the most elegant solution, but I think it works for
-   now and we can for the next release think about what to do with 'factorize'. 
-
- - tests created => using package testthat() (quite convenient, I think)
-   [MH: Wouldn't do... or just for us. Problem: dependence on a package. Hmmm... maybe ok here]
-
- - qW as well as mean.sqrt.mix are built in pnvmix and then passed as an argument
-   to pnvmix1() => makes it faster if upper is a matrix; since qW and mean.sqrt.mix
-   don't change with upper/lower, it probably makes sense to build them once.
-   [MH: sounds good]
+## Questions
+- why do we need 'const' (now: is.const.mix) and can't handle that with a corresponding
+  quantile function?
+- does the code correctly pick up the case where W is constant but not 1?
+  (this theoretically changes the distribution)
+- dnvmix() works differently (lower triangular 'factor') than rnvmix(). Why?
+  in rnvmix() we even use t(<chol(...)>), so could simply go to lower triangular
+  here. Is it that we would need to transpose the output again? should mention
+  this. Still, two arguments with the same name but different meaning is
+  extremely prone to errors
 
 
-### For next release ###########################################################
+### For the next release #######################################################
 
-## Important
-
-- DONE? Does it make sense to choose the default of fun.eval[2] differently?
-        I feel it should be something like 1/abstol, so that if one plays
-        with abstol, one has a reasonable chance not having to modify
-        fun.eval[2]. I realized this when choosing abstol = 1e-8 (then
-        with fun.eval[2] = 1e8, the computations took forever.
-
-	EH: the default is set such that the algorithm terminates with reasonable
-        tolerances (0.001, 0.0005, maybe 0.0001). Tolerances beyond that will take
-        forever one way or another.
-	My suggestion: Leave it for now.
-
-
-### TODO #######################################################################
+1) Estimation
+2) Singular matrices
 
 - TODO Allow rmix() to be specified in pnvmix() for method = 'PRNG'. This can be a first
-       Step towards evaluation GIG mixtures, where qmix() is not available but one can 	
+       Step towards evaluation GIG mixtures, where qmix() is not available but one can
        sample from the mixing distribution.
 - TODO look into quantile functions of univariate (marginal) normal variance mixtures.
        If we have a function, say, qnvmix1 (for 1 dimensional normal variance mixtures),
@@ -52,10 +61,19 @@
        which can then be used for quasi-Monte Carlo sampling
 - TODO Need fitnvmix(): check what other packages do
 
+- DONE Does it make sense to choose the default of fun.eval[2] differently?
+       MH: I feel it should be something like 1/abstol, so that if one plays
+           with abstol, one has a reasonable chance not having to modify
+           fun.eval[2]. I realized this when choosing abstol = 1e-8 (then
+           with fun.eval[2] = 1e8, the computations took forever.
+       EH: the default is set such that the algorithm terminates with reasonable
+           tolerances (0.001, 0.0005, maybe 0.0001). Tolerances beyond that will take
+           forever one way or another. My suggestion: Leave it for now.
+       MH: ... until we see a 'law'
 
 
+### Some former DONE ###########################################################
 
-### DONE #######################################################################
 -DONE   Write vignette nvmix_functionality.Rmd
 -DONE  'factor' in rnvmix/dnvmix changed to be consistent with paper
 -DONE   There was a bug in rnvmix; it couldn't handle non-square 'factor' properly.
@@ -91,7 +109,7 @@
         [MH: How is that tested? couldn't immediately find. rnvmix() should be fast, no (too) long testing...]
         If the user wishes to sample from that singular distribution, they *have to* provide 'factor'.
         [MH: sounds ok]
-   
+
         EH: Please see 'Major Changes'
 - DONE	EH: 'rnvmix()' needs a 'method' argument (see 'pnvmix') + new argument 	'mix' ('rmix'?)
          for passing a RNG
@@ -100,14 +118,14 @@
 - DONE  EH: rnvmix() should have 'skip' if method = 'sobol'
 - DONE  EH: renaming etc in dnvmix() similar to pnvmix()
 - DONE	EH: TODOs inside pnvmix()
-- DONE 	EH: pnvmix() has multiple lower/upper as input, but only one scale. pnvmix1() 
-        then calculates t(chol(scale)) for each input => maybe do that in pnvmix once and 
+- DONE 	EH: pnvmix() has multiple lower/upper as input, but only one scale. pnvmix1()
+        then calculates t(chol(scale)) for each input => maybe do that in pnvmix once and
         pass it as argument to pnvmix1()
 - DONE ?pnvmix and ?dnvmix describe the output value 'numiter'. Can you had
       	(on each help pages) half a sentence what these iterations are exactly?
       	=> alternatively, shouldn't we rather return the variance? (one of the
          five components you previously returned) Seems more intuitive, no?
-	EH: Will do. variance can be computed from error; numiter (or equivalently, total 
+	EH: Will do. variance can be computed from error; numiter (or equivalently, total
         function evaluations) should just give an idea of how long it took to converge
 - DONE	EH: ?pnvmix describes 'precond'; can you add half a sentence
   	describing the idea behind the preconditioning, please?
@@ -125,22 +143,6 @@
         (only one call necessary then, so can be omitted)
 - DONE  more intuitive names for arguments concerning tolerance(s)
 - DONE  polish ./src
-
-
-### More thoughts ##############################################################
-
-pnvmix() does not work for multiple upper/lower input vectors, since the
-preconditioning heavily depends on the input parameters. However, in d = 1,
-since we have the function pnorm(), the integration problem is actually
-one-dimensional. In this case, no reordering needs to be done and we can implement
-a "vectorized" pnvmix1() (I use 1 to highlight that it works only for d = 1).
-Indeed, we only need to sample from the mixture distribution and then evaluate
-pnorm() with different upper/lower bounds. We can use common random numbers
-(i.e. simulate from R, use these simulations for all upper/lower) and evaluate
-the df efficiently at many points. This is particularly useful for
-implementing qnvmix1(), since pnvmix1() can evaluate at multiple "upper" at once.
-Still, pnvmix1() will only approximate the true df, numerically inverting that
-approximated df will inevitably lead to numerical inaccuracies.
 
 
 ### Packages dealing with multivariate Student's t distribution ################

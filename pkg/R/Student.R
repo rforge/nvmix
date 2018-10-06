@@ -18,10 +18,10 @@ dStudent <- function(x, df, loc = rep(0, d), scale = diag(d),
                      factor = NULL, # needs to be triangular!
                      log = FALSE, verbose = TRUE, ...)
 {
-  if(!is.matrix(x)) x <- rbind(x)
-  d <- ncol(x)
-  dnvmix(x, qmix = "inverse.gamma", loc = loc, scale = scale,
-         factor = factor, log = log, verbose = verbose, df = df, ...)
+    if(!is.matrix(x)) x <- rbind(x)
+    d <- ncol(x) # for 'loc', 'scale'
+    dnvmix(x, qmix = "inverse.gamma", loc = loc, scale = scale,
+           factor = factor, log = log, verbose = verbose, df = df, ...)
 }
 
 ##' @title Distribution Function of the Multivariate Student t Distribution
@@ -54,7 +54,7 @@ dStudent <- function(x, df, loc = rep(0, d), scale = diag(d),
 ##' @param B number of randomizations to get error estimates.
 ##' @param verbose logical indicating whether a warning is given if the required
 ##'        precision 'abstol' (see dnvmix()) has not been reached.
-##' @return numeric vector with the computed probabilities and attributes "error" 
+##' @return numeric vector with the computed probabilities and attributes "error"
 ##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pStudent <- function(upper, lower = rep(-Inf, d),
@@ -63,11 +63,11 @@ pStudent <- function(upper, lower = rep(-Inf, d),
                      abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
                      verbose = TRUE)
 {
-  d <- length(upper)
-  pnvmix(upper, lower = lower, qmix = "inverse.gamma", loc = loc, scale = scale,
-         standardized = standardized, method = method, precond = precond,
-         abstol = abstol, CI.factor = CI.factor, fun.eval = fun.eval, B = B,
-         verbose = verbose, df = df)
+    d <- length(upper) # for 'lower', 'loc', 'scale'
+    pnvmix(upper, lower = lower, qmix = "inverse.gamma", loc = loc, scale = scale,
+           standardized = standardized, method = method, precond = precond,
+           abstol = abstol, CI.factor = CI.factor, fun.eval = fun.eval, B = B,
+           verbose = verbose, df = df)
 }
 
 ##' @title Random Number Generator for the Multivariate Student t Distribution
@@ -78,17 +78,16 @@ pStudent <- function(upper, lower = rep(-Inf, d),
 ##' @param factor factor R of the covariance matrix 'scale' with d rows
 ##'        such that R R^T = 'scale'.
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
-##' @author Marius Hofert, Erik Hintz
+##' @author Erik Hintz and Marius Hofert
 rStudent <- function(n, df, loc = rep(0, d), scale = diag(2),
-                     factor = NULL, method = c("PRNG", "sobol", "ghalton"), skip = 0) 
+                     factor = NULL, method = c("PRNG", "sobol", "ghalton"), skip = 0)
 {
-  if(!is.null(factor)){
-    d <- nrow(factor <- as.matrix(factor))
-  } else {
-    d <- nrow(scale <- as.matrix(scale))
-  }
-  
-  rnvmix(n, qmix = "inverse.gamma", rmix = "inverse.gamma",
-         loc = loc, scale = scale, factor = factor, df = df,
-         method = method, skip = skip)
+    d <- if(!is.null(factor)) { # for 'loc', 'scale'
+             nrow(factor <- as.matrix(factor))
+         } else {
+             nrow(scale <- as.matrix(scale))
+         }
+    rnvmix(n, qmix = "inverse.gamma", rmix = "inverse.gamma",
+           loc = loc, scale = scale, factor = factor, df = df,
+           method = method, skip = skip)
 }

@@ -17,10 +17,10 @@ dNorm <- function(x, loc = rep(0, d), scale = diag(d),
                   factor = NULL, # needs to be triangular!
                   log = FALSE, verbose = TRUE, ...)
 {
-  if(!is.matrix(x)) x <- rbind(x)
-  d <- ncol(x)
-  dnvmix(x, qmix = "constant", loc = loc, scale = scale,
-         factor = factor, log = log, verbose = verbose, ...)
+    if(!is.matrix(x)) x <- rbind(x)
+    d <- ncol(x) # for 'loc', 'scale'
+    dnvmix(x, qmix = "constant", loc = loc, scale = scale,
+           factor = factor, log = log, verbose = verbose, ...)
 }
 
 ##' @title Distribution Function of the Multivariate Normal Distribution
@@ -52,7 +52,7 @@ dNorm <- function(x, loc = rep(0, d), scale = diag(d),
 ##' @param B number of randomizations to get error estimates.
 ##' @param verbose logical indicating whether a warning is given if the required
 ##'        precision 'abstol' (see dnvmix()) has not been reached.
-##' @return numeric vector with the computed probabilities and attributes "error" 
+##' @return numeric vector with the computed probabilities and attributes "error"
 ##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pNorm <- function(upper, lower = rep(-Inf, d),
@@ -61,11 +61,11 @@ pNorm <- function(upper, lower = rep(-Inf, d),
                   abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
                   verbose = TRUE)
 {
-  d <- length(upper)
-  pnvmix(upper, lower = lower, qmix = "constant", loc = loc, scale = scale,
-         standardized = standardized, method = method, precond = precond,
-         abstol = abstol, CI.factor = CI.factor, fun.eval = fun.eval, B = B,
-         verbose = verbose)
+    d <- length(upper) # for 'lower', 'loc', 'scale'
+    pnvmix(upper, lower = lower, qmix = "constant", loc = loc, scale = scale,
+           standardized = standardized, method = method, precond = precond,
+           abstol = abstol, CI.factor = CI.factor, fun.eval = fun.eval, B = B,
+           verbose = verbose)
 }
 
 ##' @title Random Number Generator for the Multivariate Normal Distribution
@@ -75,16 +75,16 @@ pNorm <- function(upper, lower = rep(-Inf, d),
 ##' @param factor factor R of the covariance matrix 'scale' with d rows
 ##'        such that R R^T = 'scale'.
 ##' @return (n, d)-matrix with N(loc, scale) samples
-##' @author Marius Hofert and Erik Hintz
+##' @author Erik Hintz and Marius Hofert
 rNorm <- function(n, loc = rep(0, d), scale = diag(2),
                   factor = NULL, method = c("PRNG", "sobol", "ghalton"), skip = 0) # needs to be triangular!
 {
-  if(!is.null(factor)){
-    d <- nrow(factor <- as.matrix(factor))
-  } else {
-    d <- nrow(scale <- as.matrix(scale))
-  }
-  rnvmix(n, qmix = "constant", rmix = "constant", 
-         loc = loc, scale = scale, factor = factor, 
-         method = method, skip = skip)
+    d <- if(!is.null(factor)) { # for 'loc', 'scale'
+             nrow(factor <- as.matrix(factor))
+         } else {
+             nrow(scale <- as.matrix(scale))
+         }
+    rnvmix(n, qmix = "constant", rmix = "constant",
+           loc = loc, scale = scale, factor = factor,
+           method = method, skip = skip)
 }

@@ -15,7 +15,7 @@ Author: Marius Hofert [aut, cre], Erik Hintz [aut], Christiane Lemieux [aut]
 Maintainer: Marius Hofert <marius.hofert@uwaterloo.ca>
 Depends: R (>= 3.2.0)
 Imports: stats, methods, qrng
-Suggests: knitr, crop, scatterplot3d, testthat
+Suggests: knitr, crop, scatterplot3d
 Enhances:
 License: GPL (>= 3) | file LICENCE
 NeedsCompilation: yes
