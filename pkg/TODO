@@ -34,6 +34,7 @@
   pick out the resulting matrix and transpose it. Too complicated given that chol()
   already provides an informative error message ("... is not positive definite").
   Could still change that for next release but too much overhead/code for my taste.
+- renamed all 'cholScale' to 'factor' (as we used that notion in dnvmix(), rnvmix().
 
 ## Questions
 - why do we need 'const' (now: is.const.mix) and can't handle that with a corresponding

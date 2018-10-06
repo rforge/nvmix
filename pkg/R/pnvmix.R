@@ -37,13 +37,13 @@ swap <- function(i, j, lower, upper, scale)
 ##' @param lower d-vector of lower evaluation limits
 ##' @param upper d-vector of upper evaluation limits
 ##' @param scale (d, d)-covariance matrix (scale matrix)
-##' @param cholScale Cholesky factor (lower triangular matrix) of 'scale'
+##' @param factor Cholesky factor (lower triangular matrix) of 'scale'
 ##' @param mean.sqrt.mix E(sqrt(W)) or NULL; the latter if not available
 ##'        in which case it is estimated by QMC
 ##' @return list with reordered integration limits, scale matrix and Cholesky factor
 ##' @author Erik Hintz and Marius Hofert
 ##' @note See Genz and Bretz (2002, p. 957)
-precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
+precond <- function(lower, upper, scale, factor, mean.sqrt.mix)
 {
     d <- length(lower)
     y <- rep(0, d - 1)
@@ -55,8 +55,8 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
             denom <- sqrt(diag(scale))
             c <- 0
         } else {
-            denom <- sqrt(diag(scale)[j:d] - rowSums(cholScale[j:d, 1:(j-1), drop = FALSE]^2))
-            c <- cholScale[j:d, 1:(j-1), drop = FALSE] %*% y[1:(j-1)]
+            denom <- sqrt(diag(scale)[j:d] - rowSums(factor[j:d, 1:(j-1), drop = FALSE]^2))
+            c <- factor[j:d, 1:(j-1), drop = FALSE] %*% y[1:(j-1)]
         }
 
         ## Find i = argmin { <expected length of interval j> }
@@ -72,38 +72,38 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 
             ## If j>1 and an actual swap has occured, need to reorder cholesky factor:
             if(j > 1){
-                cholScale[c(i,j),]   <- cholScale[c(j,i),, drop = FALSE]
-                cholScale[j,(j+1):i] <- matrix(0, ncol = i - j, nrow = 1)
+                factor[c(i,j),]   <- factor[c(j,i),, drop = FALSE]
+                factor[j,(j+1):i] <- matrix(0, ncol = i - j, nrow = 1)
             }
         }
 
         ## Update Cholesky factor
         if(j == 1){
-            cholScale[1, 1] <- sqrt(scale[1, 1])
-            cholScale[2:d, 1] <- scale[2:d, 1, drop = FALSE] / cholScale[1, 1]
+            factor[1, 1] <- sqrt(scale[1, 1])
+            factor[2:d, 1] <- scale[2:d, 1, drop = FALSE] / factor[1, 1]
             ## Store y1
             y[1] <- -(dnorm(upper[1]/mean.sqrt.mix) - dnorm(lower[1]/mean.sqrt.mix)) /
                 (pnorm(upper[1]/mean.sqrt.mix) - pnorm(lower[1]/mean.sqrt.mix))
         } else {
-            cholScale[j,j] <- sqrt(scale[j,j] - sum(cholScale[j,1:(j-1)]^2))
-            cholScale[(j+1):d, j] <-
+            factor[j,j] <- sqrt(scale[j,j] - sum(factor[j,1:(j-1)]^2))
+            factor[(j+1):d, j] <-
                 if(j < d-1) {
-                    (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1), drop = FALSE] %*%
-                     cholScale[j, 1:(j-1)]) / cholScale[j, j]
+                    (scale[(j+1):d, j] - factor[(j+1):d, 1:(j-1), drop = FALSE] %*%
+                     factor[j, 1:(j-1)]) / factor[j, j]
                 } else {
-                    (scale[(j+1):d, j] - cholScale[(j+1):d, 1:(j-1)] %*%
-                     cholScale[j, 1:(j-1)]) / cholScale[j, j]
+                    (scale[(j+1):d, j] - factor[(j+1):d, 1:(j-1)] %*%
+                     factor[j, 1:(j-1)]) / factor[j, j]
                 }
             ## Get yj
-            low.j.up.j <- c(lower[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)],
-                            upper[j] / mean.sqrt.mix - cholScale[j, 1:(j-1)] %*% y[1:(j-1)]) / cholScale[j, j]
+            low.j.up.j <- c(lower[j] / mean.sqrt.mix - factor[j, 1:(j-1)] %*% y[1:(j-1)],
+                            upper[j] / mean.sqrt.mix - factor[j, 1:(j-1)] %*% y[1:(j-1)]) / factor[j, j]
             y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) / (pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]))
         }
     } # for()
-    cholScale[d, d] <- sqrt(scale[d, d] - sum(cholScale[d, 1:(d-1)]^2))
+    factor[d, d] <- sqrt(scale[d, d] - sum(factor[d, 1:(d-1)]^2))
 
     ## Return
-    list(lower = lower, upper = upper, scale = scale, cholScale = cholScale)
+    list(lower = lower, upper = upper, scale = scale, factor = factor)
 }
 
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture
@@ -116,7 +116,7 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##' @param mean.sqrt.mix see ?pnvmix()
 ##' @param loc see ?pnvmix()
 ##' @param scale see ?pnvmix()
-##' @param cholScale lower triangular cholesky factor of scale; via chol() if NULL
+##' @param factor lower triangular cholesky factor of scale; via chol() if NULL
 ##' @param method see ?pnvmix()
 ##' @param precond see ?pnvmix()
 ##' @param abstol see ?pnvmix()
@@ -133,7 +133,7 @@ precond <- function(lower, upper, scale, cholScale, mean.sqrt.mix)
 ##' @note Internal function being called by pnvmix.
 pnvmix1 <- function(upper, lower = rep(-Inf, d),
                     qW = NULL, is.const.mix = FALSE, mean.sqrt.mix,
-                    loc = rep(0, d), scale = diag(d), cholScale = NULL,
+                    loc = rep(0, d), scale = diag(d), factor = NULL,
                     method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
                     abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
                     increment = c("doubling", "num.init"), B = 12, ...)
@@ -148,16 +148,16 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
     ## Get (lower triangular) Cholesky factor if not provided
     ## This is only needed if the internal function pnvmix1() is called directly,
     ## if pnvmix() is used, it was determined there.
-    if(is.null(cholScale)) cholScale <- t(chol(scale)) # lower triangular Cholesky factor
+    if(is.null(factor)) factor <- t(chol(scale)) # lower triangular Cholesky factor
 
     ## Preconditioning (resorting the limits; only for d > 2)
     if(precond && d > 2) {
         ## Note that mean.sqrt.mix has already been calculated in pnvmix()
         temp <- precond(lower = lower, upper = upper, scale = scale,
-                        cholScale = cholScale, mean.sqrt.mix = mean.sqrt.mix)
+                        factor = factor, mean.sqrt.mix = mean.sqrt.mix)
         lower <- temp$lower
         upper <- temp$upper
-        cholScale <- temp$cholScale
+        factor <- temp$factor
     }
 
     ## 1 Basics for while loop below ###########################################
@@ -279,14 +279,14 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
                           pnorm(upper/U[,d+1]) - pnorm(lower/U[,d+1])) / 2)
                 } else {
                     .Call("eval_nvmix_integral",
-                          lower     = as.double(lower),
-                          upper     = as.double(upper),
-                          U         = as.double(U),
-                          n         = as.integer(current.n),
-                          d         = as.integer(d),
-                          cholScale = as.double(cholScale),
-                          ZERO      = as.double(ZERO),
-                          ONE       = as.double(ONE))
+                          lower  = as.double(lower),
+                          upper  = as.double(upper),
+                          U      = as.double(U),
+                          n      = as.integer(current.n),
+                          d      = as.integer(d),
+                          factor = as.double(factor),
+                          ZERO   = as.double(ZERO),
+                          ONE    = as.double(ONE))
                 }
 
             ## 2.3 Update RQMC estimates #######################################
@@ -474,7 +474,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
         scale <- Dinv %*% scale %*% Dinv
     }
     ## Get (lower triangular) Cholesky factor of 'scale';
-    cholScale <- t(chol(scale))
+    factor <- t(chol(scale))
 
     ## Loop over observations ##################################################
 
@@ -514,10 +514,10 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
             ## Update scale, Dinv etc
             scale <- scale[lowupFin, lowupFin, drop = FALSE] # update scale
             Dinv <- Dinv[lowupFin, lowupFin, drop = FALSE]  # update Dinv
-            cholScaleFin <- t(chol(scale)) # Cholesky factor changes
+            factorFin <- t(chol(scale)) # Cholesky factor changes
         } else {
             ## If no such component exists, set Choleksy factor correctly
-            cholScaleFin <- cholScale
+            factorFin <- factor
         }
 
         ## Standardize the ith row of lower and upper if necessary
@@ -553,7 +553,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
         ## row separately)
         res1[[i]] <- pnvmix1(up, lower = low, qW = qW, is.const.mix = is.const.mix,
                              mean.sqrt.mix = mean.sqrt.mix,
-                             loc = loc, scale = scale, cholScale = cholScaleFin,
+                             loc = loc, scale = scale, factor = factorFin,
                              method = method, precond = precond, abstol = abstol,
                              CI.factor = CI.factor, fun.eval = fun.eval,
                              increment = increment, B = B,
