@@ -168,9 +168,21 @@ pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
-  McNeil, A. J., Frey, R., and Embrechts, P. (2015).
+  McNeil, A. J., Frey, R. and Embrechts, P. (2015).
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
   Princeton University Press.
+
+  Genz, A. and Bretz, F. (1999).
+  Numerical computation of multivariate t-probabilities with
+  application to power calculation of multiple contrasts.
+  \emph{Journal of Statistical Computation and Simulation} 63(4),
+  103--117.
+
+  Genz, A. and Bretz, F. (2002).
+  Comparison of methods for the computation of multivariate \emph{t}
+  probabilities.
+  \emph{Journal of Computational and Graphical Statistics} 11(4),
+  950--971.
 }
 \seealso{
   \code{\link{dnvmix}()}, \code{\link{rnvmix}()}

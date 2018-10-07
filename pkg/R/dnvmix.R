@@ -12,9 +12,8 @@
 ##'        3) a function being interpreted as the quantile function F_W^-.
 ##' @param loc d-vector (location vector)
 ##' @param scale (d, d)-covariance matrix (scale matrix)
-##' @param factor *lower triangular* factor L of the covariance matrix 'scale'
-##'        such that L L^T = 'scale' here (otherwise det(scale) not computed
-##'        correctly!)
+##' @param factor Cholesky factor (lower triangular matrix) of 'scale';
+##'        important here so that det(scale) is computed correctly!
 ##' @param method character string indicating the method to be used:
 ##'         - "sobol":   Sobol sequence
 ##'         - "ghalton": generalized Halton sequence
@@ -53,7 +52,6 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     method <- match.arg(method)
 
     ## If factor is not provided, determine it here as a *lower* triangular matrix
-    ## Note: this differs from rnvmix()
     if(is.null(factor)) factor <- t(chol(scale)) # lower triangular
 
     ## 1 Define the quantile function of the mixing variable ###################

@@ -60,9 +60,11 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
     the specified normal variance mixture distribution divided by
     the expecation of the mixing variable \eqn{W} if and only if the
     former exists.}
-  \item{factor}{lower triangular \code{\link{matrix}} \eqn{L} with \eqn{d}
-    rows such that \eqn{L L^T} equals \code{scale}. Note that for
-    performance reasons, this property is not tested.}
+  \item{factor}{\eqn{(d, d)} lower triangular \code{\link{matrix}}
+    such that \code{factor \%*\% t(factor)} equals \code{scale};
+    note that for performance reasons, this property is not tested.
+    If not provided, \code{factor} is internally determined via
+    \code{t(\link{chol}())}.}
   \item{method}{\code{\link{character}} string indicating the method
     to be used to compute the integral. Available are:
     \describe{
@@ -146,7 +148,7 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux.}
 \references{
-  McNeil, A. J., Frey, R., and Embrechts, P. (2015).
+  McNeil, A. J., Frey, R. and Embrechts, P. (2015).
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
   Princeton University Press.
 }

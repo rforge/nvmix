@@ -25,8 +25,9 @@
 ##'           Additional arguments can be passed via '...'
 ##' @param loc d-vector (location != mean vector here)
 ##' @param scale (d, d)-covariance matrix (scale != covariance matrix here)
-##' @param factor factor R of the covariance matrix 'scale' such that RR^T
-##'        = 'scale'. If factor is (d,k) => resulting scale is d dimensional
+##' @param factor (d, k)-matrix such that factor %*% t(factor) = scale;
+##'        internally determined via chol() (and then an upper triangular
+##'        matrix) if not provided
 ##' @param method character string indicating the method to be used:
 ##'         - "PRNG":    pure Monte Carlo
 ##'         - "sobol":   Sobol sequence
@@ -50,24 +51,20 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
                    factor = NULL, method = c("PRNG", "sobol", "ghalton"),
                    skip = 0, ...)
 {
-    ## Checks
+    ## Basic checks
     stopifnot(n >= 1)
-    ## If 'scale' but not 'factor' is provided, let 'factor' be *upper* triangular.
-    ## (to multiply from the right later).
-    ## Note: this differs from dnvmix()
-    if(is.null(factor)){
-        factor <- chol(scale) # *upper* triangular
-        d <- nrow(factor)
-        k <- d
-    } else {
-        ## If 'factor' is a provided (d,k) matrix  => 'scale' is (d,d)
-        ## We already transpose 'factor' so that we can multiply with it from
-        ## the right later
-        d <- nrow(factor <- as.matrix(factor))
-        k <- ncol(factor)
-        factor <- t(factor) # (k,d) matrix
-    }
     method <- match.arg(method)
+
+    ## Dealing with 'factor' (more general here than in dnvmix() and pnvmix1())
+    if(is.null(factor)) { # => let 'factor' (internally here) be an *upper* triangular matrix
+        factor <- chol(scale) # *upper* triangular; by this we avoid t() internally here and below around Z
+        d <- nrow(factor)
+        k <- d # => factor a square matrix here
+    } else { # => 'factor' is a provided (d, k)-matrix (factor %*% factor^T = (d, d)-scale)
+        d <- nrow(factor <- as.matrix(factor)) # (d, k)-matrix here...
+        k <- ncol(factor)
+        factor <- t(factor) # ... converted to a (k, d)-matrix to avoid t() below around Z
+    }
 
     ## Determine if inversion is to be used
     inversion <- FALSE
@@ -77,7 +74,7 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
     if(method == "PRNG" && is.null(rmix)) inversion <- TRUE
 
     ## Get realizations of W in each case.
-    if(inversion){
+    if(inversion) { # work with 'qmix'
 
         ## In this case, we need qmix to be provided and use inversion
         if(is.null(qmix)) stop("'qmix' needs to be provided for methods 'sobol' and 'ghalton'")
@@ -104,8 +101,11 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
                             rep(1, n)
                         },
                         "inverse.gamma" = {
-                            if(hasArg(df)) df <- list(...)$df else
-                                                                  stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
+                            if(hasArg(df)) {
+                                df <- list(...)$df
+                            } else {
+                                stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
+                            }
                             ## Still allow df = Inf (normal distribution)
                             stopifnot(is.numeric(df), length(df) == 1, df > 0)
                             if(is.finite(df)) {
@@ -126,12 +126,11 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
                  qmix(U[,1],...)
              } else stop("'qmix' must be a character string, list, quantile function or n-vector of non-negative random variates.")
 
-    } else {
+    } else { # work with 'rmix'
 
         ## In this case, method == "PRNG" and we do not need inversion.
         ## Get realizations from rmix:
         if(is.null(rmix)) stop("'rmix() needs to be provided.")
-
         W <- if(is.character(rmix)) { # 'rmix' is a character vector specifying supported mixture distributions (utilizing '...')
                  rmix <- match.arg(rmix, choices = c("constant", "inverse.gamma"))
                  switch(rmix,
@@ -139,8 +138,11 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
                             rep(1, n)
                         },
                         "inverse.gamma" = {
-                            if(hasArg(df)) df <- list(...)$df else
-                                                                  stop("'rmix = \"inverse.gamma\"' requires 'df' to be provided.")
+                            if(hasArg(df)) {
+                                df <- list(...)$df
+                            } else {
+                                stop("'rmix = \"inverse.gamma\"' requires 'df' to be provided.")
+                            }
                             ## Still allow df = Inf (normal distribution)
                             stopifnot(is.numeric(df), length(df) == 1, df > 0)
                             if(is.finite(df)) {
@@ -162,13 +164,14 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
              } else if(is.numeric(rmix) && length(rmix) == n && all(rmix >= 0)) { # 'mix' is the vector of realizations of W
                  rmix
              } else stop("'rmix' must be a character string, list, random number generator or n-vector of non-negative random variates.")
+
     }
 
     ## Generate Z ~ N(0, I_k)
-    if(!inversion){
-        Z <- matrix(rnorm(n * k), ncol = k) # (n, k)-matrix of N(0, 1)
+    Z <- if(!inversion){
+        matrix(rnorm(n * k), ncol = k) # (n, k)-matrix of N(0, 1)
     } else {
-        Z <- qnorm( U[, 2:(k+1)] ) # (n, k)-matrix of N(0, 1)
+        qnorm(U[, 2:(k+1)]) # (n, k)-matrix of N(0, 1)
     }
     ## Generate Y ~ N_d(0, scale)
     ## Recall that factor had been transposed, i.e. factor is (k,d)

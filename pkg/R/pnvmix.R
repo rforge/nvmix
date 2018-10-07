@@ -116,7 +116,8 @@ precond <- function(lower, upper, scale, factor, mean.sqrt.mix)
 ##' @param mean.sqrt.mix see ?pnvmix()
 ##' @param loc see ?pnvmix()
 ##' @param scale see ?pnvmix()
-##' @param factor lower triangular cholesky factor of scale; via chol() if NULL
+##' @param factor Cholesky factor (lower triangular matrix) of 'scale';
+##'        via t(chol()) if NULL
 ##' @param method see ?pnvmix()
 ##' @param precond see ?pnvmix()
 ##' @param abstol see ?pnvmix()

@@ -99,13 +99,16 @@ rNorm(n, loc = rep(0, d), scale = diag(2), factor = NULL,
     Note that \code{scale} must be positive definite; sampling from
     singular normal variance mixtures can be achieved by providing
     \code{factor}.}
-  \item{factor}{factorization \code{\link{matrix}} \eqn{R} with \eqn{d}
-    rows such that \eqn{R R^T} equals \code{scale}. \eqn{R^T} is internally
-    multiplied from the right to an \eqn{(n, d)}-matrix of independent
+  \item{factor}{% more general here than for dnvmix() or pnvmix()
+    \eqn{(d, k)}-\code{\link{matrix}} such that
+    \code{factor \%*\% t(factor)} equals \code{scale}; the non-square
+    case \eqn{k \neq d}{k != d} can be used to sample from singular
+    normal variance mixtures. Note that this notation coincides with
+    McNeil et al. (2015, Chapter 6). If not provided, \code{factor} is
+    internally determined via \code{\link{chol}()} (and multiplied
+    from the right to an \eqn{(n, k)}-matrix of independent
     standard normals to obtain a sample from a multivariate normal
-    with zero mean vector and covariance matrix \code{scale}. Note that
-    \code{factor} does not need to be a square matrix; hence it can be
-    used to sample from singular normal variance mixtures.}
+    with zero mean vector and covariance matrix \code{scale}).}
   \item{method}{\code{\link{character}} string indicating the method
     to be used to obtain the sample. Available are:
     \describe{
@@ -160,7 +163,7 @@ rNorm(n, loc = rep(0, d), scale = diag(2), factor = NULL,
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
-  McNeil, A. J., Frey, R., and Embrechts, P. (2015).
+  McNeil, A. J., Frey, R. and Embrechts, P. (2015).
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
   Princeton University Press.
 }
