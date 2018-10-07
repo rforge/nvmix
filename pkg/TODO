@@ -16,6 +16,7 @@
 - *within* functions, separate larger pieces of code by '## <title ####... ###'
   rather than empty lines (also good reminder of adhering to the 80-column rule)
 - avoid ':' in leading comments (clear that they refer to the code thereafter)
+  as well as before every chunk in .Rmds
 - avoid comments 'EH' in code
 - make comments shorter so that ideally can be done 'inline' next to the
   corresponding statement (avoid searching for corresponding comment)
@@ -56,6 +57,13 @@
   I found that confusing (same argument name, different meaning)... but it's fine
   now. So careful with keeping both doc in function head (Roxygen) and on ?rnvmix
   updated.
+- Use italics only for definitions
+- Properly use defined variables instead of hard-coded values, for example
+  $W\sim\mathrm{Exp}(`r rate`)$ instead of $W\sim Exp(1.9)$; see also the 'upshape'
+  "Exp".
+- No title-case except for in title (and even there questionable)
+- Give sections proper names (not just 'Two small examples')
+- Use 'asymmetric' examples, so probabilities 0.2, 0.3, 0.5; not 0.3, 0.4, 0.3
 
 ## Questions
 - why do we need 'const' (now: is.const.mix) and can't handle that with a corresponding
@@ -68,8 +76,9 @@
 
 0) Please document in the .Rd via '% see ?pnvmix' all arguments on ?rnvmix and ?dnvmix
    which are actually the same as on ?pnvmix (several reasons for that).
-1) Estimation
-2) Singular matrices
+1) nvmix copulas
+2) Estimation (focusing on copulas would simplify the problem of non-identifiability of E(W), right?)
+3) Singular matrices
 - TODO: 'factor' should most likely also be an argument of pnvmix() -- sometimes one already
         has that computed and by passing it one could avoid it being computed
 	every time
