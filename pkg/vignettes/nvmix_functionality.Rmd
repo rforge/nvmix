@@ -12,7 +12,8 @@ vignette: >
 ---
 ```{r, message = FALSE}
 library(nvmix)
-library(scatterplot3d)
+library(RColorBrewer)
+library(lattice)
 doPDF <- FALSE
 ```
 
@@ -27,7 +28,7 @@ distribution,
   \mathbf{X}=\mathbf{\mu}+\sqrt{W}A\mathbf{Z},
 \end{align*}
 where $\mathbf{\mu}\in\mathbb{R}^d$ denotes the *location (vector)*,
-$\Sigma=AA^T$ for $A\in\mathbb{R}^{d\times k}$ denotes the *scale (matrix)* (a
+$\Sigma=AA^\top$ for $A\in\mathbb{R}^{d\times k}$ denotes the *scale (matrix)* (a
 covariance matrix), and the mixture variable $W\sim F_W$ is a non-negative random
 variable independent of $\mathbf{Z}\sim N_k(\mathbf{0},I_k)$ (where
 $I_k\in\mathbb{R}^{k\times k}$ denotes the identity matrix). Note that both the
@@ -59,13 +60,14 @@ function of a normal variance mixture distribution, so
 \end{align*}
 note that `pnvmix()` currently accepts only positive definite `scale` matrices.
 To this end, the function `pnvmix()` internally approximates the $d$-dimensional
-integral using a randomized Quasi Monte-Carlo (RQMC) method. Due to the
+integral using a randomized Quasi Monte Carlo (RQMC) method. Due to the
 random nature, the result depends (slightly) on the seed `.Random.seed`.
+
 
 ### 2.1 Exponential mixture distribution
 
-As a first example, consider a normal variance mixture with mixture variable
-$W \sim\mathrm{Exp}(`r rate`)$. We illustrate two approaches how to use
+As a first example, consider a normal variance mixture with exponential
+mixture variable $W$. We illustrate two approaches how to use
 `pnvmix()` to approximate $P(\mathbf{a} < \mathbf{X} \le \mathbf{b})$
 for randomly chosen $\mathbf{a}\le\mathbf{b}$.
 ```{r}
@@ -104,273 +106,276 @@ pnvmix(b, lower = a, qmix = function(u, lambda) -log(1-u)/lambda,
        lambda = rate, scale = P, abstol = 1e-5)
 ```
 
+
 ### 2.2 Three-point mixture distribution
 
-As a next example, consider a normal variance mixture where $W$ is discrete such
-that $P(W=1)=0.2$, $P(W=3)=0.3$ and $P(W=5)=0.5$. This time, we are interested
-in computing the one-sided probabability $P(\mathbf{X}\le\mathbf{b})=F(\mathbf{b})$
-for $\mathbf{b}$ as constructed before.
+As a next example, consider a normal variance mixture where $W$ is discrete.
+This time, we are interested in computing the one-sided probabability
+$P(\mathbf{X}\le\mathbf{b})=F(\mathbf{b})$ for $\mathbf{b}$ as constructed before.
 ```{r}
 ## Define the quantile function of the three-point distribution
+## which puts masses 'p' at the numbers 'x'
+x <- c(1, 3, 5) # support
+p <- c(0.2, 0.3, 0.5) # probabilities
 qW <- function(u)
-  (u <= 0.2) * 1 + (u > 0.2 & u <= 0.5) * 3 + (u > 0.5) * 5
+    (u <= p[1]) * x[1] + (u > p[1] & u <= p[1]+p[2]) * x[2] + (u > p[1]+p[2]) * x[3]
 
 ## Call pnvmix(); lower defaults to (-Inf,...,-Inf)
-pnvmix(b, qmix = qW, scale = P)
-
-## This could have also been obtained as follows
-as.numeric(0.2 * pNorm(b, scale = P) + 0.3 * pNorm(b, scale = 3 * P) +
-           0.5 * pNorm(b, scale = 5 * P))
+set.seed(42)
+(p1 <- pnvmix(b, qmix = qW, scale = P))
 ```
-Note that in the latter computation, `pNorm()` (so `pnvmix()`) is called three
-times, so it takes much longer in higher dimensions.
+This could have also been obtained as follows but we would have called
+`pNorm()` (so `pnvmix()`) three times then.
+```{r}
+set.seed(42)
+p2 <- sum(sapply(1:3, function(k) p[k] * pNorm(b, scale = x[k] * P)))
+stopifnot(all.equal(p1, p2, check.attributes = FALSE, tol = 5e-4))
+```
+
 
 ### 2.3 The wrappers `pNorm()` and `pStudent()`
 
-As mentioned, the normal distribution as well as the $t$ distribution are
-important special cases of normal variance mixture models. For these two cases,
-`pnorm()` and `pStudent()` are user-friendly wrappers. Note that `pStudent()`
-works for any degree of freedom parameter $\nu>0$ (not necessarily integer) -
-this functionality was to the best of our knowledge not available in `R` at the
+For the two special cases of Student's $t$ distribution and the normal distribution,
+`pnorm()` and `pStudent()` are user-friendly wrappers of `pnvmix()`. Note that
+`pStudent()` works for any degree of freedom parameter $\nu>0$ (not necessarily integer)
+-- to the best of our knowledge, this functionality was not available in `R` at the
 time of development of this package.
+
 
 ### 2.4 The effect of algorithm-specific parameters
 
 The function `pnvmix()` (and thus the wrappers `pStudent()` and `pNorm()`) give
-the user the possibility to change algorithm specific parameters. A few of them
-are:
- - `method`: Integration method to be used. The default, a randomized Sobol
-   sequence, has proven to outperform the others.
- - `precond`: Logical indicating wether or not a *preconditioning step*, that is
-   reordering of integration limits and rows and columns of `scale`, is to be
-   performed. If `TRUE`, the reordering is done in a way such that the expected
-   lengths of the integration limits is increasing going from the outermost to
-   the innermost integral. In the vast majority of cases, this leads to a
-   decrease in the variance of the integrand, and hence to a decrease in
-   computational time needed.
- - `mean.sqrt.mix`: $E(\sqrt{W})$. This number is needed for the above mentioned
-   preconditioning. In case of a Normal distribution and $t$ distribution, this
-   value is calculated internally. For all the other cases this value is
-   estimated internally if not provided.
- - `increment`: Determines how large the next point-set should be if the
-   previous point-set was not big enough to ensure the desired accuracy. When
-   `"doubling"` is used, there will be as many additional points as there were
-   in the previous iteration. If `"num.init"` is used, there will be
-   `fun.eval[1]` additional points in each iteration. The former option
-   (default) will lead to slightly more accurate results at the cost of slightly
-   higher run-time.
+the user the possibility to change algorithm-specific parameters. A few of them
+are (for others see `?pnvmix`):
 
-For the others, see also `?pnvmix`. Let us illustrate the effect of `method` and
-`precond` on the performance of `pnvmix()` with `mix = 'inverse.gamma'`. We can
-use the wrapper `pStudent()` in this case.  We set `abstol = NULL` so that the
-algorithm runs until the number of function evaluations exceeds
-`fun.eval[2]`. We do this for different values of `fun.eval[2]` in order to get
-an idea of the convergence speed.
+* `method`: The integration method to be used. The default, a randomized Sobol
+sequence, has proven to outperform the others.
+* `precond`: A logical variable indicating wether or not a *preconditioning
+step*, that is, a reordering of the integration limits (and related rows and
+columns of `scale`) is to be performed. If `TRUE`, the reordering is done in a
+way such that the expected lengths of the integration limits is increasing going
+from the outermost to the innermost integral. In the vast majority of cases,
+this leads to a decrease in the variance of the integrand and thus to a
+decrease in computational time.
+* `mean.sqrt.mix`: $E(\sqrt{W})$. This number is needed for the
+preconditioning. In case of Student's $t$ and the normal distribution, this
+value is calculated internally. For all other cases this value is
+estimated internally if not provided.
+* `increment`: Determines how large the next point set should be if the
+previous point set was not large enough to ensure the specified accuracy. When
+`"doubling"` is used, there will be as many additional points as there were
+in the previous iteration and if `"num.init"` is used, there will be
+`fun.eval[1]` additional points in each iteration. The former option
+(default) will lead to slightly more accurate results at the cost of slightly
+higher run time.
 
-```{r, fig.align = "center", fig.width = 6, fig.height = 6, fig.show = "hold", warning = FALSE}
-if(doPDF) pdf(file = (file <- paste0("fig_1.pdf")), width = 6, height = 6)
-
-## Specify degree of freedom parameter
-df <- 0.1
-
-## i iterations require 3 * 2^8 * 2^i function evaluations
-maxiter <- 9
+Let us now illustrate the effect of `method` and `precond` on the performance of
+`pnvmix()` with `mix = 'inverse.gamma'`. To this end we use the wrapper
+`pStudent()`. We set `abstol = NULL` so that the algorithm runs until the number
+of function evaluations exceeds `fun.eval[2]`. We do this for different values
+of `fun.eval[2]` in order to get an idea of the speed of convergence. We
+also compute the regression coefficients which act as a summary measure of
+the speed of convergence.
+```{r, fig.align = "center", fig.width = 7, fig.height = 7, fig.show = "hold"}
+## Setup
+df <- 0.1 # degrees of freedom (very heavy-tailed here)
+maxiter <- 9 # note: i iterations require 3 * 2^8 * 2^i function evaluations
 max.fun.evals <- 3 * 2^8 * 2^seq(from = 2, to = maxiter, by = 1)
+errors <- matrix(, ncol = length(max.fun.evals), nrow = 4)
+nms <- c("Sobol  with preconditioning", "Sobol  w/o  preconditioning",
+         "PRNG with preconditioning", "PRNG w/o  preconditioning")
+rownames(errors) <- nms
 
-errors <- matrix(NA, ncol = length(max.fun.evals), nrow = 4)
-
-## By resetting the seed, we use the same random numbers each time
-## => fairer comparison
-for(i in seq_along(max.fun.evals)){
-  N.max <- max.fun.evals[i]
-  ## Get the corresponding errors. We set 'verbose = 0' to avoid warnings,
-  ## that will inevitably occur, since we set 'abstol = NULL'
-
-  ## Sobol with preconditioning
-  set.seed(42)
-  errors[1,i] <- attr( pStudent(b, lower = a, scale = P,  df = df,
-                              method = "sobol", precond = TRUE, abstol = NULL,
-                              fun.eval = c(2^6, N.max), verbose = FALSE), "error")
-  ## Sobol without preconditioning
-  set.seed(42)
-  errors[2,i] <- attr( pStudent(b, lower = a, scale = P,  df = df,
-                              method = "sobol", precond = FALSE, abstol = NULL,
-                              fun.eval = c(2^6, N.max), verbose = FALSE), "error")
-  ## PRNG with preconditioning
-  set.seed(42)
-  errors[3,i] <- attr( pStudent(b, lower = a, scale = P,  df = df,
-                              method = "PRNG", precond = TRUE, abstol = NULL,
-                              fun.eval = c(2^6, N.max), verbose = FALSE), "error")
-  ## PRNG without preconditioning
-  set.seed(42)
-  errors[4,i] <- attr( pStudent(b, lower = a, scale = P,  df = df,
-                              method = "PRNG", precond = FALSE, abstol = NULL,
-                              fun.eval = c(2^6, N.max), verbose = FALSE), "error")
-
+## Computing the errors
+## Note:
+## - resetting the seed leads to a fairer comparison here
+## - set 'verbose' to 0 or FALSE to avoid warnings which inevitably occur
+##   due to 'abstol = NULL'
+for(i in seq_along(max.fun.evals)) {
+    N.max <- max.fun.evals[i]
+    ## Sobol with preconditioning
+    set.seed(42)
+    errors[nms[1],i] <-
+        attr(pStudent(b, lower = a, scale = P,  df = df,
+                      method = "sobol", precond = TRUE, abstol = NULL,
+                      fun.eval = c(2^6, N.max), verbose = FALSE), "error")
+    ## Sobol without preconditioning
+    set.seed(42)
+    errors[nms[2],i] <-
+        attr(pStudent(b, lower = a, scale = P,  df = df,
+                      method = "sobol", precond = FALSE, abstol = NULL,
+                      fun.eval = c(2^6, N.max), verbose = FALSE), "error")
+    ## PRNG with preconditioning
+    set.seed(42)
+    errors[nms[3],i] <-
+        attr(pStudent(b, lower = a, scale = P,  df = df,
+                      method = "PRNG", precond = TRUE, abstol = NULL,
+                      fun.eval = c(2^6, N.max), verbose = FALSE), "error")
+    ## PRNG without preconditioning
+    set.seed(42)
+    errors[nms[4],i] <-
+        attr(pStudent(b, lower = a, scale = P,  df = df,
+                      method = "PRNG", precond = FALSE, abstol = NULL,
+                      fun.eval = c(2^6, N.max), verbose = FALSE), "error")
 }
 
-plot( max.fun.evals, errors[4,], type = "l", col = "blue", log = "xy",
-      ylim= c( min(errors), max(errors)), ylab = "Estimated error",
-      xlab = "Number of function evaluations")
-coeff = as.numeric(lm(log(errors[4,]) ~ log(max.fun.evals))$coeff[2])
-name1 <- paste("PRNG w.o. precond.,",toString(round(coeff,2)))
+## Computing the regression coefficients
+coeff <- apply(errors, 1, function(y) lm(log(y) ~ log(max.fun.evals))$coeff[2])
+names(coeff) <- nms
 
-lines(max.fun.evals, errors[3,], col = "red")
-coeff = as.numeric(lm(log(errors[3,]) ~ log(max.fun.evals))$coeff[2])
-name2 <- paste("PRNG with precond.,",toString(round(coeff,2)))
-
-lines(max.fun.evals, errors[2,], col = "green")
-coeff = as.numeric(lm(log(errors[2,]) ~ log(max.fun.evals))$coeff[2])
-name3 <- paste("Sobol w.o. precond.,",toString(round(coeff,2)))
-
-lines(max.fun.evals, errors[1,], col = "black")
-coeff = as.numeric(lm(log(errors[2,]) ~ log(max.fun.evals))$coeff[2])
-name4 <- paste("Sobol with precond.,",toString(round(coeff,2)))
-
-legend('topright', c(name1,name2,name3,name4),
-       col = c("blue","red","green","black"), lty = rep(1,4),
-       bty="n")
-
+## Plot
+if(doPDF) pdf(file = (file <- "fig_pnvmix_error_comparison.pdf"),
+              width = 7, height = 7)
+pal <- colorRampPalette(c("#000000", brewer.pal(8, name = "Dark2")[c(7, 3, 5)]))
+cols <- pal(4) # colors
+plot(NA, log = "xy", xlim = range(max.fun.evals), ylim = range(errors),
+     xlab = "Number of function evaluations", ylab = "Estimated error")
+lgnd <- character(4)
+for(k in 1:4) {
+    lines(max.fun.evals, errors[k,], col = cols[k])
+    lgnd[k] <- paste0(nms[k]," (",round(coeff[k], 2),")")
+}
+legend("topright", bty = "n", lty = rep(1, 4), col = rev(cols), legend = rev(lgnd))
 if(doPDF) dev.off()
 ```
-The above plot is done on $\log-\log$ scale; the numbers in the legend are the
-regression coefficients. We can see that in this example that Sobol clearly
-outperforms PRNG and that the preconditioning helps significantly reduce the
-error.
+We can see that in this example Sobol' outperforms PRNG and that the
+preconditioning helps significantly in reducing the error.
 
 
 ## 3 Evaluating the density function
 
 Another important task is to evaluate the density function of a normal variance
-mixture distribution. This is particularly important for likelihood based
-methods. To this end, the function `dnvmix()` internally approximates a
-one-dimensional integral using a randomized Quasi Monte-Carlo method. Due to the
-random nature, the result depends (slightly) on `.Random.seed`. Note that if
-$\Sigma$ is singular, the density does not exist.
+mixture. This is particularly important for likelihood-based methods. In
+general, the density is given in terms of a univariate integral which the
+function `dnvmix()` internally approximates using a randomized Quasi Monte Carlo
+(RQMC) method. Due to the random nature, the result slightly varies with
+`.Random.seed`. Note that if $\Sigma$ is singular, the density does not exist.
 
-Note the argument `log` in `dnvmix()`: Rather than estimating the density,
-internally the *log* density is estimated and only if `log = FALSE` (the
-default), the actual density is returned. This is usually more stable than
-estimating the density and then applying the $\log()$ function; also note that
-for many applications, interest actually lies in the log density, for instance
-when approximating the log-likelihood.
+Note the argument `log` in `dnvmix()`: Rather than estimating the density, the
+logarithmic density is estimated. Only if `log = FALSE` (the default), the
+actual density is returned. This is usually numerically more stable than
+estimating the density and then applying the logarithm to the computed density.
+Also note that for many applications, the log-density is the actual quantity of
+interest, for example, when computing the log-likelihood.
 
-We give a small example where $W$ is again such that $P(W=1)=0.3$, $P(W=3)=0.4$
-and $P(W=5)=0.3$.
+We give a small example where $W$ is the three-point distribution from
+before.
 ```{r}
-## we use qW from before
-## Evaluate at the following 3 points simulatenously
-x <- matrix(1:15/15, ncol = d)
-
-## Density
+x <- matrix(1:15/15, ncol = d) # evaluation points of the density
 set.seed(1)
-(d1 <- dnvmix(x, qmix = qW, scale = P))
-
-## Log Density
+(d1 <- dnvmix(x, qmix = qW, scale = P)) # computed density values
 set.seed(1)
-(d2 <- dnvmix(x, qmix = qW, scale = P, log = TRUE))
-
-stopifnot(all.equal(d1, exp(d2), check.attributes = FALSE))
+(d2 <- dnvmix(x, qmix = qW, scale = P, log = TRUE)) # log-density
+stopifnot(all.equal(d1, exp(d2), check.attributes = FALSE)) # check
 ```
-The error estimate given is the *worst case* error for all the inputs, i.e. the
-error of the row with the largest error. Note also how `error` is much smaller
-than the default tolerance $10^{-3}$: This is due to the fact that `dnvmix()`
-iterates until the desired precision is reached for *both*, the log - density
-and the density. Furthermore, the error estimate for `log = FALSE` is
-conservative - it will only differ from the error when `log = TRUE` if at least
-one density estimate is larger than 1.
+The error estimate computed by `dnvmix()` is the worst-case error for all the
+inputs, that is, the error of the row with the largest error.  Note also how
+`error` is much smaller than the default tolerance $10^{-3}$.  This is due to
+the fact that `dnvmix()` iterates until the desired precision is reached for
+*both* the log-density and the density itself.  Furthermore, the error estimate
+for `log = FALSE` is conservative -- it will only differ from the error when `log
+= TRUE` if at least one density estimate is larger than 1.
 
 
 ## 4 (Quasi-)random number generation
 
-The function `rnvmix` provides a flexible tool to sample from (multivariate)
+The function `rnvmix()` provides a flexible tool to sample from (multivariate)
 normal variance mixtures. The structure is similar to the one of `dnvmix()` and
-`pnvmix()`. The user can specify the argument `qmix` (which, as usual,
-corresponds to the quantile function of $W$) or, alternatively, the argument
-`rmix`, which corresponds to a random number generator for $W$. The advantage is
-that there may be distributions for which it is hard to find the quantile
-function, but for which sampling (e.g. by acceptance/rejection or stochastic
-representations) is easy.
-
-Consider the first example, where $W\sim\mathrm{Exp}(`r rate`)$.
+`pnvmix()` (but also different in some aspects; see `?dnvmix`).  The user can
+specify the argument `qmix` which, as usual, corresponds to the quantile
+function $F_W^\leftarrow$ of $W$ or, alternatively, the argument `rmix`,
+which corresponds to a random number generator for $W$. This is due to the fact
+that there are distributions for which it is hard to find the quantile function,
+but for which sampling procedures exist (for example, for stable distributions).
+As an example call of `rnvmix()`, let us revisit Section 2.1 where
+$W\sim\mathrm{Exp}(`r rate`)$.
 ```{r, fig.align = "center", fig.width = 6, fig.height = 6, fig.show = "hold"}
-if(doPDF) pdf(file = (file <- paste0("fig_2.pdf")), width = 6, height = 6)
-
-## Sample size
-n <- 500
-
-## We use P = diag(2), which is the default
+## Sampling
+n <- 500 # sample size
 set.seed(42)
-r1 <- rnvmix(n, rmix = list("exp", rate = rate))
+r1 <- rnvmix(n, rmix = list("exp", rate = rate)) # uses the default P = diag(2)
+
+## Plot
+if(doPDF) pdf(file = (file <- paste0("fig_rnvmix_W_exp.pdf")),
+              width = 6, height = 6)
 plot(r1, xlab = expression(X[1]), ylab = expression(X[2]))
-
 if(doPDF) dev.off()
 ```
 
-Another important argument of `rnvmix` is `method`. This can be either `"PRNG"`
-for classical random sampling or `"sobol"` or `"ghalton"` which corresponds to
-inversion of a low-discrepancy pointset. If `method` is not `PRNG`, `qmix` must
-be provided.
-
-Let us revisit the example from before, where $W$ was discrete.
+An important argument of `rnvmix()` is `method`. This can be either `"PRNG"`
+(classical pseudo-random sampling) or `"sobol"` or `"ghalton"` (for the
+inversion method based on the corresponding low-discrepancy point set). If
+`method` is not `"PRNG"`, `qmix` must be provided. As an example,
+let us revisit Section 2.2 where $W$ was following a three-point distribution.
 ```{r, fig.align = "center", fig.width = 9, fig.height = 6, fig.show = "hold"}
-if(doPDF) pdf(file = (file <- paste0("fig_3.pdf")), width = 9, height = 6)
+## Sampling
+set.seed(42)
+r1 <- rnvmix(n, qmix = qW)
+r2 <- rnvmix(n, qmix = qW, method = "ghalton")
 
-r2 <- rnvmix(n, qmix = qW)
-r3 <- rnvmix(n, qmix = qW, method = "ghalton")
-
-par(mfrow=c(1,2))
+## Plot
+if(doPDF) pdf(file = (file <- paste0("fig_rnvmix_W_three-point.pdf")),
+              width = 9, height = 6)
+ran <- range(r1, r2)
+opar <- par(pty = "s")
+layout(t(1:2))
+plot(r1, xlab = expression(X[1]), ylab = expression(X[2]),
+     main = "Pseudo-random sample", xlim = ran, ylim = ran)
 plot(r2, xlab = expression(X[1]), ylab = expression(X[2]),
-     main = "Pseudo-random sample", xlim = c(-7.3,7.3), ylim = c(-7.3,7.3))
-plot(r3, xlab = expression(X[1]), ylab = expression(X[2]),
-     main = "Quasi-random sample", xlim = c(-7.3,7.3), ylim = c(-7.3,7.3))
-
+     main = "Quasi-random sample", xlim = ran, ylim = ran)
+layout(1)
+par(opar)
 if(doPDF) dev.off()
 ```
 
-When $W$ is discrete and has finite support, one can easily sample from the
-corresponding normal variance mixture using `rNorm()` as well.
+When $W$ is discrete and has finite support, one can also easily sample from the
+corresponding normal variance mixture using `rNorm()`.
 ```{r, fig.align = "center", fig.width = 6, fig.height = 6, fig.show = "hold"}
-if(doPDF) pdf(file = (file <- paste0("fig_3.pdf")), width = 6, height = 6)
+## Sampling
+set.seed(42)
+r <- lapply(1:3, function(k) rNorm(p[k] * n, scale = diag(x[k], 2)))
 
-r4.1 <- rNorm(0.3*n, scale = diag(1, 2))
-r4.2 <- rNorm(0.4*n, scale = diag(3, 2))
-r4.3 <- rNorm(0.3*n, scale = diag(5, 2))
-
-plot(r4.3, col = "blue", xlab = expression(X[1]), ylab = expression(X[2]))
-points(r4.2, col = "red")
-points(r4.1, col = "green")
+## Plot
+if(doPDF) pdf(file = (file <- paste0("fig_rnvmix_W_three-point_via_rNorm.pdf")),
+              width = 6, height = 6)
+ran <- range(r)
+opar <- par(pty = "s")
+plot(NA, xlim = ran, ylim = ran, xlab = expression(X[1]), ylab = expression(X[2]))
+for(k in 1:3) points(r[[k]], col = cols[k+1])
+par(opar)
 ```
-
-The green points come from $N(\mathbf{0}, I_2)$, the red ones from
-$N(\mathbf{0}, 3I_2)$ and the blue ones from $N(\mathbf{0}, 5I_2)$; their
+This examples helps understanding normal variance mixtures.
+Note that the brown points come from $N(\mathbf{0}, I_2)$, the blue ones from
+$N(\mathbf{0}, 3I_2)$ and the green ones from $N(\mathbf{0}, 5I_2)$ and that their
 frequencies correspond to the probabilities $P(W=1)$, $P(W=3)$ and $P(W=5)$.
 
-Unlike `pnvmix()` and `dnvmix()`, `rnvmix()` can handle *singular* normal
-variance mixtures. In this case, the matrix `factor` (which is a matrix $A$ such
-that $AA^T=\Sigma$) has to be provided. In the following example, we consider a
-$t$ distribution; here we can use the wrapper `rStudent()`.
-```{r, fig.align = "center", fig.width = 6, fig.height = 6, fig.show = "hold"}
-if(doPDF) pdf(file = (file <- paste0("fig_4.pdf")), width = 6, height = 6)
-
-## Specify degrees of freedom
-df <- 3.9
-
-## Specify factor
-factor <- matrix( c(1,0,0,1,0,1), ncol = 2, byrow = TRUE)
-
-## The corresponding 'scale' matrix is then
-tcrossprod(factor)
-
-## Now sample
+Unlike `pnvmix()` and `dnvmix()`, `rnvmix()` can handle singular normal
+variance mixtures. In this case, the matrix `factor` (which is a matrix
+$A\in\mathbb{R}^{d\times k}$ such that $AA^\top=\Sigma$) has to be provided.
+In the following example, we consider a Student's $t$ distribution via the
+wrapper `rStudent()`. As expected in the singular case, all points lie on a plane
+which is visible after a suitable rotation of the cloud plot.
+```{r, fig.align = "center", fig.width = 7, fig.height = 7, fig.show = "hold"}
+## Sampling
+df <- 3.9 # degrees of freedom
+factor <- matrix(c(1,0, 0,1, 0,1), ncol = 2, byrow = TRUE) # (3,2)-matrix 'factor'
+Sigma <- tcrossprod(factor) # the 'scale' corresponding to factor
+stopifnot(Sigma == factor %*% t(factor))
 set.seed(42)
-r5 <- rStudent(n, df = df, factor = factor)
-scatterplot3d(r5, xlab = expression(X[1]), ylab = expression(X[2]),
-              zlab = expression(X[3]), angle = -40)
+r <- rStudent(n, df = df, factor = factor) # sample
 
+## Plot
+if(doPDF) pdf(file = (file <- paste0("fig_rnvmix_singular.pdf")),
+              width = 6, height = 6)
+cloud(r[,3] ~ r[,1] * r[,2], screen = list(z = 115, x = -68),
+      xlab = expression(X[1]), ylab = expression(X[2]), zlab = expression(X[3]),
+      scales = list(arrows = FALSE, col = "black"),
+      par.settings = modifyList(standard.theme(color = FALSE),
+                                list(axis.line = list(col = "transparent"),
+                                     clip = list(panel = "off"))))
 if(doPDF) dev.off()
 ```
-As expected, all points lie on the same plane.
+
 
 
 

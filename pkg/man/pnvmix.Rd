@@ -90,9 +90,9 @@ pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
     a way such that the overall variance of the integrand is usually smaller than
     with the original ordering; this usually leads smaller run-times.}
   \item{abstol}{non-negative \code{\link{numeric}} providing the
-    absolute precision required; if \code{abstol = 0},
-    the algorithm will typically run until the total number of function
-    evaluations exceeds \code{fun.eval[2]}.}
+    absolute precision required; if \code{abstol = NULL},
+    the algorithm will run until the total number of function
+    evaluations \code{fun.eval[2]} is reached.}
   \item{CI.factor}{multiplier of the Monte Carlo confidence interval
     bounds.  The algorithm runs until \code{CI.factor} times the estimated
     standard error is less than \code{abstol}. If \code{CI.factor = 3.3}

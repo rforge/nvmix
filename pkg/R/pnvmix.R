@@ -365,8 +365,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
 ##'        Variable reordering can lead to a significant variance reduction
 ##'        and decrease in computational time.
 ##' @param abstol numeric >= 0 providing the absolute precision required.
-##'        If abstol = 0, algorithm will run until total number of function
-##'        evaluations exceeds fun.eval[2].
+##'        If abstol = NULL, the algorithm will run until total number of function
+##'        fun.eval[2] is reached
 ##' @param CI.factor Monte Carlo confidence interval multiplier. Algorithm runs
 ##'        CI.factor * (estimated standard error) < abstol. If CI.factor = 3.3
 ##'        (default), one can expect the actual absolute error to be less than
@@ -402,7 +402,8 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     if(!is.matrix(scale)) scale <- as.matrix(scale)
     stopifnot(dim(lower) == c(n, d), length(loc) == d, # 'mean.sqrt.mix' is tested in pnvmix1()
               dim(scale) == c(d, d), is.logical(standardized), is.logical(precond),
-              abstol >= 0, CI.factor >= 0, length(fun.eval) == 2, fun.eval >= 0, B >= 1)
+              abstol >= 0, # note: also passed by abstol = NULL (!)
+              CI.factor >= 0, length(fun.eval) == 2, fun.eval >= 0, B >= 1)
     method <- match.arg(method)
     increment <- match.arg(increment)
 

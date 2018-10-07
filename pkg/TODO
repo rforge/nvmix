@@ -40,6 +40,7 @@
   (there was none, I added a bit more). Are the 'sobol' and 'ghalton' methods *randomized*?
   This was given for some but not all methods. I went with the "least common multiple".
 - Also use spaces in the .Rd, so \code{abstol = 0.00...} instead of \code{abstol=0.00...}
+  => also, as the vignette said, this now allows for NULL (=> I now documented that)
 - Avoid abbreviations like 'e.g.' on the help files.
 - Use proper quotation marks on the .Rd files (as in code): method = "sobol", not
   method = 'sobol', but okay to speak of the argument 'method' just its *value*
@@ -61,15 +62,33 @@
 - Properly use defined variables instead of hard-coded values, for example
   $W\sim\mathrm{Exp}(`r rate`)$ instead of $W\sim Exp(1.9)$; see also the 'upshape'
   "Exp".
+- Use 'asymmetric' examples, so probabilities 0.2, 0.3, 0.5; not 0.3, 0.4, 0.3
+  ... and avoid to hard-code them in the vignette, see the last bullet point
 - No title-case except for in title (and even there questionable)
 - Give sections proper names (not just 'Two small examples')
-- Use 'asymmetric' examples, so probabilities 0.2, 0.3, 0.5; not 0.3, 0.4, 0.3
+- Ideally separate computation from plotting (see chunks in vignette for method/precond plot)
+- Careful with copy-paste errors in the vignette (regression coefficients; also there,
+  do the computation of *all* things required for the plot first, then plot later)
+- Write non-repetitive code (see error plot in vignette)
+- "Monte Carlo" never with hyphen (as it is a city), not even in 'three noun words'
+  (typically: "run time" but "run-time experiment")
+- when referring to functions, write 'function()', not just 'function'
+- work with ran(), not hard-coded values for xlim/ylim (see Section 4 vignette)
+- don't use ^T but ^\top for the transpose sign (it's not a 'T')
 
 ## Questions
 - why do we need 'const' (now: is.const.mix) and can't handle that with a corresponding
   quantile function?
 - does the code correctly pick up the case where W is constant but not 1?
   (this theoretically changes the distribution)
+- Can mean.sqrt.mix be Inf (and the code still work correctly)?
+- The regression coefficients in the first plot of the vignette is smaller
+  without preconditioning (for Sobol'). I guess this is because the error
+  is already much smaller, or not?
+- For the density: why can't we compute error estimates for all input rows
+  separately again? And, besides the maximal error, could we report the average error?
+- I don't quite get the last sentence (conservative...) in Section 3 of the vignette.
+  What do you mean? (feel free to improve)
 
 
 ### For the next release #######################################################
@@ -82,7 +101,8 @@
 - TODO: 'factor' should most likely also be an argument of pnvmix() -- sometimes one already
         has that computed and by passing it one could avoid it being computed
 	every time
-- TODO: cite our own paper on ?pnvmix, ?dnvmix and ?rnvmix
+- TODO: cite our own paper on ?pnvmix, ?dnvmix and ?rnvmix and in the vignette
+        (e.g. when saying 'has proven to outperform the others')
 
 - TODO Allow rmix() to be specified in pnvmix() for method = 'PRNG'. This can be a first
        Step towards evaluation GIG mixtures, where qmix() is not available but one can
