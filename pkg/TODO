@@ -1,4 +1,8 @@
+
+
+
 ### For first release ##########################################################
+
 
 ## Comments after fine-tuning for first release
 - give more meaningful names than 'const' ("don't call a dog 'dog', give him
@@ -9,6 +13,9 @@
 - re-indented files: someone needs to learn Emacs :-) (or use right settings in
   R Studio to obtain 4 blanks indent per level). A good editor also gives you
   'parentheses matching', so no need to do ( ( ( (a + b) / 2 )))
+
+## EH: I used RStudio's reindent command. Will look into.
+
 - use 'if' as a function, so
   if() a <- b else a <- c should be a <- if() b else c
   (see 'next.estimate', for example)
@@ -16,7 +23,7 @@
 - *within* functions, separate larger pieces of code by '## <title ####... ###'
   rather than empty lines (also good reminder of adhering to the 80-column rule)
 - avoid ':' in leading comments (clear that they refer to the code thereafter)
-  as well as before every chunk in .Rmds
+  as well as before every chunk in .Reds
 - avoid comments 'EH' in code
 - make comments shorter so that ideally can be done 'inline' next to the
   corresponding statement (avoid searching for corresponding comment)
@@ -36,6 +43,10 @@
   already provides an informative error message ("... is not positive definite").
   Could still change that for next release but too much overhead/code for my taste.
 - renamed all 'cholScale' to 'factor' (as we used that notion in dnvmix(), rnvmix().
+
+## EH: Reason we had different names: in pnvmix() and dnvmix(), factor HAS to be 
+the upper triangular cholesky factor, otherwise it wouldn't work
+
 - ?dnvmix, ?pnvmix and ?dnvmix could have a bit more documentation on the argument 'method'
   (there was none, I added a bit more). Are the 'sobol' and 'ghalton' methods *randomized*?
   This was given for some but not all methods. I went with the "least common multiple".
@@ -58,6 +69,12 @@
   I found that confusing (same argument name, different meaning)... but it's fine
   now. So careful with keeping both doc in function head (Roxygen) and on ?rnvmix
   updated.
+
+## EH: I was very careful here and did change the function head...in my last version:
+##' @param factor factor R of the covariance matrix 'scale' such that RR^T
+##'        = 'scale'. If factor is (d,k) => resulting scale is d dimensional" 
+## and similarly in man. 
+
 - Use italics only for definitions
 - Properly use defined variables instead of hard-coded values, for example
   $W\sim\mathrm{Exp}(`r rate`)$ instead of $W\sim Exp(1.9)$; see also the 'upshape'
@@ -77,18 +94,39 @@
 - don't use ^T but ^\top for the transpose sign (it's not a 'T')
 
 ## Questions
+
 - why do we need 'const' (now: is.const.mix) and can't handle that with a corresponding
   quantile function?
+
+## EH: We could handle it with corresponding quantile function, but knowing that
+## W is constant makes the problem (d-1) dimensional => faster
+
 - does the code correctly pick up the case where W is constant but not 1?
   (this theoretically changes the distribution)
+
+## EH: It only 'picks up' the case where W is constant when 'qmix' or 'rmix' is
+## a string. If the user provides it, no checking is done (hence also no problem here)
+
 - Can mean.sqrt.mix be Inf (and the code still work correctly)?
+
+## EH: only divide by mean.sqrt.mix. 
+
 - The regression coefficients in the first plot of the vignette is smaller
   without preconditioning (for Sobol'). I guess this is because the error
   is already much smaller, or not?
+
+## EH: Yes. Will change it to a different example (this is not a randomized 
+## experiment, hence those numbers are not very meaningful anyway. 
+
 - For the density: why can't we compute error estimates for all input rows
   separately again? And, besides the maximal error, could we report the average error?
+
+## EH: We could and originally planned on doing that but somehow changed our mind. 
+
 - I don't quite get the last sentence (conservative...) in Section 3 of the vignette.
   What do you mean? (feel free to improve)
+
+## EH: Will change. 
 
 
 ### For the next release #######################################################
