@@ -44,7 +44,7 @@
   Could still change that for next release but too much overhead/code for my taste.
 - renamed all 'cholScale' to 'factor' (as we used that notion in dnvmix(), rnvmix().
 
-## EH: Reason we had different names: in pnvmix() and dnvmix(), factor HAS to be 
+## EH: Reason we had different names: in pnvmix() and dnvmix(), factor HAS to be
 the upper triangular cholesky factor, otherwise it wouldn't work
 
 - ?dnvmix, ?pnvmix and ?dnvmix could have a bit more documentation on the argument 'method'
@@ -72,8 +72,8 @@ the upper triangular cholesky factor, otherwise it wouldn't work
 
 ## EH: I was very careful here and did change the function head...in my last version:
 ##' @param factor factor R of the covariance matrix 'scale' such that RR^T
-##'        = 'scale'. If factor is (d,k) => resulting scale is d dimensional" 
-## and similarly in man. 
+##'        = 'scale'. If factor is (d,k) => resulting scale is d dimensional"
+## and similarly in man.
 
 - Use italics only for definitions
 - Properly use defined variables instead of hard-coded values, for example
@@ -109,24 +109,24 @@ the upper triangular cholesky factor, otherwise it wouldn't work
 
 - Can mean.sqrt.mix be Inf (and the code still work correctly)?
 
-## EH: only divide by mean.sqrt.mix. 
+## EH: only divide by mean.sqrt.mix.
 
 - The regression coefficients in the first plot of the vignette is smaller
   without preconditioning (for Sobol'). I guess this is because the error
   is already much smaller, or not?
 
-## EH: Yes. Will change it to a different example (this is not a randomized 
-## experiment, hence those numbers are not very meaningful anyway. 
+## EH: Yes. Will change it to a different example (this is not a randomized
+## experiment, hence those numbers are not very meaningful anyway.
 
 - For the density: why can't we compute error estimates for all input rows
   separately again? And, besides the maximal error, could we report the average error?
 
-## EH: We could and originally planned on doing that but somehow changed our mind. 
+## EH: We could and originally planned on doing that but somehow changed our mind.
 
 - I don't quite get the last sentence (conservative...) in Section 3 of the vignette.
   What do you mean? (feel free to improve)
 
-## EH: Will change. 
+## EH: Will change.
 
 
 ### For the next release #######################################################
@@ -240,7 +240,9 @@ the upper triangular cholesky factor, otherwise it wouldn't work
 2018-06-21:
 - monomvn (estimation under monotone pattern missing data; MLE & Bayesian)
 - mvnfast (no pnvmix(), simulation, density, Mahalanobis distances)
-- tmvtnorm (has ptmvt(), based on Gibbs sampler; see http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.26.6892)
+- tmvtnorm (has ptmvt(), based on Gibbs sampler, but also needs integer
+            d.o.f. (see example on ?ptmvt());
+	    see http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.26.6892
 - MVT (studentFit(); for fixed nu (= eta here), estimates location and scale; paper mentions EM Algorithm)
 - mvtnorm (clear; no fitting, no non-integer dof, qmvt() [equicoordinate quantile function])
 - QRM (fit.mst())
