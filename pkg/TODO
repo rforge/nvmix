@@ -143,7 +143,7 @@
 2) Estimation (focusing on copulas would simplify the problem of non-identifiability of E(W), right?)
 3) Singular matrices
 
-
+- TODO  'loc' right now has to be a vector, shd maybe also work for 'loc' being (d,1) matrix?
 - TODO? write 'pnvmix1d' (special case of pnvmix, just for one dimension => no reordering,
 	can vectorize. Could be useful for copulas / fitting copulas ?
 
