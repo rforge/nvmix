@@ -205,8 +205,8 @@ stopifnot(all.equal(dt, c(0.013266542, 0.011967156, 0.010760575, 0.009648682),
                     tol = 1e-7, check.attributes = FALSE))
 
 ## Evaluate a normal density
+x <- x[1,] # use just the first point this time 
 dn <- dNorm(x, scale = P)
-stopifnot(all.equal(dn, c(0.013083858, 0.011141923, 0.009389987, 0.007831596),
-                    tol = 1e-7, check.attributes = FALSE))
+stopifnot(all.equal(dn, 0.013083858, tol = 1e-7, check.attributes = FALSE))
 }
 \keyword{distribution}

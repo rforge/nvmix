@@ -103,7 +103,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     lres <- rep(-Inf, n) # n-vector of results
     notNA <- rowSums(is.na(x)) == 0
     lres[!notNA] <- NA
-    x <- x[notNA,] # non-missing data (rows)
+    x <- x[notNA,, drop = FALSE] # non-missing data (rows)
 
     ## 2 Actual computation ####################################################
 

@@ -1,5 +1,7 @@
+### Major changes since release 1 ##############################################
 
-
+- bug in dnvmix() fixed
+(line 106, drop = FALSE was missing => error in forwardsolve if n = 1) 
 
 ### For first release ##########################################################
 
