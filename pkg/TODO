@@ -1,9 +1,81 @@
+### For the next release #######################################################
+
+0) Please document in the .Rd via '% see ?pnvmix' all arguments on ?rnvmix and ?dnvmix
+   which are actually the same as on ?pnvmix (several reasons for that).
+1) nvmix copulas
+	EH: On it 
+2) Estimation (focusing on copulas would simplify the problem of non-identifiability of E(W), right?)
+	EH: On it
+3) Singular matrices 
+	EH: Not on it, but will be, after fitting is done :)
+
+- TODO  'loc' right now has to be a vector, shd maybe also work for 'loc' being (d,1) matrix?
+- TODO  write 'pnvmix1d' (special case of pnvmix, just for one dimension => no reordering,
+	can vectorize. Could be useful for copulas / fitting copulas ?
+- TODO: 'factor' should most likely also be an argument of pnvmix() -- sometimes one already
+        has that computed and by passing it one could avoid it being computed
+	every time
+- TODO: cite our own paper on ?pnvmix, ?dnvmix and ?rnvmix and in the vignette
+        (e.g. when saying 'has proven to outperform the others')
+- TODO Allow rmix() to be specified in pnvmix() for method = 'PRNG'. This can be a first
+       Step towards evaluation GIG mixtures, where qmix() is not available but one can
+       sample from the mixing distribution.
+- TODO look into quantile functions of univariate (marginal) normal variance mixtures.
+       If we have a function, say, qnvmix1 (for 1 dimensional normal variance mixtures),
+       we have a way to sample from univariate normal variance mixtures using inversion,
+       which can then be used for quasi-Monte Carlo sampling
+- TODO Need fitnvmix(): check what other packages do
+
+
 ### Major changes since release 1 ##############################################
 
 - bug in dnvmix() fixed
 (line 106, drop = FALSE was missing => error in forwardsolve if n = 1) 
 
+- qnvmix1 added
+
 ### For first release ##########################################################
+
+## Questions
+
+- why do we need 'const' (now: is.const.mix) and can't handle that with a corresponding
+  quantile function?
+
+   # EH: We could handle it with corresponding quantile function, but knowing that
+   # W is constant makes the problem (d-1) dimensional => faster
+
+- does the code correctly pick up the case where W is constant but not 1?
+  (this theoretically changes the distribution)
+
+   # EH: It only 'picks up' the case where W is constant when 'qmix' or 'rmix' is
+   # a *string*. If the user provides it, no checking is done (hence also no problem here)
+
+- Can mean.sqrt.mix be Inf (and the code still work correctly)?
+
+   # EH: should be finite (we only divide by mean.sqrt.mix, but always dividing by Inf 
+   # always gives zero. Will include a check/warning 
+
+- The regression coefficients in the first plot of the vignette is smaller
+  without preconditioning (for Sobol'). I guess this is because the error
+  is already much smaller, or not?
+
+   # EH: Yes. Changed it to a different example (this is not a randomized
+   # experiment, hence those numbers are not very meaningful anyway).
+   # I originally had a little mistake when calculating the coefficient; 
+   # so I thought they'd be equal.
+
+- For the density: why can't we compute error estimates for all input rows
+  separately again? And, besides the maximal error, could we report the average error?
+
+   # EH: We could and originally planned on doing that but somehow changed our mind, bc 
+   # we thought it might be a bit of an overkill (especially bc the different estimates are 
+   # highly correlated).
+   # Do you want me to include it?
+
+- I don't quite get the last sentence (conservative...) in Section 3 of the vignette.
+  What do you mean? (feel free to improve)
+   # EH: Will change. Error given is only approximate, in this case even "double" approximate bc 
+   # we use Taylor to get the error of exp(log density). 
 
 
 ## Comments after fine-tuning for first release
@@ -95,73 +167,6 @@
 - work with ran(), not hard-coded values for xlim/ylim (see Section 4 vignette)
 - don't use ^T but ^\top for the transpose sign (it's not a 'T')
 
-## Questions
-
-- why do we need 'const' (now: is.const.mix) and can't handle that with a corresponding
-  quantile function?
-
-   # EH: We could handle it with corresponding quantile function, but knowing that
-   # W is constant makes the problem (d-1) dimensional => faster
-
-- does the code correctly pick up the case where W is constant but not 1?
-  (this theoretically changes the distribution)
-
-   # EH: It only 'picks up' the case where W is constant when 'qmix' or 'rmix' is
-   # a string. If the user provides it, no checking is done (hence also no problem here)
-
-- Can mean.sqrt.mix be Inf (and the code still work correctly)?
-
-   # EH: should be finite (we only divide by mean.sqrt.mix, but always dividing by Inf 
-   # always gives zero. Will include a check/warning 
-
-- The regression coefficients in the first plot of the vignette is smaller
-  without preconditioning (for Sobol'). I guess this is because the error
-  is already much smaller, or not?
-
-   # EH: Yes. Changed it to a different example (this is not a randomized
-   # experiment, hence those numbers are not very meaningful anyway).
-   # I originally had a little mistake when calculating the coefficient; 
-   # so I thought they'd be equal.
-
-- For the density: why can't we compute error estimates for all input rows
-  separately again? And, besides the maximal error, could we report the average error?
-
-   # EH: We could and originally planned on doing that but somehow changed our mind, bc 
-   # we thought it might be a bit of an overkill (especially bc the different estimates are 
-   # correlated).
-   # Do you want me to include it?
-
-- I don't quite get the last sentence (conservative...) in Section 3 of the vignette.
-  What do you mean? (feel free to improve)
-   # EH: Will change. Error given is only approximate, in this case even "double" approximate bc 
-   # we use Taylor to get the error of exp(log density). 
-
-
-### For the next release #######################################################
-
-0) Please document in the .Rd via '% see ?pnvmix' all arguments on ?rnvmix and ?dnvmix
-   which are actually the same as on ?pnvmix (several reasons for that).
-1) nvmix copulas
-2) Estimation (focusing on copulas would simplify the problem of non-identifiability of E(W), right?)
-3) Singular matrices
-
-- TODO  'loc' right now has to be a vector, shd maybe also work for 'loc' being (d,1) matrix?
-- TODO? write 'pnvmix1d' (special case of pnvmix, just for one dimension => no reordering,
-	can vectorize. Could be useful for copulas / fitting copulas ?
-
-- TODO: 'factor' should most likely also be an argument of pnvmix() -- sometimes one already
-        has that computed and by passing it one could avoid it being computed
-	every time
-- TODO: cite our own paper on ?pnvmix, ?dnvmix and ?rnvmix and in the vignette
-        (e.g. when saying 'has proven to outperform the others')
-- TODO Allow rmix() to be specified in pnvmix() for method = 'PRNG'. This can be a first
-       Step towards evaluation GIG mixtures, where qmix() is not available but one can
-       sample from the mixing distribution.
-- TODO look into quantile functions of univariate (marginal) normal variance mixtures.
-       If we have a function, say, qnvmix1 (for 1 dimensional normal variance mixtures),
-       we have a way to sample from univariate normal variance mixtures using inversion,
-       which can then be used for quasi-Monte Carlo sampling
-- TODO Need fitnvmix(): check what other packages do
 
 
 
