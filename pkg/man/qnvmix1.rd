@@ -11,7 +11,7 @@ qnvmix1(u, qmix,
         CI.factor = 3.3, n0 = 2^7, B = 8,
         abstol.cdf = 1e-4, abstol.logdensity = 1e-2, abstol.newton = 1e-4,
         max.iter.newton = 30, max.iter.rqmc = 15, 
-        verbose = TRUE, q.only = FALSE, ...))
+        verbose = TRUE, q.only = FALSE, ...)
 }
 \arguments{
   \item{u}{vector of probabilities .}
@@ -47,6 +47,7 @@ qnvmix1(u, qmix,
   the internal newton proceudure. Only very basic checking is done.}
   \item{CI.factor}{see ?pnvmix().}
   \item{n0}{size of initial point-set used to internally approximate the df.}
+  \item{B}{see ?pnvmix().}
   \item{abstol.cdf}{abstol to estimate the df F(x) internally. See also ?pnvmix.}
   \item{abstol.logdensity}{abstol to estimate the log-density logf(x) internally. 
     See also ?pnvmix.}
@@ -65,7 +66,7 @@ qnvmix1(u, qmix,
 }
 \value{
   If \code{q.only = TRUE} a vector of the same length as \code{u} with entries
-  \eqn{q_i} where \eqn{q_i} satisfies \eqn{q_i = inf_x { F(x) \geq u_}} 
+  \eqn{q_i} where \eqn{q_i} satisfies \eqn{q_i = inf_x { F(x) \geq u_i}} 
   where \eqn{F(x)} the univariate df of the normal variance mixture specified 
   via \code{qmix}; if \code{q.only = FALSE} a list of four:
   \describe{
@@ -98,7 +99,6 @@ qnvmix1(u, qmix,
   evaluated at the estimated quantiles are returned as well: This can be useful
   for copula density evaluations where both quantities are needed. 
   
-}
 }
 \seealso{
   \code{\link{dnvmix}()}, \code{\link{rnvmix}()}, \code{\link{pnvmix}()}

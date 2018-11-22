@@ -1,5 +1,5 @@
 Package: nvmix
-Version: 0.0-1
+Version: 0.0-2
 Encoding: UTF-8
 Title: Multivariate Normal Variance Mixtures (Including Student's t Distribution for Non-Integer Degrees of Freedom)
 Description: Functions for working with multivariate normal variance mixture
