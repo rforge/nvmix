@@ -9,6 +9,9 @@
 3) Singular matrices 
 	EH: Not on it, but will be, after fitting is done :)
 
+- TODO? instead of providing maximum number of fun-evals, maybe max number of iterations?
+	it's a little easier to grasp and easier to work with. That holds for dnvmix and
+	pnvmix
 - TODO  'loc' right now has to be a vector, shd maybe also work for 'loc' being (d,1) matrix?
 - TODO  write 'pnvmix1d' (special case of pnvmix, just for one dimension => no reordering,
 	can vectorize. Could be useful for copulas / fitting copulas ?

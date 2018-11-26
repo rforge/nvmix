@@ -66,14 +66,16 @@ qnvmix1(u, qmix,
 }
 \value{
   If \code{q.only = TRUE} a vector of the same length as \code{u} with entries
-  \eqn{q_i} where \eqn{q_i} satisfies \eqn{q_i = inf_x { F(x) \geq u_i}} 
+  \eqn{q_i} where \eqn{q_i} satisfies \eqn{q_i = inf_x { F(x) \ge u_i}} 
   where \eqn{F(x)} the univariate df of the normal variance mixture specified 
-  via \code{qmix}; if \code{q.only = FALSE} a list of four:
+  via \code{qmix}; 
+  
+  if \code{q.only = FALSE} a list of four:
   \describe{
-  \item{\code{$q}:}{Vector of quantiles.}
+  \item{\code{$q}:}{Vector of quantiles}
   \item{\code{$log.density}:}{Vector log-density values at \code{q}}
   \item{\code{$computed.values}:}{matrix with 3 columns [x, F(x), logf(x)];
-  see details above.}
+  see details above}
   \item{\code{$newton.iterations}:}{Vector giving the number of Newton iterations 
   needed for \code{u[i]}}}
 }
