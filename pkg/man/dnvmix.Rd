@@ -9,9 +9,7 @@
 }
 \usage{
 dnvmix(x, qmix, loc = rep(0, d), scale = diag(d),
-       factor = NULL, method = c("sobol", "ghalton", "PRNG"),
-       abstol = 0.001, CI.factor = 3.3, fun.eval = c(2^6, 1e8), 
-       max.iter.rqmc = 15, B = 12, log = FALSE, verbose = TRUE, ...)
+       factor = NULL, control = list(), log = FALSE, verbose = TRUE,...)
 
 dStudent(x, df, loc = rep(0, d), scale = diag(d), factor = NULL,
          log = FALSE, verbose = TRUE, ...)
@@ -65,35 +63,8 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
     note that for performance reasons, this property is not tested.
     If not provided, \code{factor} is internally determined via
     \code{t(\link{chol}())}.}
-  \item{method}{\code{\link{character}} string indicating the method
-    to be used to compute the integral. Available are:
-    \describe{
-      \item{\code{"sobol"}:}{Sobol' sequence}
-      \item{\code{"ghalton"}:}{generalized Halton sequence}
-      \item{\code{"PRNG"}:}{plain Monte Carlo based on a pseudo-random
-         number generator}
-    }
-  }
-  \item{abstol}{non-negative \code{\link{numeric}} providing the
-    absolute precision required. If \code{abstol = 0},
-    the algorithm will typically run until the total number of function
-    evaluations exceeds \code{fun.eval[2]}. If \eqn{n > 1} (so
-    \code{x} has more than one row), the algorithm
-    runs until the precision requirement is reached for all
-    \eqn{n} density estimates.}
-  \item{CI.factor}{multiplier of the Monte Carlo confidence interval
-    bounds.  The algorithm runs until \code{CI.factor} times the estimated
-    standard error is less than \code{abstol}. If \code{CI.factor = 3.3}
-    (the default), one can expect the actual absolute error to be less
-    than \code{abstol} in 99.9\% of the cases.}
-  \item{fun.eval}{\code{\link{numeric}(2)} providing the size of the
-    first point set to be used to estimate the densities
-    (typically a power of 2) and the maximal number of function
-    evaluations.}  
-  \item{max.iter.rqmc}{\code{\link{numeric}}, providing the maximum number of 
-    iterations allowed in the RQMC approach.}  
-  \item{B}{number of randomizations for obtaining an error estimate in the
-    randomized quasi-Monte Carlo (RQMC) approach.}
+  \item{control}{\code{\link{list}} specifying algorithm specific
+    parameters; see details below.}  
   \item{log}{\code{\link{logical}} indicating whether the logarithmic
     density is to be computed.}
   \item{verbose}{\code{\link{logical}} indicating whether a
@@ -122,14 +93,56 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
 
   The number of rows of \code{factor} equals the dimension \eqn{d} of
   the sample. Typically (but not necessarily), \code{factor} is square.
-
+  
+  \code{dStudent()} and \code{dNorm()} are wrappers of
+  \code{dnvmix(, qmix = "inverse.gamma", df = df)} and
+  \code{dnvmix(, qmix = "constant")}, respectively.
+  In these cases, \code{dnvmix()} uses the analytical formulas for the
+  density of a multivariate Student \emph{t} and normal distribution,
+  respectively.
+  
   Internally, an iterative randomized Quasi-Monte Carlo (RQMC) approach
   is used to estimate the density. It is an iterative algorithm that
-  evaluates the integrand at a randomized Sobol' point-set
+  evaluates the integrand at a randomized Sobol' point-set (default)
   in each iteration until the pre-specified error tolerance \code{abstol}
   is reached for both the density and the log-density.
   The attribute \code{"numiter"} gives the worst case number of such
-  iterations needed (over all rows of \code{x}).
+  iterations needed (over all rows of \code{x}). Note that this function
+  calls underlying C code. 
+  
+  Algorithm specific parameters can be passed as a \code{\link{list}} via
+  \code{control}. It can contain any of the following:
+  \describe{
+  \item{\code{method}}{\code{\link{character}} string indicating the method
+    to be used to compute the integral. Available are:
+    \describe{
+      \item{\code{"sobol"}:}{Sobol' sequence (default).}
+      \item{\code{"ghalton"}:}{generalized Halton sequence.}
+      \item{\code{"PRNG"}:}{plain Monte Carlo based on a pseudo-random
+         number generator.}
+    }
+  }
+  \item{\code{abstol}}{non-negative \code{\link{numeric}} providing the
+    absolute precision required, defaults to \code{1e-3}. If \code{abstol = 0},
+    the algorithm will typically run until the total number of function
+    evaluations exceeds \code{fun.eval[2]}. If \eqn{n > 1} (so
+    \code{x} has more than one row), the algorithm
+    runs until the precision requirement is reached for all
+    \eqn{n} density estimates.}
+  \item{\code{CI.factor}}{multiplier of the Monte Carlo confidence interval
+    bounds.  The algorithm runs until \code{CI.factor} times the estimated
+    standard error is less than \code{abstol}. If \code{CI.factor = 3.3}
+    (the default), one can expect the actual absolute error to be less
+    than \code{abstol} in 99.9\% of the cases.}
+  \item{\code{fun.eval}}{\code{\link{numeric}(2)} providing the size of the
+    first point set to be used to estimate the densities
+    (typically a power of 2) and the maximal number of function
+    evaluations. \code{fun.eval} defaults to \code{c(2^7, 1e8)}.}  
+  \item{\code{max.iter.rqmc}}{\code{\link{numeric}}, providing the maximum number of 
+    iterations allowed in the RQMC approach; the default is 15.}  
+  \item{\code{B}}{number of randomizations for obtaining an error estimate in the
+    randomized quasi-Monte Carlo (RQMC) approach; the default is 12.}
+  }  
 
   Care should be taken when changing the algorithm-specific parameters,
   notably \code{method}, \code{fun.eval[2]} and \code{B}.
@@ -140,13 +153,6 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
   If the absolute error tolerance \code{abstol} cannot be achieved with
   \code{fun.eval[2]} function evaluations, an additional warning is
   thrown.
-
-  \code{dStudent()} and \code{dNorm()} are wrappers of
-  \code{dnvmix(, qmix = "inverse.gamma", df = df)} and
-  \code{dnvmix(, qmix = "constant")}, respectively.
-  In these cases, \code{dnvmix()} uses the analytical formulas for the
-  density of a multivariate Student \emph{t} and normal distribution,
-  respectively.
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux.}
 \references{
