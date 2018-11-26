@@ -14,7 +14,7 @@
  *
  *       b <- - (d/2) * log(2 * pi * W) - lrdet - outer(1/W, maha2_2)
  *       bmax <- apply(b, 2, max) # n-vector of maximal b's
- *       ldensities <- - log(current_n) + bmax + log(colSums(exp(b - rep(bmax, each = current.n))))
+ *       ldensities <- - log(current_n) + bmax + log(colSums(exp(b - rep(bmax, each = current_n))))
  *
  * @author Erik Hintz
  */

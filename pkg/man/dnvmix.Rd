@@ -10,8 +10,8 @@
 \usage{
 dnvmix(x, qmix, loc = rep(0, d), scale = diag(d),
        factor = NULL, method = c("sobol", "ghalton", "PRNG"),
-       abstol = 0.001, CI.factor = 3.3, fun.eval = c(2^6, 1e8), B = 12,
-       log = FALSE, verbose = TRUE, ...)
+       abstol = 0.001, CI.factor = 3.3, init.fun.eval = 2^6, 
+       max.iter.rqmc = 15, B = 12, log = FALSE, verbose = TRUE, ...)
 
 dStudent(x, df, loc = rep(0, d), scale = diag(d), factor = NULL,
          log = FALSE, verbose = TRUE, ...)
@@ -86,10 +86,11 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
     standard error is less than \code{abstol}. If \code{CI.factor = 3.3}
     (the default), one can expect the actual absolute error to be less
     than \code{abstol} in 99.9\% of the cases.}
-  \item{fun.eval}{\code{\link{numeric}(2)} providing the size of the
+  \item{init.fun.eval}{\code{\link{numeric}}, providing the size of the
     first point set to be used to estimate the probabilities
-    (typically a power of 2) and the maximal number of function
-    evaluations.}
+    (typically a power of 2).}
+  \item{max.iter.rqmc}{\code{\link{numeric}}, providing the maximum number of 
+    iterations allowed in the RQMC approach.}  
   \item{B}{number of randomizations for obtaining an error estimate in the
     randomized quasi-Monte Carlo (RQMC) approach.}
   \item{log}{\code{\link{logical}} indicating whether the logarithmic
