@@ -9,6 +9,9 @@
 3) Singular matrices 
 	EH: Not on it, but will be, after fitting is done :)
 
+- TODO	can we re-think how we handle all these arguments? For instance, could we provide
+	all optional arguments as one "list" and then just check if that list was provided?
+	I feel like there are way too many arguments that nobody ever changes anyway...
 - TODO? instead of providing maximum number of fun-evals, maybe max number of iterations?
 	it's a little easier to grasp and easier to work with. That holds for dnvmix and
 	pnvmix

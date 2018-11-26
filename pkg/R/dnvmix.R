@@ -14,8 +14,6 @@
 ##' @param B see ?dnvmix
 ##' @param seed value of .Random.seed when U0 was generated; needed to get 
 ##'        the same shifts in the randomized Sobol approach. 
-##' @param verbose logical indicating whether a warning is given if the required
-##'        precision 'abstol' has not been reached.
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return List of three:
 ##'         $ldensities n-vector with computed log-density values 
@@ -26,8 +24,6 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
                        method = c("sobol", "ghalton", "PRNG"),
                        abstol = 0.001, CI.factor = 3.3, 
                        fun.eval = c(2^6, 1e8), max.iter.rqmc, B, seed)
-  
-  
 {
   
   ## 1 Basics ##################################################################
@@ -208,7 +204,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   lres[!notNA] <- NA
   x <- x[notNA,, drop = FALSE] # non-missing data (rows)
   
-  ## 2 Actual computation ####################################################
+  ## 2 Actual computation ######################################################
   
   ## Recall that 'scale' is *lower triangular*. For short, let 'scale' = L
   ## Solve L * z = x_i - mu for z, so z = L^{-1} * (x_i - mu)   (d vector)
@@ -258,9 +254,8 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
                    runif(fun.eval[1]*B)
                  })
     
-    ## Sort maha-distance and divide by 2; safe ordering to recover "original
+    ## Sort maha-distance and divide by 2; store ordering to recover "original
     ## ordering" later:
-    ## ordering <- order(u)
     ordering.maha <- order(maha2)
     maha2.2 <- maha2[ordering.maha]/2
     
