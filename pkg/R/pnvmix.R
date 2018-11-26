@@ -137,7 +137,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
                     loc = rep(0, d), scale = diag(d), factor = NULL,
                     method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
                     abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
-                    increment = c("doubling", "num.init"), B = 12, ...)
+                    max.iter.rqmc = 15, increment = c("doubling", "num.init"), 
+                    B = 12, ...)
 {
 
     ## (Only) basic check; most checking and building was done in pnvmix()
@@ -204,7 +205,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
     ## while() runs until precision abstol is reached or the number of function
     ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
     ## the desired probability are calculated.
-    while(error > abstol && total.fun.evals < fun.eval[2])
+    while(error > abstol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
     {
         if(method == "sobol" && numiter > 0)
             .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
@@ -374,6 +375,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
 ##' @param fun.eval 2-vector giving the initial function evaluations (in the
 ##'        first loop; typically powers of 2) and the maximal number of
 ##'        function evaluations
+##' @param max.iter.rqmc maximum number of iterations in the RQMC approach    
 ##' @param increment character string indicating how the sample size should
 ##'        be increased in each iteration:
 ##'        - "doubling": next iteration has as many sample points as all the previous
@@ -391,7 +393,8 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
                    mean.sqrt.mix = NULL, loc = rep(0, d), scale = diag(d),
                    standardized = FALSE, method = c("sobol", "ghalton", "PRNG"),
                    precond = TRUE, abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
-                   increment = c("doubling", "num.init"), B = 12, verbose = TRUE, ...)
+                   max.iter.rqmc = 15, increment = c("doubling", "num.init"), 
+                   B = 12, verbose = TRUE, ...)
 {
     ## Checks
     if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
@@ -536,7 +539,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
         }
 
         ## If d = 1, deal with multivariate normal or t via pnorm() and pt()
-        ## Note that everything has been standardized.  s
+        ## Note that everything has been standardized.  
         if(d == 1){
             if(is.const.mix){
                 value <- pnorm(up) - pnorm(low)
@@ -557,9 +560,9 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
                              mean.sqrt.mix = mean.sqrt.mix,
                              loc = loc, scale = scale, factor = factorFin,
                              method = method, precond = precond, abstol = abstol,
-                             CI.factor = CI.factor, fun.eval = fun.eval,
-                             increment = increment, B = B,
-                             inv.gam = inv.gam, ...)
+                             CI.factor = CI.factor, fun.eval = fun.eval, 
+                             max.iter.rqmc = max.iter.rqmc, increment = increment, 
+                             B = B, inv.gam = inv.gam, ...)
 
         ## Check if desired precision was reached
         reached[i] <- res1[[i]]$error <= abstol

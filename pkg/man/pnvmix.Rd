@@ -12,7 +12,8 @@ pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, mean.sqrt.mix = NU
        loc = rep(0, d), scale = diag(d), standardized = FALSE,
        method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
        abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
-       increment = c("doubling", "num.init"), B = 12, verbose = TRUE, ...)
+       max.iter.rqmc = 15, increment = c("doubling", "num.init"), B = 12, 
+       verbose = TRUE, ...)
 
 pStudent(upper, lower = rep(-Inf, d), df, loc = rep(0, d), scale = diag(d),
          standardized = FALSE, method = c("sobol", "ghalton", "PRNG"),
@@ -102,6 +103,8 @@ pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
     first point set to be used to estimate the probabilities
     (typically a power of 2) and the maximal number of function
     evaluations.}
+  \item{max.iter.rqmc}{\code{\link{numeric}}, providing the maximum number of 
+    iterations allowed in the RQMC approach.}    
   \item{increment}{\code{\link{character}} string indicating how the
     sample size should be increased in each iteration. Available are:
     \describe{

@@ -24,7 +24,8 @@
 ##' @author Erik Hintz and Marius Hofert
 dnvmix.int <- function(qW, maha2.2, lrdet, U0, d, 
                        method = c("sobol", "ghalton", "PRNG"),
-                       abstol = 0.001, CI.factor = 3.3, max.iter.rqmc, B, seed)
+                       abstol = 0.001, CI.factor = 3.3, 
+                       fun.eval = c(2^6, 1e8), max.iter.rqmc, B, seed)
   
   
 {
@@ -55,9 +56,9 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
   }
   
   error <- CI.factor * sd( rqmc.estimates[, min.maha.index])
-  
+  total.fun.eval <- B*current.n
   ## 3 Main loop ###############################################################
-  while(error > abstol && numiter < max.iter.rqmc) {
+  while(error > abstol && numiter < max.iter.rqmc && total.fun.evals < fun.eval[2]) {
     
     if(method == "sobol") .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
     
@@ -77,7 +78,7 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
       W <- sort(qW(U)) # current.n-vector of W's (already sorted for eval_dnvmix_integrand)
       
       ## Exp-log trick 
-      rqmc.estimates[l,] <- (rqmc.estimates[l,] - 
+      rqmc.estimates[l,] <- (rqmc.estimates[l,] + 
                                .Call("eval_dnvmix_integrand", 
                                      W          = as.double(W),
                                      maha2_2    = as.double(maha2.2),
@@ -88,6 +89,7 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
     }
     
     ## Update counters, error and increase sample size
+    total.fun.evals <- total.fun.evals + B*current.n
     numiter <- numiter + 1 # update counter
     error <- CI.factor * sd( rqmc.estimates[, min.maha.index])
     current.n <- 2 * current.n
@@ -125,8 +127,9 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
 ##'        CI.factor * (estimated standard error) < abstol. If CI.factor = 3.3
 ##'        (default), one can expect the actual absolute error to be less than
 ##'        abstol in 99.9% of the cases
-##' @param init.fun.eval numeric, size of first point-set to be used in the 
-##'        RQMC approach. For method = "sobol" typically a power of 2.
+##' @param fun.eval 2-vector giving the initial function evaluations (in the
+##'        first loop; typically powers of 2) and the maximal number of
+##'        function evaluations
 ##' @param max.iter.rqmc maximum number of iterations in the RQMC approach        
 ##' @param B number of randomizations to get error estimates.
 ##' @param log logical indicating whether the logarithmic density is to be computed
@@ -139,7 +142,7 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
 dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
                    factor = NULL, # needs to be lower triangular!
                    method = c("sobol", "ghalton", "PRNG"),
-                   abstol = 0.001, CI.factor = 3.3, init.fun.eval = 2^6, 
+                   abstol = 0.001, CI.factor = 3.3, fun.eval = c(2^6, 1e8), 
                    max.iter.rqmc = 15, B = 12, log = FALSE, verbose = TRUE,...)
 {
   ## Checks
@@ -147,8 +150,8 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   d <- ncol(x) # dimension
   if(!is.matrix(scale)) scale <- as.matrix(scale)
   stopifnot(length(loc) == d, dim(scale) == c(d, d), # note: 'qmix' is tested later
-            abstol >= 0, CI.factor >= 0, init.fun.eval >= 0, max.iter.rqmc >= 1,
-            B >= 2, is.logical(log))
+            abstol >= 0, CI.factor >= 0, length(fun.eval) == 2, fun.eval >= 0, 
+            max.iter.rqmc >= 1, B >= 2, is.logical(log))
   method <- match.arg(method)
   
   ## If factor is not provided, determine it here as a *lower* triangular matrix
@@ -246,13 +249,13 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     ## Initial point-set as vector 
     U0 <- switch(method,
                  "sobol"   = {
-                   as.vector(sapply(1:B, function(i) sobol(init.fun.eval, d = 1, randomize = TRUE)))
+                   as.vector(sapply(1:B, function(i) sobol(fun.eval[1], d = 1, randomize = TRUE)))
                  },
                  "gHalton" = {
-                   as.vector(sapply(1:B, function(i) qrng::ghalton(init.fun.eval, d = 1, method = "generalized")))
+                   as.vector(sapply(1:B, function(i) qrng::ghalton(fun.eval[1], d = 1, method = "generalized")))
                  },
                  "prng"    = {
-                   runif(init.fun.eval*B)
+                   runif(fun.eval[1]*B)
                  })
     
     ## Sort maha-distance and divide by 2; safe ordering to recover "original
@@ -263,7 +266,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     
     ## Call internal dnvix (which itself calls C-Code)
     estimates <- dnvmix.int(qW, maha2.2 = maha2.2, lrdet = lrdet, U0 = U0, d = d, 
-               method = method, abstol = abstol, CI.factor = CI.factor,
+               method = method, abstol = abstol, CI.factor = CI.factor, fun.eval = fun.eval, 
                max.iter.rqmc = max.iter.rqmc, B = B, seed = seed)
     
 
