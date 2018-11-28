@@ -148,10 +148,27 @@ qnvmix1 <- function(u, qmix,
   }
   
   ## Initialize first pointset needed for rqmc approach:
-  if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
-  seed <- .Random.seed # need to reset to the original seed later 
+  if(method == "sobol"){
+    if(!exists(".Random.seed")) runif(1)
+    seed <- .Random.seed
+  } 
+  
   ## Get realizations of W and sqrt(W)
-  mixings <- W(as.vector(sapply(1:B, function(i) qrng::sobol(n0, d = 1, randomize = TRUE)))) #length B*n0
+  ## Initial point-set as vector 
+  U0 <- switch(method,
+               "sobol"   = {
+                 as.vector(sapply(1:B, function(i) 
+                   sobol(control.int$fun.eval[1], d = 1, randomize = TRUE)))
+               },
+               "gHalton" = {
+                 as.vector(sapply(1:B, function(i) 
+                   ghalton(control.int$fun.eval[1], d = 1, method = "generalized")))
+               },
+               "prng"    = {
+                 runif(control.int$fun.eval[1]*B)
+               })
+  
+  mixings <- W(U0)  #length B*fun.eval[1]
   sqrt.mixings <- sqrt(mixings)
   CI.factor <- control.int$CI.factor/sqrt(B) # instead of dividing by sqrt(B) all the time
   
@@ -183,8 +200,22 @@ qnvmix1 <- function(u, qmix,
       
       while(!precision.reached && iter.rqmc < control.int$max.iter.rqmc){
         ## Reset seed and get realizations
-        .Random.seed <- seed
-        mixings.new <- W(as.vector(sapply(1:B, function(i) qrng::sobol(current.n, d = 1, randomize = TRUE)))) # length B*current.n
+        if(method == "sobol") .Random.seed <- seed
+        
+        U0 <- switch(method,
+                     "sobol"   = {
+                       as.vector(sapply(1:B, function(i) 
+                         sobol(current.n, d = 1, randomize = TRUE, skip = current.n)))
+                     },
+                     "gHalton" = {
+                       as.vector(sapply(1:B, function(i) 
+                         ghalton(current.n, d = 1, method = "generalized")))
+                     },
+                     "prng"    = {
+                       runif(current.n*B)
+                     })
+        
+        mixings.new <- W(U0) # length B*current.n
         ## "realizations" of log density
         log.dens <- - 1/2 * log(2 * pi * mixings.new) - x*x / (2*mixings.new) 
         ## "realizations" of cdf
