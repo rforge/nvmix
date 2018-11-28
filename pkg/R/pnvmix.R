@@ -107,7 +107,7 @@ precond <- function(lower, upper, scale, factor, mean.sqrt.mix)
 }
 
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture
-##'        for a Single Observation
+##'        for a Single Observation (internal function)
 ##' @param upper d vector
 ##' @param lower d vector (<= upper)
 ##' @param qW quantile function of the mixture distribution; build inside pnvmix();
@@ -131,7 +131,7 @@ precond <- function(lower, upper, scale, factor, mean.sqrt.mix)
 ##'         - error: error estimate
 ##'         - numiter: number of iterations needed
 ##' @author Erik Hintz and Marius Hofert
-##' @note Internal function being called by pnvmix.
+##' @note Internal function being called by pnvmix. 
 pnvmix1 <- function(upper, lower = rep(-Inf, d),
                     qW = NULL, is.const.mix = FALSE, mean.sqrt.mix,
                     loc = rep(0, d), scale = diag(d), factor = NULL,
@@ -390,11 +390,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
 ##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
-                   mean.sqrt.mix = NULL, loc = rep(0, d), scale = diag(d),
-                   standardized = FALSE, method = c("sobol", "ghalton", "PRNG"),
-                   precond = TRUE, abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
-                   max.iter.rqmc = 15, increment = c("doubling", "num.init"), 
-                   B = 12, verbose = TRUE, ...)
+                   loc = rep(0, d), scale = diag(d), standardized = FALSE,
+                   control = list(), verbose = TRUE, ...)
 {
     ## Checks
     if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
@@ -404,15 +401,47 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
 
     if(!is.matrix(scale)) scale <- as.matrix(scale)
     stopifnot(dim(lower) == c(n, d), length(loc) == d, # 'mean.sqrt.mix' is tested in pnvmix1()
-              dim(scale) == c(d, d), is.logical(standardized), is.logical(precond),
-              abstol >= 0, # note: also passed by abstol = NULL (!)
-              CI.factor >= 0, length(fun.eval) == 2, fun.eval >= 0, B >= 1)
-    method <- match.arg(method)
-    increment <- match.arg(increment)
-
+              dim(scale) == c(d, d))
+    
+    ## Deal with algorithm parameters: The idea of the following is taken from
+    ## how optim() handles parameters.
+    ## Default algorithm parameters: 
+    control.int <- list(method = "sobol",
+                        mean.sqrt.mix = NULL,
+                        precond = TRUE,
+                        abstol = 1e-3,
+                        CI.factor = 3.3,
+                        fun.eval = c(2^7, 1e8),
+                        max.iter.rqmc = 15,
+                        max.iter.newton = 40,
+                        increment = "doubling",
+                        B = 12,
+                        abstol.newton = 1e-4,
+                        abstol.logdensity.newton = 1e-2,
+                        abstol.cdf.newton = 1e-4)
+    names.control <- names(control.int)
+    ## Overwrite those defaults by the ones that the user provided (if applicable)
+    control.int[(names.provided <- names(control))] <- control
+    ## Did they provide something that is not used?
+    if (length(unmatched <- names.provided[!names.provided %in% names.control])) 
+      warning("unknown names in control: ", paste(unmatched, collapse = ", "))
+    
+    ## Now some checkings if the arguments provided make sense
+    stopifnot(is.logical(control.int$precond), control.int$abstol >= 0,
+              control.int$CI.factor >= 0, length(control.int$fun.eval) == 2,
+              control.int$fun.eval >= 0, control.int$max.iter.rqmc > 0,
+              control.int$max.iter.newton > 0, control.int$B > 1,
+              control.int$abstol.newton >= 0, control.int$abstol.logdensity.newton >= 0,
+              control.int$abstol.cdf.newton >= 0)
+    
+    ## Grab method, increment, mean.sqrt.mix 
+    method        <- match.arg(control.int$method, choices = c("sobol", "ghalton", "PRNG"))
+    increment     <- match.arg(control.int$increment, choices = c("doubling", "num.init"))
+    mean.sqrt.mix <- control.int$mean.sqrt.mix
+    
     ## Setting abstol to a negative value will ensure that the algorithm runs
     ## until fun.eval[2] function evaluations are done.
-    if(is.null(abstol)) abstol <- -42
+    abstol <- if(is.null(control.int$abstol)) -42 else control.int$abstol
 
     ## Define the quantile function of the mixing variable.
     is.const.mix <- FALSE # logical indicating whether we have a multivariate normal
@@ -458,7 +487,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
 
     ## Grab / approximate mean.sqrt.mix, which will be needed for preconditioning
     ## in pnvmix1(). This only depends on 'qmix', hence it is done (once) here in pnvmix.
-    if(precond && d > 2){
+    if(control.int$precond && d > 2){
         if(is.null(mean.sqrt.mix))
             mean.sqrt.mix <- mean(sqrt(qW(qrng::sobol(n = 2^12, d = 1,
                                                       randomize = TRUE))))
@@ -559,10 +588,12 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
         res1[[i]] <- pnvmix1(up, lower = low, qW = qW, is.const.mix = is.const.mix,
                              mean.sqrt.mix = mean.sqrt.mix,
                              loc = loc, scale = scale, factor = factorFin,
-                             method = method, precond = precond, abstol = abstol,
-                             CI.factor = CI.factor, fun.eval = fun.eval, 
-                             max.iter.rqmc = max.iter.rqmc, increment = increment, 
-                             B = B, inv.gam = inv.gam, ...)
+                             method = method, precond = control.int$precond,
+                             abstol = abstol, CI.factor = control.int$CI.factor, 
+                             fun.eval = control.int$fun.eval, 
+                             max.iter.rqmc = control.int$max.iter.rqmc, 
+                             increment = increment, 
+                             B = control.int$B, inv.gam = inv.gam, ...)
 
         ## Check if desired precision was reached
         reached[i] <- res1[[i]]$error <= abstol

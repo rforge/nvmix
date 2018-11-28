@@ -43,6 +43,8 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
   
   for(l in 1:B){
     ## Grab realizations corresponding to l'th shift and use exp-log trick 
+    ## The underlying C function "eval_dnvmix_integrand" needs both, maha2_2 
+    ## and W to be sorted in increasing order.     
     rqmc.estimates[l,] <- .Call("eval_dnvmix_integrand", 
                                 W          = as.double(sort(W[(l-1)*current.n + (1:current.n)])),
                                 maha2_2    = as.double(maha2.2),
@@ -54,6 +56,7 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
   
   error <- CI.factor * sd( rqmc.estimates[, min.maha.index])
   total.fun.eval <- B*current.n
+  
   ## 3 Main loop ###############################################################
   while(error > abstol && numiter < max.iter.rqmc && total.fun.evals < fun.eval[2]) {
     
@@ -72,12 +75,13 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
                   "prng"    = {
                     cbind(runif(current.n)) # 1-column matrix
                   })
-      W <- sort(qW(U)) # current.n-vector of W's (already sorted for eval_dnvmix_integrand)
       
       ## Exp-log trick 
+      ## The underlying C function "eval_dnvmix_integrand" needs both, maha2_2 
+      ## and W to be sorted in increasing order.     
       rqmc.estimates[l,] <- (rqmc.estimates[l,] + 
                                .Call("eval_dnvmix_integrand", 
-                                     W          = as.double(W),
+                                     W          = as.double(sort(qW(U))),
                                      maha2_2    = as.double(maha2.2),
                                      current_n  = as.integer(current.n),
                                      n          = as.integer(n),
@@ -90,7 +94,6 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
     numiter <- numiter + 1 # update counter
     error <- CI.factor * sd( rqmc.estimates[, min.maha.index])
     current.n <- 2 * current.n
-    
     
   } # while()
   
@@ -151,7 +154,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   ## how optim() handles parameters.
   ## Default algorithm parameters: 
   control.int <- list(method = "sobol",
-                      mean.sqrt.mix = NA,
+                      mean.sqrt.mix = NULL,
                       precond = TRUE,
                       abstol = 1e-3,
                       CI.factor = 3.3,

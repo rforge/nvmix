@@ -1,3 +1,12 @@
+### Little detail questions for Marius #########################################
+
+- shd we have one "huge" control argument and explain this huge thing in one manual
+or in every single manual?
+Same for roxygen header?
+
+
+
+
 ### For the next release #######################################################
 
 0) Please document in the .Rd via '% see ?pnvmix' all arguments on ?rnvmix and ?dnvmix

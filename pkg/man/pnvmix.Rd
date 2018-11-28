@@ -8,21 +8,16 @@
   (including Student \emph{t} and normal distributions).
 }
 \usage{
-pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, mean.sqrt.mix = NULL,
-       loc = rep(0, d), scale = diag(d), standardized = FALSE,
-       method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
-       abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
-       max.iter.rqmc = 15, increment = c("doubling", "num.init"), B = 12, 
-       verbose = TRUE, ...)
+
+                   
+pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
+      loc = rep(0, d), scale = diag(d), standardized = FALSE,
+      control = list(), verbose = TRUE, ...)
 
 pStudent(upper, lower = rep(-Inf, d), df, loc = rep(0, d), scale = diag(d),
-         standardized = FALSE, method = c("sobol", "ghalton", "PRNG"),
-         precond = TRUE, abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
-         B = 12, verbose = TRUE)
+         standardized = FALSE, control = list(), verbose = TRUE)
 pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
-      standardized = FALSE, method = c("sobol", "ghalton", "PRNG"),
-      precond = TRUE, abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
-      B = 12, verbose = TRUE)
+      standardized = FALSE, control = list(), verbose = TRUE)
 }
 \arguments{
   \item{upper}{\eqn{(n, d)}-\code{\link{matrix}} of upper integration limits;
@@ -56,11 +51,6 @@ pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
 	variable \eqn{W}.}
     }
   }
-  \item{mean.sqrt.mix}{expectation of the square root \eqn{\sqrt(W)} of
-    the mixing variable \eqn{W}. If \code{NULL}, it will be
-    estimated via QMC; this is only needed for determining the reordering
-    of the integration bounds, so a rather crude approximation
-    is fine.}
   \item{df}{positive degress of freedom; can also be \code{Inf} in which
     case the distribution is interpreted as the multivariate normal
     distribution with mean vector \code{loc} and covariance matrix
@@ -76,46 +66,8 @@ pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
     former exists.}
   \item{standardized}{\code{logical} indicating whether \code{scale} is
     assumed to be a correlation matrix.}
-  \item{method}{\code{\link{character}} string indicating the method
-    to be used to compute the integral. Available are:
-    \describe{
-      \item{\code{"sobol"}:}{Sobol' sequence}
-      \item{\code{"ghalton"}:}{generalized Halton sequence}
-      \item{\code{"PRNG"}:}{plain Monte Carlo based on a pseudo-random
-         number generator}
-    }
-  }
-  \item{precond}{\code{\link{logical}} indicating whether preconditioning
-    is applied, that is, reordering of the integration variables. If \code{TRUE},
-    integration limits as well as \code{scale} are internally re-ordered in
-    a way such that the overall variance of the integrand is usually smaller than
-    with the original ordering; this usually leads smaller run-times.}
-  \item{abstol}{non-negative \code{\link{numeric}} providing the
-    absolute precision required; if \code{abstol = NULL},
-    the algorithm will run until the total number of function
-    evaluations \code{fun.eval[2]} is reached.}
-  \item{CI.factor}{multiplier of the Monte Carlo confidence interval
-    bounds.  The algorithm runs until \code{CI.factor} times the estimated
-    standard error is less than \code{abstol}. If \code{CI.factor = 3.3}
-    (the default), one can expect the actual absolute error to be less
-    than \code{abstol} in 99.9\% of the cases.}
-  \item{fun.eval}{\code{\link{numeric}(2)} providing the size of the
-    first point set to be used to estimate the probabilities
-    (typically a power of 2) and the maximal number of function
-    evaluations.}
-  \item{max.iter.rqmc}{\code{\link{numeric}}, providing the maximum number of 
-    iterations allowed in the RQMC approach.}    
-  \item{increment}{\code{\link{character}} string indicating how the
-    sample size should be increased in each iteration. Available are:
-    \describe{
-      \item{\code{"doubling"}:}{next iteration has as many sample points
-	as all the previous iterations combined.}
-      \item{\code{"num.init"}:}{all iterations use an additional
-	\code{fun.eval[1]}-many points.}
-    }
-  }
-  \item{B}{number of randomizations for obtaining an error estimate in the
-    randomized quasi-Monte Carlo (RQMC) approach.}
+  \item{control}{\code{\link{list}} specifying algorithm specific
+    parameters; see details below.}   
   \item{verbose}{% *not* the same as in ?dnvmix()
     \code{\link{logical}}
     indicating whether a warning is given if the required precision
@@ -148,11 +100,67 @@ pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
 
   Internally, an iterative randomized Quasi-Monte Carlo (RQMC) approach is used
   to estimate the probabilities. It is an iterative algorithm that evaluates
-  the integrand at a point-set with size as specified by \code{increment})
+  the integrand at a point-set (with size as specified by \code{increment})
   in each iteration until the pre-specified error tolerance \code{abstol}
   is reached. The attribute \code{"numiter"} gives the number of such
   iterations needed.
-
+  
+  Algorithm specific parameters (such as the above mentioned \code{'increment'}
+  or \code{'abstol'}) can be passed as a list via \code{control}. 
+  It can contain any of the following:
+  
+  \describe{
+  \item{\code{method}}{\code{\link{character}} string indicating the method
+    to be used to compute the integral. Available are:
+    \describe{
+      \item{\code{"sobol"}:}{Sobol' sequence (default).}
+      \item{\code{"ghalton"}:}{generalized Halton sequence.}
+      \item{\code{"PRNG"}:}{plain Monte Carlo based on a pseudo-random
+         number generator.}
+    }
+  }
+  \item{\code{mean.sqrt.mix}}{expectation of the square root \eqn{\sqrt(W)} of
+    the mixing variable \eqn{W}. If \code{NULL}, it will be
+    estimated via QMC; this is only needed for determining the reordering
+    of the integration bounds, so a rather crude approximation
+    is fine.}
+  \item{\code{abstol}}{non-negative \code{\link{numeric}} providing the
+    absolute precision required, defaults to \code{1e-3}. If \code{abstol = 0},
+    the algorithm will typically run until the total number of function
+    evaluations exceeds \code{fun.eval[2]}. If \eqn{n > 1} (so
+    \code{x} has more than one row), the algorithm
+    runs until the precision requirement is reached for all
+    \eqn{n} density estimates.}
+  \item{\code{precond}}{\code{\link{logical}} indicating whether preconditioning
+    is applied, that is, reordering of the integration variables. If \code{TRUE},
+    integration limits as well as \code{scale} are internally re-ordered in
+    a way such that the overall variance of the integrand is usually smaller than
+    with the original ordering; this usually leads smaller run-times.}
+  \item{\code{increment}}{\code{\link{character}} string indicating how the
+    sample size should be increased in each iteration. Available are:
+    \describe{
+      \item{\code{"doubling"}:}{next iteration has as many sample points
+	as all the previous iterations combined.}
+      \item{\code{"num.init"}:}{all iterations use an additional
+	\code{fun.eval[1]}-many points.}
+    }
+  }  
+  \item{\code{CI.factor}}{multiplier of the Monte Carlo confidence interval
+    bounds.  The algorithm runs until \code{CI.factor} times the estimated
+    standard error is less than \code{abstol}. If \code{CI.factor = 3.3}
+    (the default), one can expect the actual absolute error to be less
+    than \code{abstol} in 99.9\% of the cases.}
+  \item{\code{fun.eval}}{\code{\link{numeric}(2)} providing the size of the
+    first point set to be used to estimate the densities
+    (typically a power of 2) and the maximal number of function
+    evaluations. \code{fun.eval} defaults to \code{c(2^7, 1e8)}.}  
+  \item{\code{max.iter.rqmc}}{\code{\link{numeric}}, providing the maximum number of 
+    iterations allowed in the RQMC approach; the default is 15.}  
+  \item{\code{B}}{number of randomizations for obtaining an error estimate in the
+    randomized quasi-Monte Carlo (RQMC) approach; the default is 12.}
+  }  
+  
+  
   Care should be taken when changing the algorithm-specific parameters,
   notably \code{method}, \code{precond}, \code{fun.eval[2]} and \code{B}.
   Error estimates will not be reliable for too small \code{B} and the
@@ -210,8 +218,8 @@ pt1 <- pnvmix(b, lower = a, qmix = "inverse.gamma", df = df, scale = P)
 qW <- function(u, df) 1 / qgamma(u, shape = df/2, rate = df/2)
 mean.sqrt.mix <- sqrt(df) * gamma(df/2) / (sqrt(2) * gamma((df+1) / 2))
 set.seed(1)
-pt2 <- pnvmix(b, lower = a, qmix = qW, mean.sqrt.mix = mean.sqrt.mix, df  = df,
-              scale = P)
+pt2 <- pnvmix(b, lower = a, qmix = qW, df  = df, scale = P,
+              control = list(mean.sqrt.mix = mean.sqrt.mix))
 
 ## Compare
 stopifnot(all.equal(pt1, pt2, tol = 7e-4, check.attributes = FALSE))
