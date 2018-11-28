@@ -6,12 +6,8 @@
   (including normal and Student \emph{t} for non-integer degrees of freedom).
 }
 \usage{
-qnvmix1(u, qmix, 
-        stored.values = NULL,
-        CI.factor = 3.3, n0 = 2^7, B = 8,
-        abstol.cdf = 1e-4, abstol.logdensity = 1e-2, abstol.newton = 1e-4,
-        max.iter.newton = 30, max.iter.rqmc = 15, 
-        verbose = TRUE, q.only = FALSE, ...)
+qnvmix1(u, qmix, stored.values = NULL,
+        control = list(), verbose = TRUE, q.only = FALSE, ...)
 }
 \arguments{
   \item{u}{vector of probabilities .}
@@ -45,17 +41,8 @@ qnvmix1(u, qmix,
   in 'qmix'. 
   If provided it will be used to determine starting values for 
   the internal newton proceudure. Only very basic checking is done.}
-  \item{CI.factor}{see ?pnvmix().}
-  \item{n0}{size of initial point-set used to internally approximate the df.}
-  \item{B}{see ?pnvmix().}
-  \item{abstol.cdf}{abstol to estimate the df F(x) internally. See also ?pnvmix.}
-  \item{abstol.logdensity}{abstol to estimate the log-density logf(x) internally. 
-    See also ?pnvmix.}
-  \item{abstol.newton}{Convergence criterion for the internal Newton method.}
-  \item{max.iter.newton}{Maximum number of iterations for the internal Newton 
-    method for *each* entry of \code{u}}
-  \item{max.iter.rqmc}{Maximum number of iterations of the internal RQMC method
-   to estimate F(x) and logf(x) for each x. }
+  \item{control}{\code{\link{list}} specifying algorithm specific
+    parameters; see details below.} 
   \item{verbose}{\link{logical}, if \code{TRUE} a warning is printed if one of the 'abstol' is
   not reached.}
   \item{q.only}{\link{logical}. If \code{TRUE}, only the quantiles are returned; if FALSE, see 
@@ -100,6 +87,41 @@ qnvmix1(u, qmix,
   If \code{q.only = TRUE} the log-density values of the underlying distribution
   evaluated at the estimated quantiles are returned as well: This can be useful
   for copula density evaluations where both quantities are needed. 
+  
+  \describe{
+  \item{\code{method}}{\code{\link{character}} string indicating the method
+    to be used to compute the integral. Available are:
+    \describe{
+      \item{\code{"sobol"}:}{Sobol' sequence (default).}
+      \item{\code{"ghalton"}:}{generalized Halton sequence.}
+      \item{\code{"PRNG"}:}{plain Monte Carlo based on a pseudo-random
+         number generator.}
+    }
+  }
+  \item{\code{abstol.cdf}}{abstol to estimate the df F(x) internally. See also ?pnvmix.}
+  \item{abstol.logdensity}{abstol to estimate the log-density logf(x) internally. 
+    See also ?dnvmix.}  
+  \item{\code{abstol.newton}}{Convergence criterion for the internal Newton method.}  
+  \item{\code{max.iter.newton}}{Maximum number of iterations for the internal Newton 
+    method for *each* entry of \code{u}}
+  \item{\code{max.iter.rqmc}}{\code{\link{numeric}}, providing the maximum number of 
+    iterations allowed in the RQMC approach; the default is 15.}  
+  \item{\code{CI.factor}}{multiplier of the Monte Carlo confidence interval
+    bounds.  The algorithm runs until \code{CI.factor} times the estimated
+    standard error is less than \code{abstol}. If \code{CI.factor = 3.3}
+    (the default), one can expect the actual absolute error to be less
+    than \code{abstol} in 99.9\% of the cases.}
+  \item{\code{n0}}{Size of initial point-set used to internally approximate the df.}
+  \item{\code{B}}{number of randomizations for obtaining an error estimate in the
+    randomized quasi-Monte Carlo (RQMC) approach; the default is 8.}  
+  }  
+  
+  Care should be taken when changing the algorithm-specific parameters,
+  notably \code{method}, \code{precond}, \code{fun.eval[2]} and \code{B}.
+  Error estimates will not be reliable for too small \code{B} and the
+  performance of the algorithm depends heavily on the (quasi-)Monte
+  Carlo point-set used.
+
   
 }
 \seealso{
