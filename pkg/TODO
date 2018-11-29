@@ -1,8 +1,13 @@
 ### Little detail questions for Marius #########################################
 
-- shd we have one "huge" control argument and explain this huge thing in one manual
-or in every single manual?
-Same for roxygen header?
+- should we have one "huge" control argument and explain this huge thing in one manual
+or in every single manual whatever is needed for this particular function?
+
+- abstol (dmvmix, pnvmix) vs abstol.cdf (qnvmix)
+
+- should I include the elements of control() in the roxygen header?
+
+
 
 
 

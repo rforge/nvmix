@@ -18,4 +18,4 @@ importFrom("utils",
 
 export("dnvmix", "pnvmix", "rnvmix",
        "dStudent", "pStudent", "rStudent",
-       "dNorm", "pNorm", "rNorm", "qnvmix1")
+       "dNorm", "pNorm", "rNorm", "qnvmix")
