@@ -1,4 +1,4 @@
-### qnvmix1() ##################################################################
+### qnvmix() ##################################################################
 ##'
 ##' @param u vector of probabilities 
 ##' @param qmix specification of the (mixture) distribution of W. This can be:
@@ -45,7 +45,7 @@
 ##'       density shall be returned (instead of logdensity) if  q.only = FALSE?
 
 
-qnvmix1 <- function(u, qmix, 
+qnvmix <- function(u, qmix, 
                     stored.values = NULL,
                     control = list(),
                     #CI.factor = 3.3, n0 = 2^7, B = 8,

@@ -1,12 +1,12 @@
-\name{qnvmix1}
-\alias{qnvmix1}
+\name{qnvmix}
+\alias{qnvmix}
 \title{Quantile Function of a univariate Normal Variance Mixture Distribution}
 \description{
   Evaluating multivariate normal variance mixture distribution functions
   (including normal and Student \emph{t} for non-integer degrees of freedom).
 }
 \usage{
-qnvmix1(u, qmix, stored.values = NULL,
+qnvmix(u, qmix, stored.values = NULL,
         control = list(), verbose = TRUE, q.only = FALSE, ...)
 }
 \arguments{
@@ -76,7 +76,7 @@ qnvmix1(u, qmix, stored.values = NULL,
   Internally, symmetry is used for \eqn{u \le 0.5}. Function values (i.e. cdf and
   log-density values) are stored and reused to get good starting values. These
   values are returned if \code{q.only = FALSE} and can be re-used by passing it to
-  \code{qnvmix1} via the argument \code{stored.values}; this can significantly
+  \code{qnvmix} via the argument \code{stored.values}; this can significantly
   reduce run-time.
   
   Accuracy and run-time depend on both the magnitude of \eqn{u} and on how heavy
@@ -134,7 +134,7 @@ qnvmix1(u, qmix, stored.values = NULL,
   Princeton University Press.
 }
 \examples{
-### Examples for qnvmix1() ####################################################
+### Examples for qnvmix() ####################################################
 
 ## Evaluation points
 u <- seq(from = 0.05, to = 0.95, by = 0.1)
@@ -144,22 +144,22 @@ set.seed(271) # for reproducibility
 df = 1.4
 qmix. <- function(u) 1/qgamma(u, shape = df/2, rate = df/2)
 ## If qmix = "inverse.gamma", qt() is being called 
-qt1  <- qnvmix1(u, qmix = "inverse.gamma", df = df)
+qt1  <- qnvmix(u, qmix = "inverse.gamma", df = df)
 ## Estimate quantiles (without using qt())
-qt1. <- qnvmix1(u, qmix = qmix.)
+qt1. <- qnvmix(u, qmix = qmix.)
 stopifnot(all.equal(qt1$q, qt1.$q, tolerance = 5e-4))
 ## Look at absolute error:
 abs.error <- abs(qt1$q - qt1.$q)
 plot(u, abs.error, type = "l", xlab = "u", ylab = "qt(u)")
 ## Now do this again but provide qt1.$stored.values, in which case at most
 ## one Newton iteration will be needed:
-qt2 <- qnvmix1(u, qmix = qmix., stored.values = qt1.$computed.values)
+qt2 <- qnvmix(u, qmix = qmix., stored.values = qt1.$computed.values)
 stopifnot(max(qt2$newton.iterations) <= 1)
 
 
 ## Evaluate quantile function where W~Exp(2)
 rate = 2
-qexp <- qnvmix1(u, qmix = list("exp", rate = rate))
+qexp <- qnvmix(u, qmix = list("exp", rate = rate))
 ## Check: F( F^{-1}(u)) = u 
 stopifnot(all.equal(pnvmix(as.matrix(qexp$q), qmix = list("exp", rate = rate)), u, 
                     tolerance = 5e-4, check.attributes = FALSE))
