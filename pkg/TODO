@@ -26,12 +26,15 @@ or in every single manual whatever is needed for this particular function?
 - TODO	can we re-think how we handle all these arguments? For instance, could we provide
 	all optional arguments as one "list" and then just check if that list was provided?
 	I feel like there are way too many arguments that nobody ever changes anyway...
+		DONE
 - TODO? instead of providing maximum number of fun-evals, maybe max number of iterations?
 	it's a little easier to grasp and easier to work with. That holds for dnvmix and
 	pnvmix
+		DONE
 - TODO  'loc' right now has to be a vector, shd maybe also work for 'loc' being (d,1) matrix?
 - TODO  write 'pnvmix1d' (special case of pnvmix, just for one dimension => no reordering,
 	can vectorize. Could be useful for copulas / fitting copulas ?
+		DONE
 - TODO: 'factor' should most likely also be an argument of pnvmix() -- sometimes one already
         has that computed and by passing it one could avoid it being computed
 	every time
@@ -44,7 +47,9 @@ or in every single manual whatever is needed for this particular function?
        If we have a function, say, qnvmix1 (for 1 dimensional normal variance mixtures),
        we have a way to sample from univariate normal variance mixtures using inversion,
        which can then be used for quasi-Monte Carlo sampling
+		DONE
 - TODO Need fitnvmix(): check what other packages do
+		ON IT
 
 
 ### Major changes since release 1 ##############################################
