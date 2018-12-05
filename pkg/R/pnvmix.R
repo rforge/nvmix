@@ -113,19 +113,18 @@ precond <- function(lower, upper, scale, factor, mean.sqrt.mix)
 ##' @param qW quantile function of the mixture distribution; build inside pnvmix();
 ##'        note: different from (the more general) 'qmix'
 ##' @param is.const.mix logical, TRUE if qmix is constant (=> normal distutions)
-##' @param mean.sqrt.mix see ?pnvmix()
-##' @param loc see ?pnvmix()
-##' @param scale see ?pnvmix()
-##' @param factor Cholesky factor (lower triangular matrix) of 'scale';
-##'        via t(chol()) if NULL
-##' @param method see ?pnvmix()
-##' @param precond see ?pnvmix()
-##' @param abstol see ?pnvmix()
-##' @param CI.factor see ?pnvmix()
-##' @param fun.eval see ?pnvmix()
-##' @param increment see ?pnvmix()
-##' @param B see ?pnvmix()
-##' @param ... see ?pnvmix()
+##' @param mean.sqrt.mix see details in ?pnvmix
+##' @param loc see details in ?pnvmix
+##' @param scale see details in ?pnvmix
+##' @param factor see details in ?pnvmix
+##' @param method see details in ?pnvmix
+##' @param precond see details in ?pnvmix
+##' @param abstol see details in ?pnvmix
+##' @param CI.factor see details in ?pnvmix
+##' @param fun.eval see details in ?pnvmix
+##' @param increment see details in ?pnvmix
+##' @param B see details in ?pnvmix
+##' @param ... see details in ?pnvmix
 ##' @return list of length 3:
 ##'         - value: computed probability
 ##'         - error: error estimate
@@ -357,31 +356,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
 ##' @param standardized logical indicating whether 'scale' is assumed to be a
 ##'        correlation matrix; if FALSE (default), 'upper', 'lower' and 'scale'
 ##'        will be normalized.
-##' @param method character string indicating the method to be used:
-##'         - "sobol":   Sobol sequence
-##'         - "ghalton": generalized Halton sequence
-##'         - "prng":    pure Monte Carlo
-##' @param precond logical; if TRUE (recommended), variable reordering
-##'        similar to Genz and Bretz (2002, pp. 955--956) is performed.
-##'        Variable reordering can lead to a significant variance reduction
-##'        and decrease in computational time.
-##' @param abstol numeric >= 0 providing the absolute precision required.
-##'        If abstol = NULL, the algorithm will run until total number of function
-##'        fun.eval[2] is reached
-##' @param CI.factor Monte Carlo confidence interval multiplier. Algorithm runs
-##'        CI.factor * (estimated standard error) < abstol. If CI.factor = 3.3
-##'        (default), one can expect the actual absolute error to be less than
-##'        abstol in 99.9% of the cases
-##' @param fun.eval 2-vector giving the initial function evaluations (in the
-##'        first loop; typically powers of 2) and the maximal number of
-##'        function evaluations
-##' @param max.iter.rqmc maximum number of iterations in the RQMC approach    
-##' @param increment character string indicating how the sample size should
-##'        be increased in each iteration:
-##'        - "doubling": next iteration has as many sample points as all the previous
-##'          iterations combined
-##'        - "num.init": all iterations use an additional fun.eval[1] many points
-##' @param B numeric >= 2 providing number of randomizations to get error estimates
+##' @param control list() of algorithm parameters; see details in ?pnvmix
 ##' @param verbose logical (or integer: 0 = FALSE, 1 = TRUE, 2 = more output)
 ##'        indicating whether a warning is given if the required precision
 ##'        'abstol' has not been reached.
@@ -403,45 +378,18 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
   stopifnot(dim(lower) == c(n, d), length(loc) == d, # 'mean.sqrt.mix' is tested in pnvmix1()
             dim(scale) == c(d, d))
   
-  ## Deal with algorithm parameters: The idea of the following is taken from
-  ## how optim() handles parameters.
-  ## Default algorithm parameters: 
-  control.int <- list(method = "sobol",
-                      mean.sqrt.mix = NULL,
-                      precond = TRUE,
-                      abstol = 1e-3,
-                      CI.factor = 3.3,
-                      fun.eval = c(2^7, 1e8),
-                      max.iter.rqmc = 15,
-                      max.iter.newton = 40,
-                      increment = "doubling",
-                      B = 12,
-                      abstol.newton = 1e-4,
-                      abstol.logdensity.newton = 1e-2,
-                      abstol.cdf.newton = 1e-4)
-  names.control <- names(control.int)
-  ## Overwrite those defaults by the ones that the user provided (if applicable)
-  control.int[(names.provided <- names(control))] <- control
-  ## Did they provide something that is not used?
-  if (length(unmatched <- names.provided[!names.provided %in% names.control])) 
-    warning("unknown names in control: ", paste(unmatched, collapse = ", "))
+  ## Deal with algorithm parameters, see also get.set.parameters():
+  ## get.set.parameters() also does argument checking, so not needed here. 
+  control <- get.set.parameters(control)
   
-  ## Now some checkings if the arguments provided make sense
-  stopifnot(is.logical(control.int$precond), control.int$abstol >= 0,
-            control.int$CI.factor >= 0, length(control.int$fun.eval) == 2,
-            control.int$fun.eval >= 0, control.int$max.iter.rqmc > 0,
-            control.int$max.iter.newton > 0, control.int$B > 1,
-            control.int$abstol.newton >= 0, control.int$abstol.logdensity.newton >= 0,
-            control.int$abstol.cdf.newton >= 0)
-  
-  ## Grab method, increment, mean.sqrt.mix 
-  method        <- match.arg(control.int$method, choices = c("sobol", "ghalton", "PRNG"))
-  increment     <- match.arg(control.int$increment, choices = c("doubling", "num.init"))
-  mean.sqrt.mix <- control.int$mean.sqrt.mix
+  ## Grab method, increment and mean.sqrt.mix
+  method        <- control$method
+  increment     <- control$increment
+  mean.sqrt.mix <- control$mean.sqrt.mix
   
   ## Setting abstol to a negative value will ensure that the algorithm runs
   ## until fun.eval[2] function evaluations are done.
-  abstol <- if(is.null(control.int$abstol)) -42 else control.int$abstol
+  abstol <- if(is.null(control$pnvmix.abstol)) -42 else control$pnvmix.abstol
   
   ## Define the quantile function of the mixing variable.
   is.const.mix <- FALSE # logical indicating whether we have a multivariate normal
@@ -492,17 +440,17 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     return(pnvmix1d(upper = as.vector(upper), lower = as.vector(lower), 
                     qW = qW, loc = loc, scale = as.numeric(scale), 
                     standardized = standardized, 
-                    method = method, abstol = abstol, CI.factor = control.int$CI.factor,
-                    fun.eval = control.int$fun.eval, 
-                    max.iter.rqmc = control.int$max.iter.rqmc, 
-                    increment = increment, B = control.int$B, 
+                    method = method, abstol = abstol, CI.factor = control$CI.factor,
+                    fun.eval = control$fun.eval, 
+                    max.iter.rqmc = control$max.iter.rqmc, 
+                    increment = increment, B = control$B, 
                     verbose = verbose))
   }
   
   
   ## Grab / approximate mean.sqrt.mix, which will be needed for preconditioning
   ## in pnvmix1(). This only depends on 'qmix', hence it is done (once) here in pnvmix.
-  if(control.int$precond && d > 2){
+  if(control$precond && d > 2){
     if(is.null(mean.sqrt.mix))
       mean.sqrt.mix <- mean(sqrt(qW(qrng::sobol(n = 2^12, d = 1,
                                                 randomize = TRUE))))
@@ -603,12 +551,12 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     res1[[i]] <- pnvmix1(up, lower = low, qW = qW, is.const.mix = is.const.mix,
                          mean.sqrt.mix = mean.sqrt.mix,
                          loc = loc, scale = scale, factor = factorFin,
-                         method = method, precond = control.int$precond,
-                         abstol = abstol, CI.factor = control.int$CI.factor, 
-                         fun.eval = control.int$fun.eval, 
-                         max.iter.rqmc = control.int$max.iter.rqmc, 
+                         method = method, precond = control$precond,
+                         abstol = abstol, CI.factor = control$CI.factor, 
+                         fun.eval = control$fun.eval, 
+                         max.iter.rqmc = control$max.iter.rqmc, 
                          increment = increment, 
-                         B = control.int$B, inv.gam = inv.gam, ...)
+                         B = control$B, inv.gam = inv.gam, ...)
     
     ## Check if desired precision was reached
     reached[i] <- res1[[i]]$error <= abstol
@@ -635,7 +583,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
 
 
 
-##' @title Distribution Function of a 1d Normal Variance Mixture
+##' @title Distribution Function of a 1d Normal Variance Mixture (not exported)
 ##' @param upper n vector of upper evaluation limits
 ##' @param lower n vector of lower evaluation limits (<= upper)
 ##' @param qW function of one variable; quantile fct of W
@@ -644,15 +592,15 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
 ##' @param standardized logical indicating whether 'scale' is assumed to be a
 ##'        correlation matrix; if FALSE (default), 'upper', 'lower' and 'scale'
 ##'        will be normalized.
-##' @param method see ?pnvmix
-##' @param abstol see ?pnvmix
-##' @param CI.factor see ?pnvmix
-##' @param fun.eval see ?pnvmix
-##' @param max.iter.rqmc see ?pnvmix
-##' @param increment see ?pnvmix
-##' @param B see ?pnvmix
-##' @param verbose see ?pnvmix
-##' @param ... see ?pnvmix
+##' @param method see details in ?pnvmix
+##' @param abstol see details in ?pnvmix
+##' @param CI.factor see details in ?pnvmix
+##' @param fun.eval see details in ?pnvmix
+##' @param max.iter.rqmc see details in ?pnvmix
+##' @param increment see details in ?pnvmix
+##' @param B see details in ?pnvmix
+##' @param verbose see details in ?pnvmix
+##' @param ... see details in ?pnvmix
 ##' @return numeric vector with the computed probabilities and attributes "error"
 ##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
 ##'               

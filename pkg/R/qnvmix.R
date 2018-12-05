@@ -14,7 +14,7 @@
 ##'           in 'qmix'. 
 ##'           If provided it will be used to determine starting values for 
 ##'           the internal newton proceudure. Only very basic checking is done.        
-##' @param CI.factor see ?pnvmix()
+##' @param CI.factor see details in ?qnvmix()
 ##' @param n0 size of initial pointset
 ##' @param B see ?pnvmix()
 ##' @param abstol.cdf abstol to estimate F(x)
@@ -57,43 +57,14 @@ qnvmix <- function(u, qmix,
   ## Basic input checking (stored.values is checked below)
   stopifnot(!any(u>=1), !any(u<=0), is.logical(verbose), is.logical(q.only))
   
-  ## Deal with algorithm parameters: The idea of the following is taken from
-  ## how optim() handles parameters.
-  ## Default algorithm parameters:   
-  control.int <- list(method = "sobol",
-                      mean.sqrt.mix = NULL,
-                      precond = TRUE,
-                      abstol = 1e-3,
-                      CI.factor = 3.3,
-                      fun.eval = c(2^7, 1e8),
-                      max.iter.rqmc = 15,
-                      max.iter.newton = 40,
-                      increment = "doubling",
-                      B = 8,
-                      n0 = 2^7,
-                      abstol.newton = 1e-4,
-                      abstol.logdensity = 1e-2,
-                      abstol.cdf = 1e-4)
-  names.control <- names(control.int)
-  ## Overwrite those defaults by the ones that the user provided (if applicable)
-  control.int[(names.provided <- names(control))] <- control
-  ## Did they provide something that is not used?
-  if (length(unmatched <- names.provided[!names.provided %in% names.control])) 
-    warning("unknown names in control: ", paste(unmatched, collapse = ", "))
+  ## Deal with algorithm parameters, see also get.set.parameters():
+  ## get.set.parameters() also does argument checking, so not needed here. 
+  control <- get.set.parameters(control)
   
-  ## Now some checkings if the arguments provided make sense
-  stopifnot(is.logical(control.int$precond), control.int$abstol >= 0,
-            control.int$CI.factor >= 0, length(control.int$fun.eval) == 2,
-            control.int$fun.eval >= 0, control.int$max.iter.rqmc > 0,
-            control.int$max.iter.newton > 0, control.int$B > 1,
-            control.int$abstol.newton >= 0, control.int$abstol.logdensity.newton >= 0,
-            control.int$abstol.cdf.newton >= 0)
-  
-  ## Grab method, increment and B
-  method    <- match.arg(control.int$method, choices = c("sobol", "ghalton", "PRNG"))
-  #increment <- match.arg(control.int$increment, choices = c("doubling", "num.init"))
-  B         <- control.int$B
-  n0        <- control.int$n0
+  ## Grab method, B and n0
+  method    <- control$method
+  B         <- control$B
+  n0        <- control$fun.eval[1]
   
   ## Define the quantile function of the mixing variable: 
   is.const.mix <- FALSE # logical indicating whether we have a multivariate normal
@@ -158,19 +129,19 @@ qnvmix <- function(u, qmix,
   U0 <- switch(method,
                "sobol"   = {
                  as.vector(sapply(1:B, function(i) 
-                   sobol(control.int$fun.eval[1], d = 1, randomize = TRUE)))
+                   sobol(control$fun.eval[1], d = 1, randomize = TRUE)))
                },
                "gHalton" = {
                  as.vector(sapply(1:B, function(i) 
-                   ghalton(control.int$fun.eval[1], d = 1, method = "generalized")))
+                   ghalton(control$fun.eval[1], d = 1, method = "generalized")))
                },
                "prng"    = {
-                 runif(control.int$fun.eval[1]*B)
+                 runif(control$fun.eval[1]*B)
                })
   
   mixings <- W(U0)  #length B*fun.eval[1]
   sqrt.mixings <- sqrt(mixings)
-  CI.factor <- control.int$CI.factor/sqrt(B) # instead of dividing by sqrt(B) all the time
+  CI.factor <- control$CI.factor/sqrt(B) # instead of dividing by sqrt(B) all the time
   
   ## Function that estimates F(x) and logf(x) for *scalar* input x
   est.cdf.dens <- function(x){
@@ -190,15 +161,15 @@ qnvmix <- function(u, qmix,
     }
     ## Check if precisions are reached
     error <- c(sd(rqmc.estimates.cdf), sd(rqmc.estimates.log.density))*CI.factor
-    precision.reached <- (error[1] <= control.int$abstol.cdf && 
-                            error[2] <= control.int$abstol.logdensity)
+    precision.reached <- (error[1] <= control$newton.df.abstol && 
+                            error[2] <= control$newton.logdens.abstol)
       
     if(!precision.reached){
       ## Set up while loop
       iter.rqmc <- 0
       current.n <- n0
       
-      while(!precision.reached && iter.rqmc < control.int$max.iter.rqmc){
+      while(!precision.reached && iter.rqmc < control$max.iter.rqmc){
         ## Reset seed and get realizations
         if(method == "sobol") .Random.seed <- seed
         
@@ -234,13 +205,13 @@ qnvmix <- function(u, qmix,
         current.n <- 2*current.n
         iter.rqmc <- iter.rqmc + 1
         error <- c(sd(rqmc.estimates.cdf), sd(rqmc.estimates.log.density))*CI.factor
-        precision.reached <- (error[1] <= control.int$abstol.cdf 
-                              && error[2] <= control.int$abstol.logdensity)
+        precision.reached <- (error[1] <= control$newton.df.abstol
+                              && error[2] <= control$newton.logdens.abstol)
       }
     }
     if(verbose){
-      if(error[1] > control.int$abstol.cdf) warning("'abstol.cdf' not reached; consider increasing 'max.iter.rqmc'")
-      if(error[2] > control.int$abstol.logdensity) warning("'abstol.logdensity' not reached; consider increasing 'max.iter.rqmc'")
+      if(error[1] > control$newton.df.abstol) warning("'abstol.cdf' not reached; consider increasing 'max.iter.rqmc'")
+      if(error[2] > control$newton.logdens.abstol) warning("'abstol.logdensity' not reached; consider increasing 'max.iter.rqmc'")
     }
     ## Return
     c(mean(rqmc.estimates.cdf), mean(rqmc.estimates.log.density))
@@ -272,7 +243,7 @@ qnvmix <- function(u, qmix,
   ## 2 Main Loop ###############################################################
   for (i in 1:n) {
     ## Initialize error and counter for Newton
-    error <- control.int$abstol.newton + 42
+    error <- control$newton.conv.abstol+ 42
     iter.newton <- 0
     ## Grab current u
     current.u <- u.sorted[i]
@@ -288,7 +259,7 @@ qnvmix <- function(u, qmix,
     current.funvals <- stored.values[closest.ind, 2:3]
     
     ## Main loop for Newton procedure
-    while (error > control.int$abstol.newton && iter.newton < control.int$max.iter.newton) {
+    while (error > control$newton.conv.abstol && iter.newton < control$max.iter.newton) {
       ## Update quantile:
       diff.qu <-  current.qu - 
         (current.qu <- current.qu - sign(current.funvals[1]-current.u)*
@@ -305,7 +276,8 @@ qnvmix <- function(u, qmix,
     quantiles[i]       <- current.qu
     log.density[i]     <- current.funvals[2]
     num.iter.newton[i] <- iter.newton
-    if(verbose && error > control.int$abstol.newton) warning("'abstol.newton' not reached; consider increasing 'max.iter.newton'")
+    if(verbose && error > control$newton.conv.abstol) 
+        warning("'abstol.newton' not reached; consider increasing 'max.iter.newton'")
   }
   ## Order results according to original ordering of input u
   quantiles <- quantiles[order(ordering)]

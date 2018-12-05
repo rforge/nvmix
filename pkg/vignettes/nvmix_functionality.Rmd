@@ -99,11 +99,11 @@ stopifnot(all.equal(p1, p2))
 We see that the results coincide.
 
 If higher precision of the computed probabilities is desired, this can be
-accomplished by changing the argument `abstol` (which defaults to `1e-3`) at the
+accomplished by changing the argument `pnvmix.abstol` (which defaults to `1e-3`) at the
 expense of a higher run time.
 ```{r}
 pnvmix(b, lower = a, qmix = function(u, lambda) -log(1-u)/lambda,
-       lambda = rate, scale = P, control = list(abstol = 1e-5))
+       lambda = rate, scale = P, control = list(pnvmix.abstol = 1e-5))
 ```
 
 
@@ -171,7 +171,7 @@ higher run time.
 
 Let us now illustrate the effect of `method` and `precond` on the performance of
 `pnvmix()` with `mix = 'inverse.gamma'`. To this end we use the wrapper
-`pStudent()`. We set `abstol = NULL` so that the algorithm runs until the number
+`pStudent()`. We set `pnvmix.abstol = NULL` so that the algorithm runs until the number
 of function evaluations exceeds `fun.eval[2]`. We do this for different values
 of `fun.eval[2]` in order to get an idea of the speed of convergence. We
 also compute the regression coefficients which act as a summary measure of
@@ -190,42 +190,27 @@ rownames(errors) <- nms
 ## Note:
 ## - resetting the seed leads to a fairer comparison here
 ## - set 'verbose' to 0 or FALSE to avoid warnings which inevitably occur
-##   due to 'abstol = NULL'
+##   due to 'pnvmix.abstol = NULL'
 for(i in seq_along(max.fun.evals)) {
     N.max <- max.fun.evals[i]
     ## Sobol with preconditioning
-    ## 
-    ## control.int <- list(method = "sobol",
-                        # mean.sqrt.mix = NULL,
-                        # precond = TRUE,
-                        # abstol = 1e-3,
-                        # CI.factor = 3.3,
-                        # fun.eval = c(2^7, 1e8),
-                        # max.iter.rqmc = 15,
-                        # max.iter.newton = 40,
-                        # increment = "doubling",
-                        # B = 12,
-                        # abstol.newton = 1e-4,
-                        # abstol.logdensity.newton = 1e-2,
-                        # abstol.cdf.newton = 1e-4)
-
     set.seed(42)
     errors[nms[1],i] <-
         attr(pStudent(b, lower = a, scale = P,  df = df,
-                      control = list(abstol = NULL, fun.eval = c(2^6, N.max)),
+                      control = list(pnvmix.abstol = NULL, fun.eval = c(2^6, N.max)),
                       verbose = FALSE), "error")
     ## Sobol without preconditioning
     set.seed(42)
     errors[nms[2],i] <-
         attr(pStudent(b, lower = a, scale = P,  df = df,
-                      control = list(precond = FALSE, abstol = NULL, 
+                      control = list(precond = FALSE, pnvmix.abstol = NULL, 
                                      fun.eval = c(2^6, N.max)), 
                       verbose = FALSE), "error")
     ## PRNG with preconditioning
     set.seed(42)
     errors[nms[3],i] <-
         attr(pStudent(b, lower = a, scale = P,  df = df,
-                      control = list(method = "PRNG", abstol = NULL, 
+                      control = list(method = "PRNG", pnvmix.abstol = NULL, 
                                      fun.eval = c(2^6, N.max)), 
                       verbose = FALSE), "error")
     ## PRNG without preconditioning
@@ -233,7 +218,7 @@ for(i in seq_along(max.fun.evals)) {
     errors[nms[4],i] <-
         attr(pStudent(b, lower = a, scale = P,  df = df,
                       control = list(method = "PRNG", precond = FALSE, 
-                                     abstol = NULL, fun.eval = c(2^6, N.max)),
+                                     pnvmix.abstol = NULL, fun.eval = c(2^6, N.max)),
                       verbose = FALSE), "error")
 }
 
@@ -292,7 +277,7 @@ inputs, that is, the error of the row with the largest error.  Note also how
 the fact that `dnvmix()` iterates until the desired precision is reached for
 *both* the log-density and the density itself.  Furthermore, the error estimate
 for `log = FALSE` is conservative -- it will only differ from the error when `log
-= TRUE` if at least one density estimate is larger than 1.
+= TRUE` if at least one density estimate is larger than 1. 
 
 
 ## 4 (Quasi-)random number generation

@@ -1,20 +1,20 @@
 ### dnvmix() ###################################################################
 
-##' @title Density of a Multivariate Normal Variance Mixture - Internal version
+##' @title Density of a Multivariate Normal Variance Mixture - Internal version 
+##'        (not exported)
 ##' @param qW function of one variable specifying the quantile function of W.
 ##' @param maha2.2 squared maha-distances divided by 2. Assumed to be *sorted*
 ##' @param lrdet log(sqrt(det(scale))) where 'scale' is the scale matrix of 
 ##'        the normal variance mixture distribution. 
 ##' @param U0 vector of first input uniforms. Length has to be multiple of B. 
 ##' @param d dimension of the Normal Variance Mixture        
-##' @param method see ?dnvmix
-##' @param abstol see ?dnvmix
-##' @param CI.factor see ?dnvmix
-##' @param max.iter.rqmc see ?dnvmix
-##' @param B see ?dnvmix
+##' @param method see details in ?pnvmix
+##' @param abstol see details in ?pnvmix
+##' @param CI.factor see details in ?pnvmix
+##' @param max.iter.rqmc see details in ?pnvmix
+##' @param B see details in ?pnvmix
 ##' @param seed value of .Random.seed when U0 was generated; needed to get 
 ##'        the same shifts in the randomized Sobol approach. 
-##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return List of three:
 ##'         $ldensities n-vector with computed log-density values 
 ##'         $error error estimate (largest error in ldensities)
@@ -150,41 +150,14 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   stopifnot(length(loc) == d, dim(scale) == c(d, d))
   
   
-  ## Deal with algorithm parameters: The idea of the following is taken from
-  ## how optim() handles parameters.
-  ## Default algorithm parameters: 
-  control.int <- list(method = "sobol",
-                      mean.sqrt.mix = NULL,
-                      precond = TRUE,
-                      abstol = 1e-3,
-                      CI.factor = 3.3,
-                      fun.eval = c(2^7, 1e8),
-                      max.iter.rqmc = 15,
-                      max.iter.newton = 40,
-                      increment = "doubling",
-                      B = 12,
-                      abstol.newton = 1e-4,
-                      abstol.logdensity.newton = 1e-2,
-                      abstol.cdf.newton = 1e-4)
-  names.control <- names(control.int)
-  ## Overwrite those defaults by the ones that the user provided (if applicable)
-  control.int[(names.provided <- names(control))] <- control
-  ## Did they provide something that is not used?
-  if (length(unmatched <- names.provided[!names.provided %in% names.control])) 
-    warning("unknown names in control: ", paste(unmatched, collapse = ", "))
+  ## Deal with algorithm parameters, see also get.set.parameters():
+  ## get.set.parameters() also does argument checking, so not needed here. 
+  control <- get.set.parameters(control)
   
-  ## Now some checkings if the arguments provided make sense
-  stopifnot(is.logical(control.int$precond), control.int$abstol >= 0,
-            control.int$CI.factor >= 0, length(control.int$fun.eval) == 2,
-            control.int$fun.eval >= 0, control.int$max.iter.rqmc > 0,
-            control.int$max.iter.newton > 0, control.int$B > 1,
-            control.int$abstol.newton >= 0, control.int$abstol.logdensity.newton >= 0,
-            control.int$abstol.cdf.newton >= 0)
-  
-  ## Grab method, increment and B
-  method    <- match.arg(control.int$method, choices = c("sobol", "ghalton", "PRNG"))
-  increment <- match.arg(control.int$increment, choices = c("doubling", "num.init"))
-  B         <- control.int$B
+  ## Grab method, increment and B 
+  method    <- control$method
+  increment <- control$increment
+  B         <- control$B
   
   ## If factor is not provided, determine it here as a *lower* triangular matrix
   if(is.null(factor)) factor <- t(chol(scale)) # lower triangular
@@ -282,14 +255,14 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     U0 <- switch(method,
                  "sobol"   = {
                    as.vector(sapply(1:B, function(i) 
-                     sobol(control.int$fun.eval[1], d = 1, randomize = TRUE)))
+                     sobol(control$fun.eval[1], d = 1, randomize = TRUE)))
                  },
                  "gHalton" = {
                    as.vector(sapply(1:B, function(i) 
-                     ghalton(control.int$fun.eval[1], d = 1, method = "generalized")))
+                     ghalton(control$fun.eval[1], d = 1, method = "generalized")))
                  },
                  "prng"    = {
-                   runif(control.int$fun.eval[1]*B)
+                   runif(control$fun.eval[1]*B)
                  })
     
     ## Sort maha-distance and divide by 2; store ordering to recover "original
@@ -299,9 +272,9 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     
     ## Call internal dnvix (which itself calls C-Code)
     estimates <- dnvmix.int(qW, maha2.2 = maha2.2, lrdet = lrdet, U0 = U0, d = d, 
-               method = method, abstol = control.int$abstol, 
-               CI.factor = control.int$CI.factor, fun.eval = control.int$fun.eval, 
-               max.iter.rqmc = control.int$max.iter.rqmc, B = B, seed = seed)
+               method = method, abstol = control$dnvmix.abstol, 
+               CI.factor = control$CI.factor, fun.eval = control$fun.eval, 
+               max.iter.rqmc = control$max.iter.rqmc, B = B, seed = seed)
     
 
     ## Finalize
@@ -311,7 +284,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     error <- if(log) estimates$error else estimates$error*max(exp(max(lres[notNA])), 1)
 
     ## Finalize
-    if(verbose && (error > control.int$abstol))
+    if(verbose && (error > control$dnvmix.abstol))
       warning("'abstol' not reached; consider increasing 'maxiter.rqmc'")
   }
   
