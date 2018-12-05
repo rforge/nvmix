@@ -33,11 +33,11 @@ get.set.parameters <- function(control = list()){
     dnvmix.abstol.log = 1e-3, # not used (yet)
     ## For qnvmix():
     max.iter.newton = 40, 
-    newton.conv.abstol = 1e-4,
+    newton.conv.abstol = 1e-3,
     newton.df.abstol = 1e-4,
     newton.logdens.abstol = 1e-2,
     ## For all (randomized) algorithms:
-    max.iter.rqmc = 15, 
+    max.iter.rqmc = 30, 
     CI.factor = 3.3,
     fun.eval = c(2^7, 1e8), 
     B = 12)
@@ -60,10 +60,10 @@ get.set.parameters <- function(control = list()){
               control.int$newton.conv.abstol >= 0,
               control.int$newton.df.abstol >= 0,
               control.int$newton.logdens.abstol >= 0,
-              control.int$max.iter.rqmc >= 15,
+              control.int$max.iter.rqmc >= 2,
               control.int$CI.factor >= 0,
               length(control.int$fun.eval) == 2, control.int$fun.eval >= 0,
-              control.int$B >= 2) # If B = 1, 1/(B - 1) for s.e. not defined. 
+              control.int$B > 1) # If B=1 error estimates are NA => need B>1
     
     ## Check if 'method' and 'increment' were provided correctly
     control.int$method <- match.arg(control.int$method, 

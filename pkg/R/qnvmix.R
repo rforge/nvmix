@@ -45,13 +45,8 @@
 ##'       density shall be returned (instead of logdensity) if  q.only = FALSE?
 
 
-qnvmix <- function(u, qmix, 
-                    stored.values = NULL,
-                    control = list(),
-                    #CI.factor = 3.3, n0 = 2^7, B = 8,
-                    #abstol.cdf = 1e-4, abstol.logdensity = 1e-2, abstol.newton = 1e-4,
-                    #max.iter.newton = 30, max.iter.rqmc = 15, 
-                    verbose = TRUE, q.only = FALSE, ...) {
+qnvmix <- function(u, qmix, control = list(),
+                    verbose = TRUE, q.only = FALSE, stored.values = NULL, ...) {
   ## 1 Checking and definitions ################################################
   
   ## Basic input checking (stored.values is checked below)
@@ -143,7 +138,9 @@ qnvmix <- function(u, qmix,
   sqrt.mixings <- sqrt(mixings)
   CI.factor <- control$CI.factor/sqrt(B) # instead of dividing by sqrt(B) all the time
   
-  ## Function that estimates F(x) and logf(x) for *scalar* input x
+  ## Function that estimates F(x) and logf(x) for *scalar* input x. Similar to
+  ## pnvmix() and dnvmix() with increment = "num.init", tailored to the 
+  ## one - dimensional case. 
   est.cdf.dens <- function(x){
     ## Set up result vectors
     rqmc.estimates.log.density <- rep(NA, B)
@@ -166,8 +163,8 @@ qnvmix <- function(u, qmix,
       
     if(!precision.reached){
       ## Set up while loop
-      iter.rqmc <- 0
-      current.n <- n0
+      iter.rqmc <- 1
+      #current.n <- n0
       
       while(!precision.reached && iter.rqmc < control$max.iter.rqmc){
         ## Reset seed and get realizations
@@ -176,17 +173,17 @@ qnvmix <- function(u, qmix,
         U0 <- switch(method,
                      "sobol"   = {
                        as.vector(sapply(1:B, function(i) 
-                         sobol(current.n, d = 1, randomize = TRUE, skip = current.n)))
+                         sobol(n0, d = 1, randomize = TRUE, skip = iter.rqmc*n0)))
                      },
                      "gHalton" = {
                        as.vector(sapply(1:B, function(i) 
-                         ghalton(current.n, d = 1, method = "generalized")))
+                         ghalton(n0, d = 1, method = "generalized")))
                      },
                      "prng"    = {
-                       runif(current.n*B)
+                       runif(n0*B)
                      })
         
-        mixings.new <- W(U0) # length B*current.n
+        mixings.new <- W(U0) # length B*n0
         ## "realizations" of log density
         log.dens <- - 1/2 * log(2 * pi * mixings.new) - x*x / (2*mixings.new) 
         ## "realizations" of cdf
@@ -194,15 +191,14 @@ qnvmix <- function(u, qmix,
         ## Update RQMC estimators
         for(l in 1:B){
           ## Grab realizations corresponding to l'th shift and use exp-log trick 
-          log.dens.max <- max( log.dens[ (l-1)*current.n + (1:current.n)])
-          rqmc.estimates.log.density[l] <- (rqmc.estimates.log.density[l] - 
-            log(current.n) + log.dens.max + 
-            log(sum(exp(log.dens[ (l-1)*current.n + (1:current.n)] - log.dens.max))))/2
-          rqmc.estimates.cdf[l] <- (rqmc.estimates.cdf[l] + 
-            mean( cdf[(l-1)*current.n + (1:current.n)] ) )/2
+          log.dens.max <- max( log.dens[ (l-1)*n0 + (1:n0)])
+          rqmc.estimates.log.density[l] <- (iter.rqmc*rqmc.estimates.log.density[l] - 
+            log(n0) + log.dens.max + 
+            log(sum(exp(log.dens[ (l-1)*n0 + (1:n0)] - log.dens.max))))/(iter.rqmc + 1)
+          rqmc.estimates.cdf[l] <- (iter.rqmc*rqmc.estimates.cdf[l] + 
+            mean( cdf[(l-1)*n0 + (1:n0)] ) )/(iter.rqmc + 1)
         }
-        ## Update sample size, iteration number and error(s)
-        current.n <- 2*current.n
+        ## Update iteration number and error(s)
         iter.rqmc <- iter.rqmc + 1
         error <- c(sd(rqmc.estimates.cdf), sd(rqmc.estimates.log.density))*CI.factor
         precision.reached <- (error[1] <= control$newton.df.abstol

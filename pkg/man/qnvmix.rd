@@ -6,8 +6,8 @@
   (including normal and Student \emph{t} for non-integer degrees of freedom).
 }
 \usage{
-qnvmix(u, qmix, stored.values = NULL,
-        control = list(), verbose = TRUE, q.only = FALSE, ...)
+qnvmix(u, qmix, control = list(),
+       verbose = TRUE, q.only = FALSE, stored.values = NULL, ...)
 }
 \arguments{
   \item{u}{vector of probabilities .}
@@ -36,17 +36,17 @@ qnvmix(u, qmix, stored.values = NULL,
 	inversion method by applying this function to U(0,1) random variates.}
     }
   }
-  \item{stored.values}{\link{matrix} with 3 columns of the form [x, F(x), logf(x)] where
-  F and logf are the df and log-density of the distribution specified
-  in 'qmix'. 
-  If provided it will be used to determine starting values for 
-  the internal newton proceudure. Only very basic checking is done.}
   \item{control}{\code{\link{list}} specifying algorithm specific
     parameters; see details below.} 
   \item{verbose}{\link{logical}, if \code{TRUE} a warning is printed if one of the 'abstol' is
   not reached.}
   \item{q.only}{\link{logical}. If \code{TRUE}, only the quantiles are returned; if FALSE, see 
   Section 'value' below.}
+  \item{stored.values}{\link{matrix} with 3 columns of the form [x, F(x), logf(x)] where
+  F and logf are the df and log-density of the distribution specified
+  in 'qmix'. 
+  If provided it will be used to determine starting values for 
+  the internal newton proceudure. Only very basic checking is done.}
   \item{\dots}{additional arguments containing parameters of
     mixing distributions when \code{mix} is a \code{\link{character}}
     string.}
