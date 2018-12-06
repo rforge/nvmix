@@ -55,7 +55,7 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
   }
   
   error <- CI.factor * sd( rqmc.estimates[, min.maha.index])
-  total.fun.eval <- B*current.n
+  total.fun.evals <- B*current.n
   
   ## 3 Main loop ###############################################################
   while(error > abstol && numiter < max.iter.rqmc && total.fun.evals < fun.eval[2]) {

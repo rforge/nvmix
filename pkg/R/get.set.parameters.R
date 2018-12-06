@@ -17,6 +17,9 @@
 ##              $CI.factor 
 ##              $fun.eval 
 ##              $B 
+##' @note newton.logdens.abstol not very small as it is only needed to get the
+##' the next iteration in the Newton procedure *unless* it is being called 
+##' from dnvmixcop() in which case this tolerance is changed there. 
 ##' @author Erik Hintz and Marius Hofert
 
 get.set.parameters <- function(control = list()){
@@ -33,11 +36,11 @@ get.set.parameters <- function(control = list()){
     dnvmix.abstol.log = 1e-3, # not used (yet)
     ## For qnvmix():
     max.iter.newton = 40, 
-    newton.conv.abstol = 1e-3,
+    newton.conv.abstol = 1e-4,
     newton.df.abstol = 1e-4,
-    newton.logdens.abstol = 1e-2,
+    newton.logdens.abstol = 1e-2, 
     ## For all (randomized) algorithms:
-    max.iter.rqmc = 30, 
+    max.iter.rqmc = 500, 
     CI.factor = 3.3,
     fun.eval = c(2^7, 1e8), 
     B = 12)

@@ -120,41 +120,46 @@ qnvmix <- function(u, qmix, control = list(),
   } 
   
   ## Get realizations of W and sqrt(W)
-  ## Initial point-set as vector 
+  ## Initial point-set with B columns (each column = one shift)
   U0 <- switch(method,
                "sobol"   = {
-                 as.vector(sapply(1:B, function(i) 
-                   sobol(control$fun.eval[1], d = 1, randomize = TRUE)))
+                   sapply(1:B, function(i) 
+                       sobol(n0, d = 1, randomize = TRUE))
                },
                "gHalton" = {
-                 as.vector(sapply(1:B, function(i) 
-                   ghalton(control$fun.eval[1], d = 1, method = "generalized")))
+                   sapply(1:B, function(i) 
+                       ghalton(n0, d = 1, method = "generalized"))
                },
                "prng"    = {
-                 runif(control$fun.eval[1]*B)
-               })
+                   matrix(runif(B*n0), ncol = B)
+               }) # (n0, B) matrix
   
-  mixings <- W(U0)  #length B*fun.eval[1]
-  sqrt.mixings <- sqrt(mixings)
+  mixings <- W(U0)  # (n0, B) matrix
+  sqrt.mixings <- sqrt(mixings) # (n0, B) matrix
+  
+  ## Set up various quantities for est.cdf.dens():
   CI.factor <- control$CI.factor/sqrt(B) # instead of dividing by sqrt(B) all the time
+  current.n <- n0 # Will give ncol(mixings) 
   
   ## Function that estimates F(x) and logf(x) for *scalar* input x. Similar to
   ## pnvmix() and dnvmix() with increment = "num.init", tailored to the 
   ## one - dimensional case. 
-  est.cdf.dens <- function(x){
-    ## Set up result vectors
-    rqmc.estimates.log.density <- rep(NA, B)
-    rqmc.estimates.cdf <- rep(NA, B)
-    ## "realizations" of log density
-    log.dens <- - 1/2 * log(2 * pi * mixings) - x*x / (2*mixings) # length B*no
-    ## "realizations" of cdf
-    cdf <- pnorm(x/sqrt.mixings)
-    ## Grab realizations corresponding to l'th shift and use exp-log trick 
+  est.cdf.dens <- function(x, mixings, sqrt.mixings){
+    ## Define various quantities:
+    xx2 <- x*x/2 
+    rqmc.estimates.log.density <- rep(NA, B) #  result vector
+    rqmc.estimates.cdf <- rep(NA, B)   # result vector
+    current.n <- dim(mixings)[1]
+    
+    ## First we use 'mixings' and 'sqrt.mixings' that are already available.
     for(l in 1:B){
-      log.dens.max <- max( log.dens[ (l-1)*n0 + (1:n0)])
-      rqmc.estimates.log.density[l] <- -log(n0) + log.dens.max + 
-        log(sum(exp(log.dens[ (l-1)*n0 + (1:n0)] - log.dens.max)))
-      rqmc.estimates.cdf[l] <- mean( cdf[(l-1)*n0 + (1:n0)] )
+      ## Grab realizations corresponding to l'th shift and use exp-log trick 
+        log.dens <- -1/2 * log(2* pi * mixings[,l]) - 
+          xx2 / mixings[,l] # length current.n
+        log.dens.max <- max(log.dens)
+        rqmc.estimates.log.density[l] <- -log(current.n) + log.dens.max + 
+            log(sum(exp(log.dens - log.dens.max)))
+        rqmc.estimates.cdf[l] <- mean( pnorm(x/sqrt.mixings[,l]) )
     }
     ## Check if precisions are reached
     error <- c(sd(rqmc.estimates.cdf), sd(rqmc.estimates.log.density))*CI.factor
@@ -162,42 +167,51 @@ qnvmix <- function(u, qmix, control = list(),
                             error[2] <= control$newton.logdens.abstol)
       
     if(!precision.reached){
+      
       ## Set up while loop
       iter.rqmc <- 1
-      #current.n <- n0
       
       while(!precision.reached && iter.rqmc < control$max.iter.rqmc){
         ## Reset seed and get realizations
         if(method == "sobol") .Random.seed <- seed
         
-        U0 <- switch(method,
+        U.next <- switch(method,
                      "sobol"   = {
-                       as.vector(sapply(1:B, function(i) 
-                         sobol(n0, d = 1, randomize = TRUE, skip = iter.rqmc*n0)))
+                         sapply(1:B, function(i) 
+                             sobol(n0, d = 1, randomize = TRUE))
                      },
                      "gHalton" = {
-                       as.vector(sapply(1:B, function(i) 
-                         ghalton(n0, d = 1, method = "generalized")))
+                         sapply(1:B, function(i) 
+                             ghalton(n0, d = 1, method = "generalized"))
                      },
                      "prng"    = {
-                       runif(n0*B)
+                         matrix(runif(B*n0), ncol = B)
                      })
         
-        mixings.new <- W(U0) # length B*n0
-        ## "realizations" of log density
-        log.dens <- - 1/2 * log(2 * pi * mixings.new) - x*x / (2*mixings.new) 
-        ## "realizations" of cdf
-        cdf <- pnorm(x/sqrt(mixings.new))
+        
+        mixings.next <- W(U.next) # (n0, B) matrix
+        sqrt.mixings.next <- sqrt(mixings.next ) # (n0, B) matrix
+        
         ## Update RQMC estimators
-        for(l in 1:B){
-          ## Grab realizations corresponding to l'th shift and use exp-log trick 
-          log.dens.max <- max( log.dens[ (l-1)*n0 + (1:n0)])
-          rqmc.estimates.log.density[l] <- (iter.rqmc*rqmc.estimates.log.density[l] - 
-            log(n0) + log.dens.max + 
-            log(sum(exp(log.dens[ (l-1)*n0 + (1:n0)] - log.dens.max))))/(iter.rqmc + 1)
-          rqmc.estimates.cdf[l] <- (iter.rqmc*rqmc.estimates.cdf[l] + 
-            mean( cdf[(l-1)*n0 + (1:n0)] ) )/(iter.rqmc + 1)
+        ## First we use 'mixings' and 'sqrt.mixings' that are already available.
+        for (l in 1:B) {
+          ## Grab realizations corresponding to l'th shift and use exp-log trick
+          log.dens <- -1/2 * log(2*pi*mixings.next[, l]) - 
+            xx2/mixings.next[, l] # length n0
+          log.dens.max <- max(log.dens)
+          ## Previos estimate based on current.n samples, new one based on n0 samples
+
+          rqmc.estimates.log.density[l] <- (current.n*rqmc.estimates.log.density[l] +
+            n0*(-log(n0) + log.dens.max + log(sum(exp(log.dens - log.dens.max)))))/(current.n + n0) 
+          rqmc.estimates.cdf[l] <- (current.n * rqmc.estimates.cdf[l] + 
+                                      sum(pnorm(x/sqrt.mixings.next[,l])))/(current.n + n0)
         }
+        
+        ## Update mixings and sqrt.mixings so that we can re-use mixings.next etc
+        mixings <- rbind(mixings, mixings.next)
+        sqrt.mixings <- rbind(sqrt.mixings, sqrt.mixings.next)
+        current.n <- current.n + n0
+        
         ## Update iteration number and error(s)
         iter.rqmc <- iter.rqmc + 1
         error <- c(sd(rqmc.estimates.cdf), sd(rqmc.estimates.log.density))*CI.factor
@@ -210,7 +224,9 @@ qnvmix <- function(u, qmix, control = list(),
       if(error[2] > control$newton.logdens.abstol) warning("'abstol.logdensity' not reached; consider increasing 'max.iter.rqmc'")
     }
     ## Return
-    c(mean(rqmc.estimates.cdf), mean(rqmc.estimates.log.density))
+    return(list(estimates = c(mean(rqmc.estimates.cdf), mean(rqmc.estimates.log.density)),
+                mixings = mixings,
+                sqrt.mixings = sqrt.mixings))
   }
   
   ## Only compute quantiles for u>=0.5 (use symmetry in the other case)
@@ -228,8 +244,13 @@ qnvmix <- function(u, qmix, control = list(),
   if(is.null(stored.values)){
     ## Matrix of the form [x, F(x), logf(x)] to store df and density evaluations
     ## First element corresponds to F(x) = 0.5, so that x = 0 
-    ## Note: est.cdf.dens(0)[1] = 0.5 (i.e. no error here)
-    stored.values <- matrix(c(0, est.cdf.dens(0)), nrow = 1)
+    ## Note: est.cdf.dens(0)[1] = 0.5 (i.e. no error here), but need log-density
+    cdf.dens.mixings <- est.cdf.dens(0, mixings, sqrt.mixings)
+    ## Store these values in stored.values
+    stored.values <- matrix(c(0, cdf.dens.mixings$estimates), nrow = 1)
+    ## Update mixings and sqrt.mixings
+    mixings       <- cdf.dens.mixings$mixings
+    sqrt.mixings  <- cdf.dens.mixings$sqrt.mixings
   } else {
     ## Some very basic checking if stored.values was provided
     stopifnot(is.matrix(stored.values), dim(stored.values)[2] == 3,
@@ -260,10 +281,15 @@ qnvmix <- function(u, qmix, control = list(),
       diff.qu <-  current.qu - 
         (current.qu <- current.qu - sign(current.funvals[1]-current.u)*
            exp(log( abs(current.funvals[1]-current.u)) - current.funvals[2]))
-      ## Calculate F and logf and store those values
-      current.funvals <- est.cdf.dens(current.qu)
-      stored.values   <- rbind( stored.values, c(current.qu, current.funvals),
+      ## Call est.cdf.dens:
+      cdf.dens.mixings <- est.cdf.dens(current.qu, mixings, sqrt.mixings)
+      current.funvals  <-  cdf.dens.mixings$estimates
+      ## Store these values in stored.values
+      stored.values    <- rbind( stored.values, c(current.qu, current.funvals),
                                deparse.level = 0)
+      ## Update mixings and sqrt.mixings
+      mixings <- cdf.dens.mixings$mixings
+      sqrt.mixings <- cdf.dens.mixings$sqrt.mixings
       ## Update error and increase counter
       error <- abs(diff.qu)
       iter.newton <- iter.newton + 1

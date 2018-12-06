@@ -107,7 +107,8 @@ rnvmixcop <- function(n, qmix, scale = diag(2), factor = NULL,
 # n <- 10000
 # 
 # set.seed(64)
-# u <- matrix(runif(2*d), ncol = 2) # generate a random evaluation point
+# k <- 100
+# u <- matrix(runif(k*d), ncol = d) # generate two random evaluation points
 # 
 # nu = 2
 # df = nu
@@ -130,9 +131,9 @@ rnvmixcop <- function(n, qmix, scale = diag(2), factor = NULL,
 # 
 # sample <- rnvmixcop(n, qmix = "inverse.gamma", df = nu, scale = P)
 # plot(sample)
-# 
-# 
-# 
+# # 
+
+
 
 
 
