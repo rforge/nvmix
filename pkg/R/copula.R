@@ -101,7 +101,7 @@ pnvmixcop <- function(u, qmix, scale = diag(d), control = list(),
 
 rnvmixcop <- function(n, qmix, scale = diag(2), factor = NULL,
                       method = c("PRNG", "sobol", "ghalton"), skip = 0, 
-                      control = list(), verbose = TRUE, ...)
+                      control = list(), verbose = FALSE, ...)
 {               
   d <- dim(scale)[1]
   stopifnot(dim(scale) == c(d,d))
@@ -118,54 +118,3 @@ rnvmixcop <- function(n, qmix, scale = diag(2), factor = NULL,
   ## Get dimensions correct and return
   matrix(sample.nvmixcop, ncol = d)
 }
-
-
-
-
-
-library(mvtnorm)
-require(copula)
-d <- 2 # dimension
-rho <- 0.7 # off-diagonal entry of the correlation matrix P
-P <- matrix(rho, nrow = d, ncol = d) # build the correlation matrix P
-diag(P) <- 1
-n <- 10000
-
-set.seed(64)
-k <- 100
-u <- matrix(runif(k*d), ncol = d) # generate two random evaluation points
-
-nu = 2
-df = nu
-qmix. <- function(u) 1/qgamma(u, shape = df/2, rate = df/2)
-tc <- tCopula(rho, dim = d, df = nu)
-
-
-
-
-pnvmixcop(u, qmix = "inverse.gamma", scale = P, df = nu)
-dnvmixcop(u, qmix = "inverse.gamma", scale = P, df = nu)
-
-pnvmixcop(u, qmix = qmix., scale = P)
-dnvmixcop(u, qmix = qmix., scale = P)
-
-
-pCopula(u, copula = tc) # value of the copula at u
-dCopula(u, copula = tc) # value of the copula at u
-
-
-sample <- rnvmixcop(n, qmix = "inverse.gamma", df = nu, scale = P)
-plot(sample)
-#
-
-
-
-
-
-
-
-
-
-
-
-
