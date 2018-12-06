@@ -46,7 +46,8 @@
 
 
 qnvmix <- function(u, qmix, control = list(),
-                    verbose = TRUE, q.only = FALSE, stored.values = NULL, ...) {
+                   verbose = TRUE, q.only = FALSE, stored.values = NULL, ...) {
+  
   ## 1 Checking and definitions ################################################
   
   ## Basic input checking (stored.values is checked below)
@@ -64,7 +65,6 @@ qnvmix <- function(u, qmix, control = list(),
   ## Define the quantile function of the mixing variable: 
   is.const.mix <- FALSE # logical indicating whether we have a multivariate normal
   inv.gam <- FALSE # logical indicating whether we have a multivariate t
-  
   W <- if(is.character(qmix)) { # 'qmix' is a character vector
     qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
     switch(qmix,
@@ -113,6 +113,7 @@ qnvmix <- function(u, qmix, control = list(),
     }
   }
   
+  ## 2 Set up est.cdf.dens() ## ################################################
   ## Initialize first pointset needed for rqmc approach:
   if(method == "sobol"){
     if(!exists(".Random.seed")) runif(1)
@@ -123,15 +124,15 @@ qnvmix <- function(u, qmix, control = list(),
   ## Initial point-set with B columns (each column = one shift)
   U0 <- switch(method,
                "sobol"   = {
-                   sapply(1:B, function(i) 
-                       sobol(n0, d = 1, randomize = TRUE))
+                 sapply(1:B, function(i) 
+                   sobol(n0, d = 1, randomize = TRUE))
                },
                "gHalton" = {
-                   sapply(1:B, function(i) 
-                       ghalton(n0, d = 1, method = "generalized"))
+                 sapply(1:B, function(i) 
+                   ghalton(n0, d = 1, method = "generalized"))
                },
                "prng"    = {
-                   matrix(runif(B*n0), ncol = B)
+                 matrix(runif(B*n0), ncol = B)
                }) # (n0, B) matrix
   
   mixings <- W(U0)  # (n0, B) matrix
@@ -139,11 +140,12 @@ qnvmix <- function(u, qmix, control = list(),
   
   ## Set up various quantities for est.cdf.dens():
   CI.factor <- control$CI.factor/sqrt(B) # instead of dividing by sqrt(B) all the time
-  current.n <- n0 # Will give ncol(mixings) 
+  current.n <- n0 # will give ncol(mixings) 
   
   ## Function that estimates F(x) and logf(x) for *scalar* input x. Similar to
   ## pnvmix() and dnvmix() with increment = "num.init", tailored to the 
-  ## one - dimensional case. 
+  ## one - dimensional case. Previous realizations of the mixing variable are
+  ## reused (=> arguments mixings and sqrt.mixings)
   est.cdf.dens <- function(x, mixings, sqrt.mixings){
     ## Define various quantities:
     xx2 <- x*x/2 
@@ -154,64 +156,57 @@ qnvmix <- function(u, qmix, control = list(),
     ## First we use 'mixings' and 'sqrt.mixings' that are already available.
     for(l in 1:B){
       ## Grab realizations corresponding to l'th shift and use exp-log trick 
-        log.dens <- -1/2 * log(2* pi * mixings[,l]) - 
-          xx2 / mixings[,l] # length current.n
-        log.dens.max <- max(log.dens)
-        rqmc.estimates.log.density[l] <- -log(current.n) + log.dens.max + 
-            log(sum(exp(log.dens - log.dens.max)))
-        rqmc.estimates.cdf[l] <- mean( pnorm(x/sqrt.mixings[,l]) )
+      log.dens <- -1/2 * log(2* pi * mixings[,l]) - 
+        xx2 / mixings[,l] # length current.n
+      log.dens.max <- max(log.dens)
+      rqmc.estimates.log.density[l] <- -log(current.n) + log.dens.max + 
+        log(sum(exp(log.dens - log.dens.max)))
+      rqmc.estimates.cdf[l] <- mean( pnorm(x/sqrt.mixings[,l]) )
     }
     ## Check if precisions are reached
     error <- c(sd(rqmc.estimates.cdf), sd(rqmc.estimates.log.density))*CI.factor
     precision.reached <- (error[1] <= control$newton.df.abstol && 
                             error[2] <= control$newton.logdens.abstol)
-      
+    
     if(!precision.reached){
-      
       ## Set up while loop
       iter.rqmc <- 1
-      
       while(!precision.reached && iter.rqmc < control$max.iter.rqmc){
-        ## Reset seed and get realizations
+        ## Reset seed and get n0 realizations:
         if(method == "sobol") .Random.seed <- seed
         
         U.next <- switch(method,
-                     "sobol"   = {
-                         sapply(1:B, function(i) 
+                         "sobol"   = {
+                           sapply(1:B, function(i) 
                              sobol(n0, d = 1, randomize = TRUE))
-                     },
-                     "gHalton" = {
-                         sapply(1:B, function(i) 
+                         },
+                         "gHalton" = {
+                           sapply(1:B, function(i) 
                              ghalton(n0, d = 1, method = "generalized"))
-                     },
-                     "prng"    = {
-                         matrix(runif(B*n0), ncol = B)
-                     })
-        
-        
+                         },
+                         "prng"    = {
+                           matrix(runif(B*n0), ncol = B)
+                         })
         mixings.next <- W(U.next) # (n0, B) matrix
         sqrt.mixings.next <- sqrt(mixings.next ) # (n0, B) matrix
         
         ## Update RQMC estimators
-        ## First we use 'mixings' and 'sqrt.mixings' that are already available.
         for (l in 1:B) {
           ## Grab realizations corresponding to l'th shift and use exp-log trick
           log.dens <- -1/2 * log(2*pi*mixings.next[, l]) - 
             xx2/mixings.next[, l] # length n0
           log.dens.max <- max(log.dens)
           ## Previos estimate based on current.n samples, new one based on n0 samples
-
+          
           rqmc.estimates.log.density[l] <- (current.n*rqmc.estimates.log.density[l] +
-            n0*(-log(n0) + log.dens.max + log(sum(exp(log.dens - log.dens.max)))))/(current.n + n0) 
+                                              n0*(-log(n0) + log.dens.max + log(sum(exp(log.dens - log.dens.max)))))/(current.n + n0) 
           rqmc.estimates.cdf[l] <- (current.n * rqmc.estimates.cdf[l] + 
                                       sum(pnorm(x/sqrt.mixings.next[,l])))/(current.n + n0)
         }
-        
-        ## Update mixings and sqrt.mixings so that we can re-use mixings.next etc
+        ## Update mixings and sqrt.mixings so that they can be reused:
         mixings <- rbind(mixings, mixings.next)
         sqrt.mixings <- rbind(sqrt.mixings, sqrt.mixings.next)
         current.n <- current.n + n0
-        
         ## Update iteration number and error(s)
         iter.rqmc <- iter.rqmc + 1
         error <- c(sd(rqmc.estimates.cdf), sd(rqmc.estimates.log.density))*CI.factor
@@ -225,9 +220,11 @@ qnvmix <- function(u, qmix, control = list(),
     }
     ## Return
     return(list(estimates = c(mean(rqmc.estimates.cdf), mean(rqmc.estimates.log.density)),
-                mixings = mixings,
+                mixings = mixings, # return 'new' mxinings (= old mixings and new mixings)
                 sqrt.mixings = sqrt.mixings))
   }
+  
+  ## 3 Actual computation of quantiles (Newton's method) #######################
   
   ## Only compute quantiles for u>=0.5 (use symmetry in the other case)
   lower <- (u < 0.5)
@@ -257,7 +254,7 @@ qnvmix <- function(u, qmix, control = list(),
               !any(stored.values[,2] > 1 || stored.values[,2] < 0))
   }
   
-  ## 2 Main Loop ###############################################################
+  ## Main loop for Newton's method:
   for (i in 1:n) {
     ## Initialize error and counter for Newton
     error <- control$newton.conv.abstol+ 42
@@ -286,7 +283,7 @@ qnvmix <- function(u, qmix, control = list(),
       current.funvals  <-  cdf.dens.mixings$estimates
       ## Store these values in stored.values
       stored.values    <- rbind( stored.values, c(current.qu, current.funvals),
-                               deparse.level = 0)
+                                 deparse.level = 0)
       ## Update mixings and sqrt.mixings
       mixings <- cdf.dens.mixings$mixings
       sqrt.mixings <- cdf.dens.mixings$sqrt.mixings
@@ -299,13 +296,15 @@ qnvmix <- function(u, qmix, control = list(),
     log.density[i]     <- current.funvals[2]
     num.iter.newton[i] <- iter.newton
     if(verbose && error > control$newton.conv.abstol) 
-        warning("'abstol.newton' not reached; consider increasing 'max.iter.newton'")
+      warning("'abstol.newton' not reached; consider increasing 'max.iter.newton'")
   }
+  
+  ## 4 Clean-up and return   ###################################################  
+  
   ## Order results according to original ordering of input u
   quantiles <- quantiles[order(ordering)]
   ## Use symmetry for those u which were < 0.5
   quantiles[lower] <- -quantiles[lower]
-  
   ## Return
   if(q.only) return(quantiles) else{
     num.iter.newton <- num.iter.newton[order(ordering)]
