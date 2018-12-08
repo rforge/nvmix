@@ -9,7 +9,7 @@
   of random variates from normal variance mixture copulas.
 }
 \usage{
-dnvmixcop(u, qmix, scale = diag(d), control = list(), 
+dnvmixcop(u, qmix, scale = diag(d), factor = NULL, control = list(), 
           verbose = FALSE, log = FALSE, ...)
 pnvmixcop(u, qmix, scale = diag(d), control = list(), 
           verbose = FALSE, ...)
@@ -65,7 +65,8 @@ rnvmixcop(n, qmix, scale = diag(2), factor = NULL,
     \eqn{(d, k)}-\code{\link{matrix}} such that
     \code{factor \%*\% t(factor)} equals \code{scale}; the non-square
     case \eqn{k \neq d}{k != d} can be used to sample from singular
-    normal variance mixtures. Note that this notation coincides with
+    normal variance mixtures. For \code{dnvmixcop()}, this has to be 
+    a square matrix. Note that this notation coincides with
     McNeil et al. (2015, Chapter 6). If not provided, \code{factor} is
     internally determined via \code{\link{chol}()} (and multiplied
     from the right to an \eqn{(n, k)}-matrix of independent

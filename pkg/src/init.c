@@ -10,7 +10,7 @@
 
 static const R_CallMethodDef callMethods[] = {
     {"eval_nvmix_integral", (DL_FUNC) &eval_nvmix_integral, 8},
-    {"eval_dnvmix_integrand", (DL_FUNC) &eval_dnvmix_integrand, 6},
+    {"eval_dnvmix_integrand", (DL_FUNC) &eval_dnvmix_integrand, 7},
     {NULL, NULL, 0}
 };
 

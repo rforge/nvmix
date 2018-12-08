@@ -5,6 +5,7 @@
 ##' @param u (n,d) matrix of evaluation points. Have to be in (0,1)
 ##' @param qmix see ?pnvmix
 ##' @param scale (d, d)-covariance matrix (scale matrix).
+##' @param factor Cholesky factor (lower triangular matrix) of 'scale'
 ##' @param control see ?pnvmixcop()
 ##' @param verbose logical (or integer: 0 = FALSE, 1 = TRUE, 2 = more output)
 ##'        indicating whether a warning is given if the required precision
@@ -15,7 +16,7 @@
 ##' @return numeric vector with the computed probabilities and attributes "error"
 ##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
 
-dnvmixcop <- function(u, qmix, scale = diag(d), control = list(), 
+dnvmixcop <- function(u, qmix, scale = diag(d), factor = NULL, control = list(), 
                       verbose = FALSE, log = FALSE, ...){
   
   ## Most arguments are checked by qnvmix() and pnvmix()
@@ -39,7 +40,7 @@ dnvmixcop <- function(u, qmix, scale = diag(d), control = list(),
                verbose = verbose, q.only =  FALSE, ...) # length n*d 
 
   ## log f_{X, scale} (F_{X1}^{-1}(u_{j1}),...,F_X1 ^{-1}(u_{jd})), j = 1,...,n
-  num <- dnvmix(matrix(qu$q, ncol = d), qmix = qmix, scale = scale, 
+  num <- dnvmix(matrix(qu$q, ncol = d), qmix = qmix, scale = scale, factor = factor,
                 control = control, verbose = verbose, log = TRUE, ...)# length n
   
   ## sum_{i=1}^d log f_{X1}( F_{X1}^{-1}(u_{ji})), j = 1,..,n
@@ -51,7 +52,7 @@ dnvmixcop <- function(u, qmix, scale = diag(d), control = list(),
 
 
 
-##' Density function of a Multivariate Normal Variance Mixture Copula
+##' Distribution function of a Multivariate Normal Variance Mixture Copula
 ##' @param u (n,d) matrix of evaluation points. Have to be in (0,1)
 ##' @param qmix see ?pnvmix
 ##' @param scale (d, d)-covariance matrix (scale matrix).

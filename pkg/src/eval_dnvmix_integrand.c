@@ -8,18 +8,19 @@
  * @param current_n RQMC sample size to estimate the density (length of W)
  * @param n number of evaluation points (length of maha2_2)
  * @param d dimension of the nvmix distribution
+ * @param k see formula below; usually d = k
  * @param lrdet log(sqrt(det(scale)); 'scale' is the scale matrix of the dist'n
  * @return ldensities n-vector of estimated log-densities
  * @note This function performs the equvivalent of the following R-Code
  *
- *       b <- - (d/2) * log(2 * pi * W) - lrdet - outer(1/W, maha2_2)
+ *       b <- - (d/2) * log(2 * pi) - k/2 * log(W) - lrdet - outer(1/W, maha2_2)
  *       bmax <- apply(b, 2, max) # n-vector of maximal b's
  *       ldensities <- - log(current_n) + bmax + log(colSums(exp(b - rep(bmax, each = current_n))))
  *
  * @author Erik Hintz
  */
 void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
-                               int d, double lrdet, double *ldensities)
+                               int d, int k, double lrdet, double *ldensities)
 {
     /* Vector to store c_i */
     double c[current_n];
@@ -32,8 +33,9 @@ void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
     
     /* Some constants that we can re-use: */
     double neglogcurrent_n = -log(current_n);
-    double negd2 = - (double) d / 2;
+    double k2 =  (double) k / 2;
     double twopi = 2*PI;
+    double negd2l2pi = - (double) d / 2 * log(twopi);
     
     /* For each evaluation point in maha2_2 */
     for(j = 0; j < n; j++){
@@ -44,7 +46,7 @@ void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
         found_max = 0;
         /* first c_i: */
         current_W = W[i];
-        current_c = negd2 * log(twopi * current_W) - lrdet - current_maha/current_W;
+        current_c = negd2l2pi - k2 * log(current_W) - lrdet - current_maha/current_W;
         /* save this so that we can re-use it later. To save memory, we always
          fill the vector c from the beginning, no matter what. */
         c[i - startindex] = current_c;
@@ -53,7 +55,7 @@ void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
         while( (found_max == 0) && (i < current_n)){
             /* Get next realization and safe it */
             current_W = W[i];
-            next_c = negd2 * log(twopi * current_W) - lrdet - current_maha / current_W;
+            next_c = negd2l2pi - k2 * log(current_W) - lrdet - current_maha/current_W;
             c[i - startindex] = next_c;
             
             /* Did we find the maximum? c is first increasing, then decreasing
@@ -84,7 +86,7 @@ void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
                 sum_expc += 1;
             } else {
                 current_W = W[l];
-                sum_expc += exp( negd2 * log(twopi * current_W) - lrdet - current_maha/current_W - c_max);
+                sum_expc += exp( negd2l2pi - k2 * log(current_W) - lrdet - current_maha/current_W - c_max);
             }
             
         }
@@ -110,8 +112,7 @@ void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
  */
 
 
-SEXP eval_dnvmix_integrand(SEXP W, SEXP maha2_2, SEXP current_n, SEXP n, SEXP d,
-			 SEXP lrdet)
+SEXP eval_dnvmix_integrand(SEXP W, SEXP maha2_2, SEXP current_n, SEXP n, SEXP d, SEXP k, SEXP lrdet)
 {
     int n_ = asInteger(n); /* for allocation */
     
@@ -123,7 +124,7 @@ SEXP eval_dnvmix_integrand(SEXP W, SEXP maha2_2, SEXP current_n, SEXP n, SEXP d,
     
     eval_dnvmix_integrand_c(REAL(W), REAL(maha2_2),
 				       INTEGER(current_n)[0], INTEGER(n)[0], INTEGER(d)[0],
-				       REAL(lrdet)[0], ldensities_);
+				       INTEGER(k)[0], REAL(lrdet)[0], ldensities_);
     
     UNPROTECT(1);
     return ldensities;

@@ -51,6 +51,7 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
                                 current_n  = as.integer(current.n),
                                 n          = as.integer(n),
                                 d          = as.integer(d),
+                                k          = as.integer(d), 
                                 lrdet      = as.double(lrdet))
   }
   
@@ -86,6 +87,7 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
                                      current_n  = as.integer(current.n),
                                      n          = as.integer(n),
                                      d          = as.integer(d),
+                                     k          = as.integer(d), 
                                      lrdet      = as.double(lrdet)) ) / 2
     }
     
