@@ -1,22 +1,7 @@
 ### get.set.parameters() #######################################################
 
 ##' @title  Retrieve algorithm specific default parameters and overwrite them
-##' @return list with default values for all functions in the 'nvmix' package:
-##              $method 
-##              $mean.sqrt.mix 
-##              $precond 
-##              $pnvmix.abstol 
-##              $increment 
-##              $dnvmix.abstol 
-##              $dnvmix.abstol.log 
-##              $max.iter.newton 
-##              $newton.conv.abstol 
-##              $newton.df.abstol 
-##              $newton.logdens.abstol 
-##              $max.iter.rqmc 
-##              $CI.factor 
-##              $fun.eval 
-##              $B 
+##' @return list with default values for all functions in the 'nvmix' package
 ##' @note newton.logdens.abstol not very small as it is only needed to get the
 ##' the next iteration in the Newton procedure *unless* it is being called 
 ##' from dnvmixcop() in which case this tolerance is changed there. 
@@ -41,7 +26,10 @@ get.set.parameters <- function(control = list()){
     newton.logdens.abstol = 1e-2, 
     ## For fitnvmix()
     weights.abstol = 1e-3, 
-    
+    ECMEstep.do.nu = TRUE,
+    laststep.do.nu = TRUE,
+    ECME.maxiter = 30,
+    ECME.conv.tol = rep(1e-2, 3), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
     ## For all (randomized) algorithms:
     max.iter.rqmc = 500, 
     CI.factor = 3.3,
@@ -66,6 +54,11 @@ get.set.parameters <- function(control = list()){
               control.int$newton.conv.abstol >= 0,
               control.int$newton.df.abstol >= 0,
               control.int$newton.logdens.abstol >= 0,
+              control.int$weights.abstol >= 0,
+              is.logical(control.int$ECMEstep.do.nu),
+              is.logical(control.int$laststep.do.nu),
+              control.int$ECME.maxiter >= 0,
+              length(control.int$ECME.conv.tol) == 3, control.int$ECME.conv.tol >= 0, 
               control.int$max.iter.rqmc >= 2,
               control.int$CI.factor >= 0,
               length(control.int$fun.eval) == 2, control.int$fun.eval >= 0,
