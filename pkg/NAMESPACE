@@ -5,14 +5,18 @@ useDynLib(nvmix, .registration = TRUE)
 
 importFrom("stats",
            "runif", "rnorm", "pt", "qt", "dt", "rgamma", "pnorm",
-           "sd", qchisq, "qnorm", "dnorm", "qgamma", "uniroot", "cov2cor")
+           "sd", qchisq, "qnorm", "dnorm", "qgamma", "uniroot", "cov2cor",
+           "cor", "cov", "cov.wt", "optim")
 importFrom("methods",
            "existsFunction", "hasArg")
 importFrom("qrng",
            "sobol", "ghalton")
 importFrom("utils",
            "head")
-
+importFrom("copula",
+	   "pobs")
+importFrom("Matrix",
+	   "nearPD")
 
 ### Exports ####################################################################
 

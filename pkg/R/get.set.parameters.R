@@ -41,6 +41,7 @@ get.set.parameters <- function(control = list()){
     newton.logdens.abstol = 1e-2, 
     ## For fitnvmix()
     weights.abstol = 1e-3, 
+    
     ## For all (randomized) algorithms:
     max.iter.rqmc = 500, 
     CI.factor = 3.3,

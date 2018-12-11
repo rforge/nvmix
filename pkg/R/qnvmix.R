@@ -191,6 +191,7 @@ qnvmix <- function(u, qmix, control = list(),
         sqrt.mixings.next <- sqrt(mixings.next ) # (n0, B) matrix
         
         ## Update RQMC estimators
+        ## Note: Using C here did not really help, as x is only a scalar. 
         for (l in 1:B) {
           ## Grab realizations corresponding to l'th shift and use exp-log trick
           log.dens <- -1/2 * log(2*pi*mixings.next[, l]) - 

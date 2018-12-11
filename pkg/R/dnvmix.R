@@ -81,7 +81,7 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
       ## The underlying C function "eval_dnvmix_integrand" needs both, maha2_2 
       ## and W to be sorted in increasing order.     
       rqmc.estimates[l,] <- (rqmc.estimates[l,] + 
-                               .Call("eval_dnvmix_integranod", 
+                               .Call("eval_dnvmix_integrand", 
                                      W          = as.double(sort(qW(U))),
                                      maha2_2    = as.double(maha2.2),
                                      current_n  = as.integer(current.n),
