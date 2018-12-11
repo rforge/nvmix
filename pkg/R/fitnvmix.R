@@ -62,7 +62,7 @@ estim.nu <- function(tX, qW, init.nu, loc, scale, control, control.optim,
     factor <- t(chol(scale))
     if(inv.gam){ ## in this case, dnvmix() uses analytical formula for density
         neg.log.likelihood.nu <- function(nu){
-            -sum(dnvmix(tX, qmix = "inverse.gamma", loc = loc, scale = scale,
+            -sum(dnvmix(X, qmix = "inverse.gamma", loc = loc, scale = scale,
                         df = nu, log = TRUE, verbose = verbose))
         }
     } else {
@@ -249,7 +249,7 @@ fitnvmix <- function(X, qmix,
         ## Estimate 'scale' as multiple of SCov; choose 'c' to max loglikelihood
         neg.log.likelihood.c <- if(inv.gam){
             function(c){
-                -sum(dnvmix(tX, qmix = "inverse.gamma", loc = loc.est, 
+                -sum(dnvmix(X, qmix = "inverse.gamma", loc = loc.est, 
                             factor = sqrt(c)*chol.SCov,
                             df = nu.est, log = TRUE, verbose = verbose))}
         } else {
@@ -441,7 +441,7 @@ fitnvmix <- function(X, qmix,
                 (loc.est <- as.vector(crossprod(X, weights)/sum(weights)))
             ## Update nu, if desired/necessary:
             if(!converged.nu && control$ECMEstep.do.nu){
-                if(method != "cScov"){
+                if(fitting.method != "cScov"){
                     ## Correlation matrix:
                     chol.P <- t(chol(cov2cor(scale.est)))
                     nu.est <- estim.nu.cop(pObs, qW = qW, init.nu = nu.est, 
@@ -462,7 +462,7 @@ fitnvmix <- function(X, qmix,
                     converged.nu <- (abs(diff.nu) < control$ECME.conv.tol[3])
                 }
             } else {
-                diff.nu <- 0
+                converged.nu <- TRUE
             }
             num.iter <- num.iter + 1
             ## TODO think of something smarter here
@@ -474,13 +474,14 @@ fitnvmix <- function(X, qmix,
         ## Another last nu update?
         if(control$laststep.do.nu){
             ## One last nu update
-            if(method != "cScov"){
+            if(fitting.method != "cScov"){
                 ## Correlation matrix:
                 chol.P <- t(chol(cov2cor(scale.est)))
                 nu.est <- estim.nu.cop(pObs, qW, nu.est, chol.P, control, control.optim,
                                        mix.param.bounds, verbose, inv.gam)
             } else {
-                nu.est <- estim.nu(tX = tX, qW = qW, loc = loc.est, scale = scale.est,
+                nu.est <- estim.nu(tX = tX, qW = qW, init.nu = nu.est, loc = loc.est, 
+                                   scale = scale.est,
                                    control = control, control.optim = control.optim,
                                    mix.param.bounds = mix.param.bounds, 
                                    verbose = verbose, inv.gam = inv.gam, U0 = U0,

@@ -25,16 +25,16 @@ get.set.parameters <- function(control = list()){
     newton.df.abstol = 1e-4,
     newton.logdens.abstol = 1e-2, 
     ## For fitnvmix()
-    weights.abstol = 1e-3, 
+    weights.abstol = 5e-2, 
     ECMEstep.do.nu = TRUE,
     laststep.do.nu = TRUE,
-    ECME.maxiter = 30,
-    ECME.conv.tol = rep(1e-2, 3), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
+    ECME.maxiter = 20,
+    ECME.conv.tol = c(rep(1e-1, 2), 1e-2), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
     ## For all (randomized) algorithms:
     max.iter.rqmc = 500, 
     CI.factor = 3.3,
     fun.eval = c(2^7, 1e8), 
-    B = 12)
+    B = 11)
   
   if(length(control) > 0){
     ## If input provided, grab input controls and overwrite:
