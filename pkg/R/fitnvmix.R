@@ -35,9 +35,9 @@ estim.nu.cop <- function(U, qW, init.nu, factor, control, control.optim,
   }
   ## Optimize neg.log.likelihood over nu
   opt.obj <- optim(init.nu, fn = neg.log.likelihood.nu,
-                  lower = mix.param.bounds[, 1],
-                  upper = mix.param.bounds[, 2],
-                  method = "L-BFGS-B", control = control.optim)
+                   lower = mix.param.bounds[, 1],
+                   upper = mix.param.bounds[, 2],
+                   method = "L-BFGS-B", control = control.optim)
   list(nu.est = opt.obj$par,
        max.ll = opt.obj$value)
 }
@@ -94,9 +94,9 @@ estim.nu <- function(tX, qW, init.nu, loc, scale, control, control.optim,
   }
   ## Optimize neg.log.likelihood over nu
   opt.obj <- optim(init.nu, fn = neg.log.likelihood.nu,
-                  lower = mix.param.bounds[, 1],
-                  upper = mix.param.bounds[, 2],
-                  method = "L-BFGS-B", control = control.optim)
+                   lower = mix.param.bounds[, 1],
+                   upper = mix.param.bounds[, 2],
+                   method = "L-BFGS-B", control = control.optim)
   list(nu.est = opt.obj$par,
        max.ll = opt.obj$value)
 }
@@ -273,7 +273,9 @@ fitnvmix <- function(X, qmix,
                            factor = chol.P, control = control,
                            control.optim = control.optim, 
                            mix.param.bounds = mix.param.bounds, 
-                           verbose = verbose, inv.gam = inv.gam)$nu.est
+                           verbose = verbose, inv.gam = inv.gam, seed = seed)$nu.est
+    
+    
     ## Estimate 'scale' as multiple of SCov; choose 'c' to max loglikelihood
     neg.log.likelihood.c <- if(inv.gam){
       function(c){
@@ -337,9 +339,9 @@ fitnvmix <- function(X, qmix,
     }
     ## Optimize neg.log.likelihood over (nu, c)
     opt.obj <- optim(rep(1, mix.param.length + 1), fn = neg.log.likelihood.init,
-                   lower = c(mix.param.bounds[, 1], 0.1),
-                   upper = c(mix.param.bounds[, 2], NA),
-                   method = "L-BFGS-B", control = control.optim)
+                     lower = c(mix.param.bounds[, 1], 0.1),
+                     upper = c(mix.param.bounds[, 2], NA),
+                     method = "L-BFGS-B", control = control.optim)
     ## Grab estimate for nu as well as for the scale matrix
     nu.est    <- opt.obj$par[1:mix.param.length]
     scale.est <- opt.obj$par[mix.param.length + 1] * SCov
@@ -366,9 +368,8 @@ fitnvmix <- function(X, qmix,
       ## log(sqrt(det(scale))):
       lrdet <- sum(log(diag(factor)))
       ## Initialize RQMC procedure to estimate the weights
-      ## Matrices to store RQMC estimates for weights and density
-      rqmc.estimates.density <- matrix(0, ncol = n, nrow = B)
-      rqmc.estimates.condexp <- matrix(0, ncol = n, nrow = B)
+      ## Matrix to store RQMC estimates for weights 
+      rqmc.estimates.logweights <- matrix(0, ncol = n, nrow = B)
       error <- abstol + 42 # initialize error to > abstol to enter while loop
       total.fun.evals <- 0
       current.n <- length(U)/B
@@ -382,27 +383,29 @@ fitnvmix <- function(X, qmix,
         ##  bmax <- apply(b, 2, max) 
         ##  log(current_n) + bmax + log(colSums(exp(b - rep(bmax, each = current_n))))
         W.current.sorted <- sort(W[(l-1)*current.n + (1:current.n)])
-        rqmc.estimates.density[l,] <- .Call("eval_dnvmix_integrand",
-                                            W          = as.double(W.current.sorted),
-                                            maha2_2    = as.double(maha2.2),
-                                            current_n  = as.integer(current.n),
-                                            n          = as.integer(n), # full sample!
-                                            d          = as.integer(d),
-                                            k          = as.integer(d),
-                                            lrdet      = as.double(lrdet))
-        rqmc.estimates.condexp[l,] <- .Call("eval_dnvmix_integrand",
-                                            W          = as.double(W.current.sorted),
-                                            maha2_2    = as.double(maha2.2),
-                                            current_n  = as.integer(current.n),
-                                            n          = as.integer(n), # full sample!
-                                            d          = as.integer(d),
-                                            k          = as.integer(d+2), 
-                                            ##  Note k = d+2 here!
-                                            lrdet      = as.double(lrdet))
+        condexp <- .Call("eval_dnvmix_integrand",
+                         W          = as.double(W.current.sorted),
+                         maha2_2    = as.double(maha2.2),
+                         current_n  = as.integer(current.n),
+                         n          = as.integer(n), # full sample!
+                         d          = as.integer(d),
+                         k          = as.integer(d+2), 
+                         ##  Note k = d+2 here!
+                         lrdet      = as.double(lrdet)) 
+        ldens <- .Call("eval_dnvmix_integrand",
+                       W          = as.double(W.current.sorted),
+                       maha2_2    = as.double(maha2.2),
+                       current_n  = as.integer(current.n),
+                       n          = as.integer(n), # full sample!
+                       d          = as.integer(d),
+                       k          = as.integer(d),
+                       lrdet      = as.double(lrdet))
+        
+        rqmc.estimates.logweights[l,] <- condexp - ldens
       }
-      error <- CI.factor.sqrt.B * max( sd( rqmc.estimates.density[, 1]), # smallest maha index in column 1
-                                       sd( rqmc.estimates.condexp[, 1]))
+      error <- CI.factor.sqrt.B * max(apply(rqmc.estimates.logweights, 2, sd))
       total.fun.evals <- B * current.n
+      
       ## Main loop
       while(error > abstol && total.fun.evals < fun.eval[2]){
         if(method == "sobol") .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
@@ -425,33 +428,35 @@ fitnvmix <- function(X, qmix,
           ## Get realizations of W
           W.current.sorted <- sort(W[(l-1)*current.n + (1:current.n)])
           ## See above for details on eval_dnvmix_integrand
-          rqmc.estimates.density[l,] <- (rqmc.estimates.density[l,] +
-                                           .Call("eval_dnvmix_integrand",
-                                                 W          = as.double(W.current.sorted),
-                                                 maha2_2    = as.double(maha2.2),
-                                                 current_n  = as.integer(current.n),
-                                                 n          = as.integer(n),
-                                                 d          = as.integer(d),
-                                                 k          = as.integer(d),
-                                                 lrdet      = as.double(lrdet)))/2
-          rqmc.estimates.condexp[l,] <- (rqmc.estimates.condexp[l,] +
-                                           .Call("eval_dnvmix_integrand",
-                                                 W          = as.double(W.current.sorted),
-                                                 maha2_2    = as.double(maha2.2),
-                                                 current_n  = as.integer(current.n),
-                                                 n          = as.integer(n),
-                                                 d          = as.integer(d),
-                                                 k          = as.integer(d+2),
-                                                 lrdet      = as.double(lrdet)))/2
+          
+          condexp <- .Call("eval_dnvmix_integrand",
+                           W          = as.double(W.current.sorted),
+                           maha2_2    = as.double(maha2.2),
+                           current_n  = as.integer(current.n),
+                           n          = as.integer(n), # full sample!
+                           d          = as.integer(d),
+                           k          = as.integer(d+2), 
+                           ##  Note k = d+2 here!
+                           lrdet      = as.double(lrdet)) 
+          ldens <- .Call("eval_dnvmix_integrand",
+                         W          = as.double(W.current.sorted),
+                         maha2_2    = as.double(maha2.2),
+                         current_n  = as.integer(current.n),
+                         n          = as.integer(n), # full sample!
+                         d          = as.integer(d),
+                         k          = as.integer(d),
+                         lrdet      = as.double(lrdet))
+          
+          rqmc.estimates.logweights[l,] <- (rqmc.estimates.logweights[l,] + 
+                                              condexp - ldens)/2
         }
         total.fun.evals <- total.fun.evals + B * current.n
         current.n <- 2 * current.n
         ## Compute error measures
-        error <- CI.factor.sqrt.B * max( sd( rqmc.estimates.density[, 1]),
-                                         sd( rqmc.estimates.condexp[, 1]))
+        error <- CI.factor.sqrt.B * max(apply(rqmc.estimates.logweights, 2, sd))
       }
       ## Return
-      weights <- exp(colMeans(rqmc.estimates.condexp) - colMeans(rqmc.estimates.density))
+      weights <- exp(colMeans(rqmc.estimates.logweights))
       if(error > abstol) warning('abstol in get.weights not reached')
       weights[order(ordering.maha2.2)] ## Recover original ordering
     }
@@ -459,7 +464,9 @@ fitnvmix <- function(X, qmix,
     num.iter <- 0
     converged <- FALSE
     converged.nu <- FALSE
+    converged.locscale <- FALSE 
     while(num.iter < control$ECME.maxiter && !converged){
+      
       ## Get new weights
       weights <- get.weights(nu.est, loc.est, scale.est, U0)
       ## Get new scale.est: 1/n * sum_{i=1}^n weights_i (X_i-mu)(X_i-mu)^T
@@ -471,8 +478,13 @@ fitnvmix <- function(X, qmix,
       ## as.vector because we need loc.est as a vector, not (d,1) matrix
       diff.loc <- loc.est - 
         (loc.est <- as.vector(crossprod(X, weights)/sum(weights)))
+      
+      converged.locscale <- (sqrt(sum(diff.loc^2)) < control$ECME.conv.tol[1]) && 
+        (norm(diff.scale, "F") < control$ECME.conv.tol[2])
+      
+      
       ## Update nu, if desired/necessary:
-      if(!converged.nu && control$ECMEstep.do.nu){
+      if(control$ECMEstep.do.nu && !converged.nu){
         if(fitting.method != "cScov"){
           ## Re-sample?
           if(resample && size.subsample < n){
@@ -480,17 +492,16 @@ fitnvmix <- function(X, qmix,
             sampled.ind <- sample(n, size.subsample)
             pObs.sub <- pObs[sampled.ind,]
           }
-          
           ## Correlation matrix:
           chol.P <- t(chol(cov2cor(scale.est)))
           est.obj <- estim.nu.cop(pObs.sub, qW = qW, init.nu = nu.est, 
-                                 factor = chol.P, control = control, 
-                                 control.optim = control.optim,
-                                 mix.param.bounds = mix.param.bounds,
-                                 verbose = verbose, inv.gam = inv.gam)
+                                  factor = chol.P, control = control, 
+                                  control.optim = control.optim,
+                                  mix.param.bounds = mix.param.bounds,
+                                  verbose = verbose, inv.gam = inv.gam, seed = seed)
           diff.nu <- nu.est - (nu.est <- est.obj$nu.est)
           max.ll <- est.obj$max.ll
-          converged.nu <- (abs(diff.nu) < control$ECME.conv.tol[3])
+          converged.nu <- (sqrt(sum(diff.nu^2)) < control$ECME.conv.tol[3])
         } else {
           if(resample && size.subsample < n){
             runif(num.iter) # destroy the reseted seed
@@ -507,16 +518,14 @@ fitnvmix <- function(X, qmix,
                               U0 = U0, seed = seed)
           diff.nu <- nu.est - (nu.est <- est.obj$nu.est)
           max.ll <- est.obj$max.ll
-          converged.nu <- (abs(diff.nu) < control$ECME.conv.tol[3])
+          converged.nu <- (sqrt(sum(diff.nu^2)) < control$ECME.conv.tol[3])
         }
       } else {
         converged.nu <- TRUE
       }
       num.iter <- num.iter + 1
       ## TODO think of something smarter here
-      converged <- converged.nu &&
-        (sqrt(sum(diff.loc^2)) < control$ECME.conv.tol[1]) && 
-        (norm(diff.scale, "F") < control$ECME.conv.tol[2])
+      converged <- converged.nu && converged.locscale
     }
     
     ## Another last nu update? 
@@ -525,17 +534,19 @@ fitnvmix <- function(X, qmix,
       if(fitting.method != "cScov"){
         ## Correlation matrix:
         chol.P <- t(chol(cov2cor(scale.est)))
-        est.obj <- estim.nu.cop(pObs, qW, nu.est, chol.P, control, control.optim,
-                               mix.param.bounds, verbose, inv.gam)
+        est.obj <- estim.nu.cop(pObs, qW = qW, init.nu = nu.est, factor = chol.P,
+                                control = control, control.optim = control.optim,
+                                mix.param.bounds = mix.param.bounds, 
+                                verbose = verbose, inv.gam = inv.gam, seed = seed)
         nu.est <- est.obj$nu.est
         max.ll <- est.obj$max.ll
       } else {
         est.obj <- estim.nu(tX = tX, qW = qW, init.nu = nu.est, loc = loc.est, 
-                           scale = scale.est,
-                           control = control, control.optim = control.optim,
-                           mix.param.bounds = mix.param.bounds, 
-                           verbose = verbose, inv.gam = inv.gam, U0 = U0,
-                           seed = seed)
+                            scale = scale.est,
+                            control = control, control.optim = control.optim,
+                            mix.param.bounds = mix.param.bounds, 
+                            verbose = verbose, inv.gam = inv.gam, U0 = U0,
+                            seed = seed)
         nu.est <- est.obj$nu.est
         max.ll <- est.obj$max.ll
       }

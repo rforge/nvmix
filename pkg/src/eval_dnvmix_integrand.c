@@ -20,10 +20,11 @@
  * @author Erik Hintz
  */
 void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
-                               int d, int k, double lrdet, double *ldensities)
+                               int d, int k, double lrdet, double *ldensities,
+                             double *c)
 {
     /* Vector to store c_i */
-    double c[current_n];
+    /* double c[current_n]; */
     /* (Temporary) variables to store current realizations/data point */
     double current_maha, current_c, next_c, current_W, c_max, sum_expc;
     /* Some more counters and indicators */
@@ -32,7 +33,7 @@ void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
     int startindex = 0; /* index to start looking for the maximum */
     
     /* Some constants that we can re-use: */
-    double neglogcurrent_n = -log(current_n);
+    double neglogcurrent_n = -log( (double) current_n);
     double k2 =  (double) k / 2;
     double twopi = 2*PI;
     double negd2l2pi = - (double) d / 2 * log(twopi);
@@ -115,17 +116,19 @@ void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
 SEXP eval_dnvmix_integrand(SEXP W, SEXP maha2_2, SEXP current_n, SEXP n, SEXP d, SEXP k, SEXP lrdet)
 {
     int n_ = asInteger(n); /* for allocation */
+    int current_n_ = asInteger(current_n); /* for allocation */
     
     SEXP ldensities = PROTECT(allocVector(REALSXP, n_)); /* allocate memory*/
-    
     double *ldensities_ = REAL(ldensities); /* pointer to values of res */
     
+    SEXP c = PROTECT(allocVector(REALSXP, current_n_));
+    double *c_ = REAL(c);
     /* Main */
     
     eval_dnvmix_integrand_c(REAL(W), REAL(maha2_2),
 				       INTEGER(current_n)[0], INTEGER(n)[0], INTEGER(d)[0],
-				       INTEGER(k)[0], REAL(lrdet)[0], ldensities_);
+				       INTEGER(k)[0], REAL(lrdet)[0], ldensities_, c_);
     
-    UNPROTECT(1);
+    UNPROTECT(2);
     return ldensities;
 }
