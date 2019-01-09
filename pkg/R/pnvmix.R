@@ -207,7 +207,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
   while(error > abstol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
   {
     if(method == "sobol" && numiter > 0)
-      .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
+      .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
     
     ## Get B RQCM estimates
     for(b in 1:B)
@@ -665,7 +665,7 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
   while(max(error) > abstol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
   {
     if(method == "sobol" && numiter > 0)
-      .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
+      .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
     
     ## Get B RQCM estimates
     for(b in 1:B)

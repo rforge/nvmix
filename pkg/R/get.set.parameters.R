@@ -25,7 +25,7 @@ get.set.parameters <- function(control = list()){
     newton.df.abstol = 1e-4,
     newton.logdens.abstol = 1e-2, 
     ## For fitnvmix()
-    weights.abstol = 5e-2, 
+    weights.abstol = 1e-1, 
     ECMEstep.do.nu = TRUE,
     laststep.do.nu = TRUE,
     ECME.maxiter = 20,

@@ -61,7 +61,7 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
   ## 3 Main loop ###############################################################
   while(error > abstol && numiter < max.iter.rqmc && total.fun.evals < fun.eval[2]) {
     
-    if(method == "sobol") .Random.seed <- seed # reset seed to have the same shifts in sobol( ... )
+    if(method == "sobol") .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
     
     ## Get B RQCM estimates
     for(l in 1:B) {

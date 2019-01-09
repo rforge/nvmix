@@ -173,12 +173,12 @@ qnvmix <- function(u, qmix, control = list(),
       iter.rqmc <- 1
       while(!precision.reached && iter.rqmc < control$max.iter.rqmc){
         ## Reset seed and get n0 realizations:
-        if(method == "sobol") .Random.seed <- seed
+        if(method == "sobol") .Random.seed <<- seed
         
         U.next <- switch(method,
                          "sobol"   = {
                            sapply(1:B, function(i) 
-                             sobol(n0, d = 1, randomize = TRUE))
+                             sobol(n0, d = 1, randomize = TRUE, skip = current.n))
                          },
                          "gHalton" = {
                            sapply(1:B, function(i) 
