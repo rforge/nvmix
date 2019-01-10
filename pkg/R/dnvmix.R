@@ -29,7 +29,6 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
   ## 1 Basics ##################################################################
   ## Note: Most checking was done in dnvmix()
   n <- length(maha2.2) # sample size 
-  min.maha.index <- which.min(maha2.2)
   numiter <- 0 # counter for the number of iterations in the while loop
   CI.factor <- CI.factor / sqrt(B) # instead of dividing by sqrt(B) each time
   rqmc.estimates <- matrix(0, ncol = n, nrow = B) # matrix to store RQMC estimates
@@ -55,7 +54,9 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
                                 lrdet      = as.double(lrdet))
   }
   
-  error <- CI.factor * sd( rqmc.estimates[, min.maha.index])
+  ## Largest variance where maha-distance largest => last index since sorted
+  errors <- CI.factor * apply(rqmc.estimates, 2, sd)
+  error <- max(errors)
   total.fun.evals <- B*current.n
   
   ## 3 Main loop ###############################################################
@@ -94,14 +95,16 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
     ## Update counters, error and increase sample size
     total.fun.evals <- total.fun.evals + B*current.n
     numiter <- numiter + 1 # update counter
-    error <- CI.factor * sd( rqmc.estimates[, min.maha.index])
+    ## Largest variance where maha-distance largest => last index since sorted
+    errors <- CI.factor * apply(rqmc.estimates, 2, sd)
+    error <- max(errors)
     current.n <- 2 * current.n
     
   } # while()
   
   ## 4 Return ##################################################################
   lres <- .colMeans(rqmc.estimates, B, n, 0)
-  return(list(ldensities = lres, numiter = numiter, error = error))
+  return(list(ldensities = lres, numiter = numiter, error = errors))
 }
 
 ##' @title Density of a Multivariate Normal Variance Mixture
@@ -273,20 +276,20 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     maha2.2 <- maha2[ordering.maha]/2
     
     ## Call internal dnvix (which itself calls C-Code)
-    estimates <- dnvmix.int(qW, maha2.2 = maha2.2, lrdet = lrdet, U0 = U0, d = d, 
+    ests <- dnvmix.int(qW, maha2.2 = maha2.2, lrdet = lrdet, U0 = U0, d = d, 
                method = method, abstol = control$dnvmix.abstol, 
                CI.factor = control$CI.factor, fun.eval = control$fun.eval, 
                max.iter.rqmc = control$max.iter.rqmc, B = B, seed = seed)
     
 
     ## Finalize
-    lres[notNA] <- estimates$ldensities[order(ordering.maha)]
-    numiter <- estimates$numiter 
-    ## Error is a scalar (worst case error), no need to order. 
-    error <- if(log) estimates$error else estimates$error*max(exp(max(lres[notNA])), 1)
+    lres[notNA] <- ests$ldensities[order(ordering.maha)]
+    numiter <- ests$numiter 
+    ## Error is a vector of errors: 
+    error <- if(log) ests$error[order(ordering.maha)] else ests$error[order(ordering.maha)]*max(exp(max(lres[notNA])), 1)
 
     ## Finalize
-    if(verbose && (error > control$dnvmix.abstol))
+    if(verbose && (max(error) > control$dnvmix.abstol))
       warning("'abstol' not reached; consider increasing 'maxiter.rqmc'")
   }
   
