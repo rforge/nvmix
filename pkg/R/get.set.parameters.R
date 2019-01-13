@@ -19,6 +19,9 @@ get.set.parameters <- function(control = list()){
     ## For dnvmix():
     dnvmix.abstol = 1e-3, 
     dnvmix.abstol.log = 1e-3, # not used (yet)
+    dnvmix.extrap = FALSE,
+    dnvmix.extrap.num.fit = 7,
+    dnvmix.extrap.num.test = 4,
     ## For qnvmix():
     max.iter.newton = 40, 
     newton.conv.abstol = 1e-4,
