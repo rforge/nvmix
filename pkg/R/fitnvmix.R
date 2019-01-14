@@ -133,8 +133,8 @@ get.weights <- function(tX, qW, nu, loc, scale, U, control, seed, verbose)
   weights[order(ordering.maha2.2)] ## Recover original ordering
 }
 
-#' Estimate nu using copula density (internal function)
-#'
+
+# Estimate nu using copula density (internal function)#'
 #' @param U matrix of pseudo obs
 #' @param qW quantile function of W; must be function(u, nu)
 #' @param init.nu initial estimate of nu
@@ -212,6 +212,7 @@ estim.nu <- function(tX, qW, init.nu, loc, scale, control, control.optim,
       ldens.obj <- nvmix:::dnvmix.int(qW = qmix., maha2.2 = maha2.2, lrdet = lrdet,
                               U0 = U0, d = d, method = control$method,
                               abstol = control$dnvmix.abstol,
+                              reltol = control$dnvmix.reltol,
                               CI.factor = control$CI.factor,
                               fun.eval = control$fun.eval,
                               max.iter.rqmc = control$max.iter.rqmc,
@@ -219,7 +220,7 @@ estim.nu <- function(tX, qW, init.nu, loc, scale, control, control.optim,
       -sum(ldens.obj$ldensities)
       # Check if error tolerance reached
       if(ldens.obj$error > control$dnvmix.abstol && verbose)
-        warning("'dnvmix.abstol' not reached when estimating log-likelihood; consider increasing 'maxiter.rqmc'")
+        warning("'dnvmix.abstol' not reached when estimating log-likelihood; consider increasing 'max.iter.rqmc'")
       ## Return -log-density
       -sum(ldens.obj$ldensities)
     }
@@ -279,12 +280,13 @@ fitnvmix <- function(X, qmix,
   if(!any(names.control == "fun.eval")){
     ## 'fun.eval' was *not* provided:
     control <- get.set.parameters(control)
-    control$fun.eval <- c(2^11, 1e8)
+    # control$fun.eval <- c(2^7, 1e8)  will think about that later
   } else {
     control <- get.set.parameters(control)
   }
   method        <- control$method
   dnvmix.abstol <- control$dnvmix.abstol
+  dnvmix.reltol <- control$dnvmix.reltol 
   CI.factor     <- control$CI.factor
   B             <- control$B
   fun.eval      <- control$fun.eval
@@ -459,6 +461,7 @@ fitnvmix <- function(X, qmix,
                                         lrdet = (lrdet + d/2*log(c)),
                                         U0 = U0, d = d, method = method,
                                         abstol = dnvmix.abstol,
+                                        reltol = dnvmix.reltol,
                                         CI.factor = CI.factor,
                                         fun.eval = fun.eval,
                                         max.iter.rqmc = max.iter.rqmc,
@@ -483,123 +486,12 @@ fitnvmix <- function(X, qmix,
 
   ## 2: ECME step: ###########################################################
   if(ECMEstep){
-    ## Initialize variables for the estimation of the weights
-    # CI.factor.sqrt.B <- CI.factor / sqrt(B)
-
-    ## Function estimating the weights given current values of (nu, loc, scale)
-    ## U is the initial point-set. This function is defined in this local
-    ## environment so that we don't have to pass non-changing inputs (notably
-    ## qW, tX, n, B, d) everytime we call it.
-    # get.weights <- function(nu, loc, scale, U, abstol = control$weights.abstol){
-    #   ## Get (x-loc)^T scale^{-1} (x-loc)/2, sorted for eval_dnvmix_integrand
-    #   factor <- t(chol(scale))
-    #   z <- forwardsolve(factor, tX - loc, transpose = FALSE) # use the full sample!
-    #   maha2.2 <- colSums(z^2)/2
-    #   # need maha2.2 ordered for eval_dnvmix_int:
-    #   ordering.maha2.2 <- order(maha2.2)
-    #   maha2.2 <- maha2.2[ordering.maha2.2]
-    #   ## log(sqrt(det(scale))):
-    #   lrdet <- sum(log(diag(factor)))
-    #   ## Initialize RQMC procedure to estimate the weights
-    #   ## Matrix to store RQMC estimates for weights
-    #   rqmc.estimates.logweights <- matrix(0, ncol = n, nrow = B)
-    #   error <- abstol + 42 # initialize error to > abstol to enter while loop
-    #   total.fun.evals <- 0
-    #   current.n <- length(U)/B
-    #   ## First pointset that was passed as vector: U has length B * current.n
-    #   ## Realizations of l'th shift are elements (l-1)*current.n + (1:current.n)
-    #   W <- qW(U, nu = nu)
-    #   for(l in 1:B){
-    #     ## Grab realizations corresponding to l'th shift and use exp-log trick
-    #     ## Note: The C function eval_dnvmix_integrand performs the following
-    #     ##  b <- - (d/2) * log(2 * pi) - k/2 * log(W) - lrdet - outer(1/W, maha2.2)
-    #     ##  bmax <- apply(b, 2, max)
-    #     ##  log(current_n) + bmax + log(colSums(exp(b - rep(bmax, each = current_n))))
-    #     W.current.sorted <- sort(W[(l-1)*current.n + (1:current.n)])
-    #     condexp <- .Call("eval_dnvmix_integrand",
-    #                      W          = as.double(W.current.sorted),
-    #                      maha2_2    = as.double(maha2.2),
-    #                      current_n  = as.integer(current.n),
-    #                      n          = as.integer(n), # full sample!
-    #                      d          = as.integer(d),
-    #                      k          = as.integer(d+2),
-    #                      ##  Note k = d+2 here!
-    #                      lrdet      = as.double(lrdet))
-    #     ldens <- .Call("eval_dnvmix_integrand",
-    #                    W          = as.double(W.current.sorted),
-    #                    maha2_2    = as.double(maha2.2),
-    #                    current_n  = as.integer(current.n),
-    #                    n          = as.integer(n), # full sample!
-    #                    d          = as.integer(d),
-    #                    k          = as.integer(d),
-    #                    lrdet      = as.double(lrdet))
-    #
-    #     rqmc.estimates.logweights[l,] <- condexp - ldens
-    #   }
-    #   error <- CI.factor.sqrt.B * max(apply(rqmc.estimates.logweights, 2, sd))
-    #   total.fun.evals <- B * current.n
-    #
-    #   ## Main loop
-    #   while(error > abstol && total.fun.evals < fun.eval[2]){
-    #     if(method == "sobol") .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
-    #     ## Get next point-set
-    #     U.next <- switch(method,
-    #                      "sobol"   = {
-    #                        as.vector(sapply(1:B, function(i)
-    #                          sobol(current.n, d = 1, randomize = TRUE, skip = current.n)))
-    #                      },
-    #                      "gHalton" = {
-    #                        as.vector(sapply(1:B, function(i)
-    #                          ghalton(current.n, d = 1, method = "generalized")))
-    #                      },
-    #                      "prng"    = {
-    #                        runif(current.n*B)
-    #                      })
-    #     ## Realizations of W
-    #     W <- qW(U.next, nu = nu)
-    #     for(l in 1:B){
-    #       ## Get realizations of W
-    #       W.current.sorted <- sort(W[(l-1)*current.n + (1:current.n)])
-    #       ## See above for details on eval_dnvmix_integrand
-    #
-    #       condexp <- .Call("eval_dnvmix_integrand",
-    #                        W          = as.double(W.current.sorted),
-    #                        maha2_2    = as.double(maha2.2),
-    #                        current_n  = as.integer(current.n),
-    #                        n          = as.integer(n), # full sample!
-    #                        d          = as.integer(d),
-    #                        k          = as.integer(d+2),
-    #                        ##  Note k = d+2 here!
-    #                        lrdet      = as.double(lrdet))
-    #       ldens <- .Call("eval_dnvmix_integrand",
-    #                      W          = as.double(W.current.sorted),
-    #                      maha2_2    = as.double(maha2.2),
-    #                      current_n  = as.integer(current.n),
-    #                      n          = as.integer(n), # full sample!
-    #                      d          = as.integer(d),
-    #                      k          = as.integer(d),
-    #                      lrdet      = as.double(lrdet))
-    #
-    #       rqmc.estimates.logweights[l,] <- (rqmc.estimates.logweights[l,] +
-    #                                           condexp - ldens)/2
-    #     }
-    #     total.fun.evals <- total.fun.evals + B * current.n
-    #     current.n <- 2 * current.n
-    #     ## Compute error measures
-    #     error <- CI.factor.sqrt.B * max(apply(rqmc.estimates.logweights, 2, sd))
-    #   }
-    #   ## Return
-    #   weights <- exp(colMeans(rqmc.estimates.logweights))
-    #   if(error > abstol) warning('abstol in get.weights not reached')
-    #   weights[order(ordering.maha2.2)] ## Recover original ordering
-    # }
-
+    ## Initialize various quantities
     num.iter <- 0
     converged <- FALSE
     converged.nu <- FALSE
     converged.locscale <- FALSE
     while(num.iter < control$ECME.maxiter && !converged){
-
       ## Get new weights
       weights <- get.weights(tX, qW = qW, nu = nu.est, loc = loc.est,
                              scale = scale.est, U = U0, control = control,
@@ -613,11 +505,8 @@ fitnvmix <- function(X, qmix,
       ## as.vector because we need loc.est as a vector, not (d,1) matrix
       diff.loc <- loc.est -
         (loc.est <- as.vector(crossprod(X, weights)/sum(weights)))
-
       converged.locscale <- (sqrt(sum(diff.loc^2)) < control$ECME.conv.tol[1]) &&
         (norm(diff.scale, "F") < control$ECME.conv.tol[2])
-
-
       ## Update nu, if desired/necessary:
       if(control$ECMEstep.do.nu && !converged.nu){
         if(fitting.method != "cScov"){
@@ -663,7 +552,6 @@ fitnvmix <- function(X, qmix,
       ## TODO think of something smarter here
       converged <- converged.nu && converged.locscale
     } # end while()
-
     ## Another last nu update?
     if(control$laststep.do.nu){
       ## One last nu update with the *full* sample.

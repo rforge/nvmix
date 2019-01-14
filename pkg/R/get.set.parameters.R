@@ -11,17 +11,15 @@ get.set.parameters <- function(control = list()){
   ## Set up default controls:
   ctrl <- list(
     ## For pnvmix(): 
-    method = "sobol", 
     mean.sqrt.mix = NULL, 
     precond = TRUE, 
     pnvmix.abstol = 1e-3, 
-    increment = "doubling", 
     ## For dnvmix():
     dnvmix.abstol = 1e-3, 
-    dnvmix.abstol.log = 1e-3, # not used (yet)
+    dnvmix.reltol = NA, # If !NA, 'reltol' is used instead of 'abstol'
     dnvmix.extrap = FALSE,
     dnvmix.extrap.num.fit = 7,
-    dnvmix.extrap.num.test = 4,
+    dnvmix.extrap.num.test = 7,
     ## For qnvmix():
     max.iter.newton = 40, 
     newton.conv.abstol = 1e-4,
@@ -34,10 +32,12 @@ get.set.parameters <- function(control = list()){
     ECME.maxiter = 20,
     ECME.conv.tol = c(rep(1e-1, 2), 1e-2), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
     ## For all (randomized) algorithms:
+    method = "sobol", 
+    increment = "doubling", # "doubling" or "num.init" 
     max.iter.rqmc = NA, # defined below, depending on 'increment'
     CI.factor = 3.3,
     fun.eval = c(2^7, 1e12), 
-    B = 11)
+    B = 12)
   if(length(control) > 0){
     ## If input provided, grab input controls and overwrite:
     names.control <- names(ctrl)
