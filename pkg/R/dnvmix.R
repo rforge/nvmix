@@ -1,3 +1,6 @@
+### dnvmix() ###################################################################
+
+
 ##' @title Extrapolate log-densitiy of a NVM dist'n 
 ##' @param maha2.2 vector of squared mahalanobis distances (sorted)
 ##' @param ldensities log-densities of NVM density evaluated at maha2.2
@@ -5,10 +8,10 @@
 ##' @param control list of control arguments, see ?dnvmix
 ##' @author Erik Hintz
 
-dnvmix.extrapolate <- function(maha2.2, ldensities, errors, control){
+dnvmix.extrapolate <- function(maha2.2, ldensities, errors, tol, control){
   n <- length(maha2.2)
   ## logical vector if precision reached
-  notRchd <- (errors >= control$dnvmix.abstol)
+  notRchd <- (errors >= tol)
   ## First not reached in the *tail* (ignore first ones, if any)
   fnotrchd <- if(!notRchd[1]) which.max(notRchd)[1] else {
     if(prod(notRchd)) 1 else {
@@ -94,8 +97,6 @@ dnvmix.extrapolate <- function(maha2.2, ldensities, errors, control){
 
 
 
-### dnvmix() ###################################################################
-
 ##' @title Density of a Multivariate Normal Variance Mixture - Internal version 
 ##'        (not exported)
 ##' @param qW function of one variable specifying the quantile function of W.
@@ -104,52 +105,42 @@ dnvmix.extrapolate <- function(maha2.2, ldensities, errors, control){
 ##'        the normal variance mixture distribution. 
 ##' @param U0 vector of first input uniforms. Length has to be multiple of B. 
 ##' @param d dimension of the Normal Variance Mixture        
-##' @param method see details in ?pnvmix
-##' @param increment see details in ?pnvmix
-##' @param abstol see details in ?pnvmix
-##' @param CI.factor see details in ?pnvmix
-##' @param max.iter.rqmc see details in ?pnvmix
-##' @param B see details in ?pnvmix
+##' @param control see ?dnvmix
 ##' @param seed value of .Random.seed when U0 was generated; needed to get 
 ##'        the same shifts in the randomized Sobol approach. 
+##' @param verbose see ?dnvmix
 ##' @return List of three:
 ##'         $ldensities n-vector with computed log-density values 
-##'         $error error estimate (largest error in ldensities)
+##'         $error n-vector of error estimates for log-densities; either relative
+##'         error or absolte error depending on is.na(control$dnvmix.reltol)
 ##'         $numiter number of iterations needed 
 ##' @author Erik Hintz and Marius Hofert
-dnvmix.int <- function(qW, maha2.2, lrdet, U0, d, 
-                       method = c("sobol", "ghalton", "PRNG"),
-                       increment = "doubling",
-                       abstol = 0.001, reltol = NA, CI.factor = 3.3, 
-                       fun.eval = c(2^6, 1e8), max.iter.rqmc, B, seed)
+dnvmix.int <- function(qW, maha2.2, lrdet, U0, d, control, seed, verbose)
 {
-  
   ## 1 Basics ##################################################################
   ## 
   ## Note: Most checking was done in dnvmix()
+  dblng <- (control$increment == "doubling")
+  B <- control$B # number of randomizations
   n <- length(maha2.2) # sample size 
   numiter <- 1 # counter for the number of iterations (one iteration is done here)
-  CI.factor.sqrt.B <- CI.factor / sqrt(B) # instead of dividing by sqrt(B) each time
+  CI.factor.sqrt.B <- control$CI.factor / sqrt(B) # instead of dividing by sqrt(B) each time
   rqmc.estimates <- matrix(0, ncol = n, nrow = B) # matrix to store RQMC estimates
-  
   ## Absolute or relative precision required?
-  if(is.na(reltol)){
+  if(is.na(control$dnvmix.reltol)){
     ## Use absolute error
-    tol <- abstol/CI.factor.sqrt.B
+    tol <- control$dnvmix.abstol/CI.factor.sqrt.B
     do.reltol <- FALSE
   } else {
     ## Use relative error
-    tol <- reltol/CI.factor.sqrt.B
+    tol <- control$dnvmix.reltol/CI.factor.sqrt.B
     do.reltol <- TRUE
   }
-  
   ## 2 First point-set #########################################################
-  
   ## First pointset that was passed as vector: U has length B * current.n
   ## Realizations of l'th shift are elements (l-1)*current.n + (1:current.n)
   current.n <- length(U0)/B 
   W <- qW(U0)
-  
   for(l in 1:B){
     ## Grab realizations corresponding to l'th shift and use exp-log trick 
     ## The underlying C function "eval_dnvmix_integrand" needs both, maha2_2 
@@ -163,27 +154,28 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
                                 k          = as.integer(d), 
                                 lrdet      = as.double(lrdet))
   }
-  
   ## Error meausre. Note that 'tol' was divided by 'CI.factor' 
   errors <- if(!do.reltol){
     apply(rqmc.estimates, 2, sd)
   } else {
     apply(rqmc.estimates, 2, sd)/abs(.colMeans(rqmc.estimates, B, n, 0))
   }
-  error <- max(errors)
+  max.error <- max(errors)
   total.fun.evals <- B*current.n
-  
   ## 3 Main loop ###############################################################
-  while(error > tol && numiter < max.iter.rqmc && total.fun.evals < fun.eval[2]) {
-    
-    if(method == "sobol") .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
-    
+  while(max.error > tol && numiter < control$max.iter.rqmc && 
+        total.fun.evals < control$fun.eval[2]) {
+    ## Reset 'seed' and get correct 'skip' if the method used is 'sobol'
+    if(control$method == "sobol"){
+      .Random.seed <<- seed 
+      skip <- if(dblng) current.n else numiter*current.n 
+    }
     ## Get B RQCM estimates
     for(b in 1:B) {
       ## Get the point set
-      U <- switch(method,
+      U <- switch(control$method,
                   "sobol"   = {
-                    qrng::sobol(current.n, d = 1, randomize = TRUE, skip = numiter*current.n)
+                    qrng::sobol(current.n, d = 1, randomize = TRUE, skip = skip)
                   },
                   "gHalton" = {
                     qrng::ghalton(current.n, d = 1, method = "generalized")
@@ -191,7 +183,6 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
                   "prng"    = {
                     cbind(runif(current.n)) # 1-column matrix
                   })
-      
       ## Exp-log trick 
       ## The underlying C function "eval_dnvmix_integrand" needs both, maha2_2 
       ## and W to be sorted in increasing order.     
@@ -203,9 +194,8 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
                              d          = as.integer(d),
                              k          = as.integer(d), 
                              lrdet      = as.double(lrdet)) 
-      
       rqmc.estimates[b,] <- 
-        if(increment == "doubling"){
+        if(dblng){
           ## In this case both, rqmc.estimates[b] and
           ## next.estimate depend on n.current points
           (rqmc.estimates[b, ] + next.estimate) / 2
@@ -215,31 +205,54 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d,
           ## depends on n.current points
           (numiter * rqmc.estimates[b, ] + next.estimate) / (numiter + 1)
         }
-      
     } # end for(b in 1:B)
-    
     ## Update various variables
     ## Number of function evaluations:
     total.fun.evals <- total.fun.evals + B*current.n
     ## Number of iterations:
-    numiter <- numiter + 1 # update counter
+    numiter <- numiter + 1 
     ## Next sample size:
-    current.n <- if(increment == "doubling") 2*current.n else current.n 
+    current.n <- if(dblng) 2*current.n else current.n 
     ## Error measure
     errors <- if(!do.reltol){
       apply(rqmc.estimates, 2, sd)
     } else {
       apply(rqmc.estimates, 2, sd)/abs(.colMeans(rqmc.estimates, B, n, 0))
     }
-    error <- max(errors)
+    max.error <- max(errors)
   } # while()
-  
-  ## 4 Return ##################################################################
-  ## Get estimates for log-density:
-  lres <- .colMeans(rqmc.estimates, B, n, 0)
+  ## Finalize 
+  ldensities <- .colMeans(rqmc.estimates, B, n, 0)
   ## Get correct error estimate:
   errors <- errors*CI.factor.sqrt.B
-  return(list(ldensities = lres, numiter = numiter, error = errors))
+  ## Tolerance not reached?
+  if(max.error > tol){
+    if(control$dnvmix.extrap){
+      ## Extrapolation:
+      extrap.obj  <- dnvmix.extrapolate(maha2.2, ldensities = ldensities,
+                                        errors = errors, tol = 1.05*tol, 
+                                        control = control)
+      ldensities  <- extrap.obj$ldensities
+      errors      <- extrap.obj$errors
+      ## Print waring that extrapolation was used:
+      if(verbose){
+        if(do.reltol){
+          warning("'reltol' not reached for all inputs; extrapolation used")
+        } else {
+          warning("'abstol' not reached for all inputs; extrapolation used")
+        }
+      }
+    } else if(verbose){
+      ## Tolerance not reached, no extrapolation but warning:
+      if(do.reltol){
+        warning("'reltol' not reached for all inputs; consider increasing 'max.iter.rqmc' in the 'control' argument.")
+      } else {
+        warning("'abstol' not reached for all inputs; consider increasing 'max.iter.rqmc' in the 'control' argument.")
+      }
+    }
+  }
+  ## 4 Return ##################################################################
+  return(list(ldensities = ldensities, numiter = numiter, error = errors))
 }
 
 ##' @title Density of a Multivariate Normal Variance Mixture
@@ -288,22 +301,13 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   d <- ncol(x) # dimension
   if(!is.matrix(scale)) scale <- as.matrix(scale)
   stopifnot(length(loc) == d, dim(scale) == c(d, d))
-  
-  
   ## Deal with algorithm parameters, see also get.set.parameters():
   ## get.set.parameters() also does argument checking, so not needed here. 
   control <- get.set.parameters(control)
-  
-  ## Grab method, increment and B 
-  method    <- control$method
-  increment <- control$increment
-  B         <- control$B
-  
   ## If factor is not provided, determine it here as a *lower* triangular matrix
   if(is.null(factor)) factor <- t(chol(scale)) # lower triangular
   
   ## 1 Define the quantile function of the mixing variable ###################
-  
   ## If 'mix' is "constant" or "inverse.gamma", we use the analytical formulas
   is.const.mix <- FALSE # logical indicating whether we have a multivariate normal
   inv.gam <- FALSE # logical indicating whether we have a multivariate t
@@ -345,7 +349,6 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     function(u)
       qmix(u, ...)
   } else stop("'qmix' must be a character string, list or quantile function.")
-  
   ## Build result object (log-density)
   n <- nrow(x)
   lres <- rep(-Inf, n) # n-vector of results
@@ -354,7 +357,6 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   x <- x[notNA,, drop = FALSE] # non-missing data (rows)
   
   ## 2 Actual computation ######################################################
-  
   ## Recall that 'scale' is *lower triangular*. For short, let 'scale' = L
   ## Solve L * z = x_i - mu for z, so z = L^{-1} * (x_i - mu)   (d vector)
   ## => z^2 (=> componentwise) = z^T z = (x_i - mu)^T * (L^{-1})^T L^{-1} (x_i - mu)
@@ -371,82 +373,60 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   ##                       = log(prod(diag(R))) = sum(log(diag(R)))
   lrdet <- sum(log(diag(factor)))
   if(!is.finite(lrdet)) stop(paste("Density not defined for singular 'scale' "))
-  
   ## Counter
-  numiter <- 0 # initialize counter; this will count the number of iterations in the while loop
-  
+  numiter <- 0 # initialize counter (0 for 'inv.gam' and 'is.const.mix')
   ## Deal with the different distributions
   if(inv.gam) { # multivariate t
     df.d.2 <- (df + d) / 2
     lres[notNA] <- lgamma(df.d.2) - lgamma(df/2) - (d/2) * log(df * pi) -
       lrdet - df.d.2 * log1p(maha2 / df)
-    error <- 0
+    if(!log) lres <- exp(lres) # already exponentiate
+    error <- rep(0, length(z))
   } else if(is.const.mix) { # multivariate normal
     lres[notNA] <- -(d/2) * log(2 * pi) - lrdet - maha2/2
-    error <- 0
+    if(!log) lres <- exp(lres) # already exponentiate
+    error <- rep(0, length(z))
   } else { 
     ## General case of a multivariate normal variance mixture (RQMC)
-    ## Prepare inputs for dnvmix.internal 
-    if(method == "sobol") {
+    ## Prepare inputs for dnvmix.int
+    if(control$method == "sobol") {
       if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
       seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used
     }
     ## Initial point-set as vector 
-    U0 <- switch(method,
+    U0 <- switch(control$method,
                  "sobol"   = {
-                   as.vector(sapply(1:B, function(i) 
+                   as.vector(sapply(1:control$B, function(i) 
                      sobol(control$fun.eval[1], d = 1, randomize = TRUE)))
                  },
                  "gHalton" = {
-                   as.vector(sapply(1:B, function(i) 
+                   as.vector(sapply(1:control$B, function(i) 
                      ghalton(control$fun.eval[1], d = 1, method = "generalized")))
                  },
                  "prng"    = {
-                   runif(control$fun.eval[1]*B)
+                   runif(control$fun.eval[1]*control$B)
                  })
-    
-    ## Sort maha-distance and divide by 2; store ordering to recover "original
-    ## ordering" later:
+    ## Sort maha-distance and divide by 2; store ordering to recover original
+    ## ordering later:
     ordering.maha <- order(maha2)
     maha2.2 <- maha2[ordering.maha]/2
-    
     ## Call internal dnvix (which itself calls C-Code)
-    ests <- dnvmix.int(qW, maha2.2 = maha2.2, lrdet = lrdet, U0 = U0, d = d, 
-                       method = method, increment = control$increment, 
-                       abstol = control$dnvmix.abstol, 
-                       reltol = control$dnvmix.reltol,
-                       CI.factor = control$CI.factor, fun.eval = control$fun.eval, 
-                       max.iter.rqmc = control$max.iter.rqmc, B = B, seed = seed)
-    error <- ests$error
-    numiter <- ests$numiter 
-    ## Finalize
-    max.error <- max(error)
-    
-    ## Extrapolation?
-    if(max.error > control$dnvmix.abstol && control$dnvmix.extrap){
-      extrap.obj <- dnvmix.extrapolate(maha2.2, ldensities = ests$ldensities,
-                                       errors = error, control = control)
-      ## Sort ldensities according to original input ordering
-      lres[notNA] <- extrap.obj$ldensities[order(ordering.maha)]
-      error <- if(log){
-        extrap.obj$errors[order(ordering.maha)]
-      } else {
-        extrap.obj$errors[order(ordering.maha)]*max(exp(max(lres[notNA])), 1)
-      }
-      if(verbose) warning("'abstol' not reached; extrapolation used")
+    ## Note that 'dnvmix.int' calls 'dnvmix.extrapolate' (if necessary)
+    ests <- dnvmix.int(qW, maha2.2 = maha2.2, lrdet = lrdet, U0 = U0, d = d,
+                       control = control, seed = seed, verbose = verbose)
+    ## Grab results, correct 'error' and 'lres' if 'log = FALSE'
+    lres[notNA] <- ests$ldensities[order(ordering.maha)]
+    error <- if(log){
+      ests$error[order(ordering.maha)]
     } else {
-      ## No extrapolation, grab results, sort them, print warning if needed
-      lres[notNA] <- ests$ldensities[order(ordering.maha)]
-      error <- if(log){
-        error[order(ordering.maha)]
-      } else {
-        error[order(ordering.maha)]*max(exp(max(lres[notNA])), 1)
-      }
-      if(verbose && max.error > control$dnvmix.abstol) warning("'abstol' not reached; consider increasing 'maxiter.rqmc'")
+      lres <- exp(lres)
+      ests$error[order(ordering.maha)]*pmax(lres[notNA], 1)
     }
+    numiter <- ests$numiter 
   }
   ## Return
+  ## Note that 'lres' was exponentiated already if necessary. 
   attr(lres, "error")   <- error
   attr(lres, "numiter") <- numiter
-  if(log) lres else exp(lres)
+  lres 
 }

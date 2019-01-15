@@ -60,7 +60,8 @@ void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
             c[i - startindex] = next_c;
             
             /* Did we find the maximum? c is first increasing, then decreasing
-             as a function of W */
+             as a function of W. Use "<" so that the case of several W being
+             the same is accounted for (eg two-point-mixture) */
             if(next_c < current_c){
                 found_max = 1;
                 c_max = current_c;
