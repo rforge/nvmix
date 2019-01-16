@@ -177,10 +177,10 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d, control, seed, verbose)
                   "sobol"   = {
                     qrng::sobol(current.n, d = 1, randomize = TRUE, skip = skip)
                   },
-                  "gHalton" = {
+                  "ghalton" = {
                     qrng::ghalton(current.n, d = 1, method = "generalized")
                   },
-                  "prng"    = {
+                  "PRNG"    = {
                     cbind(runif(current.n)) # 1-column matrix
                   })
       ## Exp-log trick 
@@ -272,7 +272,7 @@ dnvmix.int <- function(qW, maha2.2, lrdet, U0, d, control, seed, verbose)
 ##' @param method character string indicating the method to be used:
 ##'         - "sobol":   Sobol sequence
 ##'         - "ghalton": generalized Halton sequence
-##'         - "prng":    pure Monte Carlo
+##'         - "PRNG":    pure Monte Carlo
 ##' @param abstol numeric >= 0 providing the absolute precision required.
 ##'        If abstol = 0, algorithm will run until total number of function
 ##'        evaluations exceeds fun.eval[2].
@@ -303,7 +303,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   stopifnot(length(loc) == d, dim(scale) == c(d, d))
   ## Deal with algorithm parameters, see also get.set.parameters():
   ## get.set.parameters() also does argument checking, so not needed here. 
-  control <- get.set.parameters(control)
+  control <- nvmix:::get.set.parameters(control)
   ## If factor is not provided, determine it here as a *lower* triangular matrix
   if(is.null(factor)) factor <- t(chol(scale)) # lower triangular
   
@@ -399,11 +399,11 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
                    as.vector(sapply(1:control$B, function(i) 
                      sobol(control$fun.eval[1], d = 1, randomize = TRUE)))
                  },
-                 "gHalton" = {
+                 "ghalton" = {
                    as.vector(sapply(1:control$B, function(i) 
                      ghalton(control$fun.eval[1], d = 1, method = "generalized")))
                  },
-                 "prng"    = {
+                 "PRNG"    = {
                    runif(control$fun.eval[1]*control$B)
                  })
     ## Sort maha-distance and divide by 2; store ordering to recover original

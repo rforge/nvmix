@@ -79,4 +79,3 @@ get.set.parameters <- function(control = list()){
   ctrl
 }
 
-
