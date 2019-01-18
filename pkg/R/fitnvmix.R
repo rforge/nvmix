@@ -189,7 +189,7 @@ estim.nu.cop <- function(U, qW, init.nu, factor, control, control.optim,
 #'                      $max.ll (negative log-likelihood at nu.est)
 #' @author Erik Hintz
 estim.nu <- function(tX, qW, init.nu, loc, scale, control, control.optim,
-                     mix.param.bounds, inv.gam, U0, seed, verbose)
+                     mix.param.bounds, inv.gam, seed, verbose)
 {
   factor <- t(chol(scale))
   if(inv.gam){ ## in this case, dnvmix() uses analytical formula for density
@@ -208,9 +208,8 @@ estim.nu <- function(tX, qW, init.nu, loc, scale, control, control.optim,
       .Random.seed <<- seed # reset seed => monotonicity (not bc of sobol shifts!)
       qmix. <- function(u) qW(u, nu = nu) # function of u only
       ## Call nvmix:::dnvmix.int which by default returns the log-density
-      ldens.obj <- nvmix:::dnvmix.int(qW = qmix., maha2.2 = maha2.2, lrdet = lrdet,
-                              U0 = U0, d = d, control = control, seed = seed,
-                              verbose = verbose)
+      ldens.obj <- nvmix:::dnvmix.int.t(qW = qmix., maha2.2 = maha2.2, lrdet = lrdet,
+                               d = d, control = control, verbose = verbose)
       ## Return -log-density; warnings/extrapolation/... done in 'nvmix:::dnvmix.int' 
       -sum(ldens.obj$ldensities)
     }
@@ -439,10 +438,11 @@ fitnvmix <- function(X, qmix,
         ## Define a qmix function that can be passed to dnvmix()
         qmix. <- function(u) qW(u, nu = param[1:mix.param.length]) # function of u
         c <- param[mix.param.length + 1]
+        .Random.seed <<- seed
         ## Call nvmix:::dnvmix.int which by default returns the log-density
-        ldens.obj <- nvmix:::dnvmix.int(qW = qmix., maha2.2 = maha2.2/c, 
-                                lrdet = (lrdet + d/2*log(c)), U0 = U0, d = d, 
-                                control = control, seed = seed, verbose = verbose)
+        ldens.obj <- nvmix:::dnvmix.int.t(qW = qmix., maha2.2 = maha2.2/c, 
+                                lrdet = (lrdet + d/2*log(c)), d = d, 
+                                control = control, verbose = verbose)
         ## Return -log-density
         -sum(ldens.obj$ldensities)
       }
@@ -513,7 +513,7 @@ fitnvmix <- function(X, qmix,
                               loc = loc.est, scale = scale.est,
                               control = control, control.optim = control.optim,
                               mix.param.bounds = mix.param.bounds, inv.gam = inv.gam,
-                              U0 = U0, seed = seed, verbose = verbose)
+                             seed = seed, verbose = verbose)
           diff.nu <- nu.est - (nu.est <- est.obj$nu.est)
           max.ll <- est.obj$max.ll
           converged.nu <- (sqrt(sum(diff.nu^2)) < control$ECME.conv.tol[3])
@@ -543,7 +543,7 @@ fitnvmix <- function(X, qmix,
                             scale = scale.est, control = control, 
                             control.optim = control.optim,
                             mix.param.bounds = mix.param.bounds, 
-                            inv.gam = inv.gam, U0 = U0, seed = seed, verbose = verbose)
+                            inv.gam = inv.gam,  seed = seed, verbose = verbose)
         nu.est <- est.obj$nu.est
         max.ll <- est.obj$max.ll
       }
