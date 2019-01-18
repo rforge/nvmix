@@ -44,40 +44,47 @@ void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
         current_maha = maha2_2[j];
         /* Calculate c_i starting from i = startindex until max reached */
         i = startindex;
-        found_max = 0;
-        /* first c_i: */
-        current_W = W[i];
-        current_c = negd2l2pi - k2 * log(current_W) - lrdet - current_maha/current_W;
-        /* save this so that we can re-use it later. To save memory, we always
-         fill the vector c from the beginning, no matter what. */
-        c[i - startindex] = current_c;
-        i += 1;
-        
-        while( (found_max == 0) && (i < current_n)){
-            /* Get next realization and safe it */
+        /* Case startindex == current_n -1 special: */
+        if(i == current_n - 1){
+            /* in this case, maximum found (last row) */
+            found_max = 1;
+            maxindex = i;
+            c_max = negd2l2pi - k2 * log(W[i]) - lrdet - current_maha/W[i];
+        } else {
+            /* if not, need to find the maximum */
+            found_max = 0;
+            /* first c_i: */
             current_W = W[i];
-            next_c = negd2l2pi - k2 * log(current_W) - lrdet - current_maha/current_W;
-            c[i - startindex] = next_c;
-            
-            /* Did we find the maximum? c is first increasing, then decreasing
-             as a function of W. Use "<" so that the case of several W being
-             the same is accounted for (eg two-point-mixture) */
-            if(next_c < current_c){
-                found_max = 1;
-                c_max = current_c;
-                /* The maximum occured in the previous index */
-                maxindex = i - 1;
-            } else if(i == current_n - 1){
-                /* In case no max was found until here it is the last index: */
-                maxindex = i;
-                found_max = 1;
-                c_max = next_c;
-            } else {
-                current_c = next_c;
-                i += 1;
+            current_c = negd2l2pi - k2 * log(current_W) - lrdet - current_maha/current_W;
+            /* save this so that we can re-use it later. To save memory, we always
+             fill the vector c from the beginning, no matter what. */
+            c[i - startindex] = current_c;
+            i += 1;
+            while( (found_max == 0) && (i < current_n)){
+                /* Get next realization and safe it */
+                current_W = W[i];
+                next_c = negd2l2pi - k2 * log(current_W) - lrdet - current_maha/current_W;
+                c[i - startindex] = next_c;
+                
+                /* Did we find the maximum? c is first increasing, then decreasing
+                 as a function of W. Use "<" so that the case of several W being
+                 the same is accounted for (eg two-point-mixture) */
+                if(next_c < current_c){
+                    found_max = 1;
+                    c_max = current_c;
+                    /* The maximum occured in the previous index */
+                    maxindex = i - 1;
+                } else if(i == current_n - 1){
+                    /* In case no max was found until here it is the last index: */
+                    maxindex = i;
+                    found_max = 1;
+                    c_max = next_c;
+                } else {
+                    current_c = next_c;
+                    i += 1;
+                }
             }
         }
-        
         /* Calculate sum_1^current_n exp(ci-cmax) */
         sum_expc = 0;
         for(l = 0; l < current_n; l++){
@@ -92,16 +99,12 @@ void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
             }
             
         }
-        
         /* Position of c_max is increasing in maha2_2. Since the latter is
          sorted in increasing order, we use startindex = maxindex  for the
          next maha2_2 value */
         startindex = maxindex;
-        
         /* Done for maha2_2[j] */
         ldensities[j] = neglogcurrent_n + c_max + log(sum_expc);
-
-
     }
 }
 

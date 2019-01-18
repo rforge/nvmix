@@ -186,21 +186,25 @@ dnvmix.int <- function(qW, maha2.2, lrdet, d, control, verbose)
       
       ## 2.2 Evaluate the integrand at the (next) point set #############
       
-      W <- qW(U) # realizations of the mixing variable
-      c <- - (d/2) * log(2 * pi) - d/2 * log(W) - lrdet - outer(1/W, maha2.2)
-      cmax <- apply(c, 2, max)
-      next.estimate <- -log(current.n) + cmax + log(colSums(exp(c - rep(cmax, each = current.n))))
+      ## Realizations of the mixing variable:
+      W <- qW(U)
       
-      # Note: Problem in C function...
-      # next.estimate <- .Call("eval_dnvmix_integrand", 
-      #                        W          = as.double(sort(W)),
-      #                        maha2_2    = as.double(maha2.2),
-      #                        current_n  = as.integer(current.n),
-      #                        n          = as.integer(n),
-      #                        d          = as.integer(d),
-      #                        k          = as.integer(d), 
-      #                        lrdet      = as.double(lrdet))
-      
+      ## Note: C function 'eval_dnvmix_integrand' does the following efficiently:
+      ## 
+      ##  c <- - (d/2) * log(2 * pi) - k/2 * log(W) - lrdet - outer(1/W, maha2.2)
+      ##  cmax <- apply(c, 2, max)
+      ##  log(current_n) + cmax + log(colSums(exp(c - rep(cmax, each = current_n))))
+      ##  
+      ##  To this end, *both* 'maha2.2' and 'W' need to be sorted 
+      next.estimate <- .Call("eval_dnvmix_integrand",
+                             W          = as.double(sort(W)), 
+                             maha2_2    = as.double(maha2.2),
+                             current_n  = as.integer(current.n),
+                             n          = as.integer(n),
+                             d          = as.integer(d),
+                             k          = as.integer(d),
+                             lrdet      = as.double(lrdet))
+
       ## 2.3 Update RQMC estimates #######################################
       
       rqmc.estimates[b,] <-

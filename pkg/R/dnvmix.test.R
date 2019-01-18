@@ -152,6 +152,7 @@ dnvmix.int.t <- function(qW, maha2.2, lrdet, d, control, verbose)
   ## Initialize 'max.error' to > tol so that we can enter the while loop:
   max.error <- tol + 42 
   
+  maha2.2.diff <- maha2.2[2:n] - maha2.2[1:(n-1)]
   ## 2 Main loop ###############################################################
   
   ## while() runs until precision abstol is reached or the number of function
@@ -190,8 +191,10 @@ dnvmix.int.t <- function(qW, maha2.2, lrdet, d, control, verbose)
       ## 2.2 Evaluate the integrand at the (next) point set #############
       
       W <- qW(U) # realizations of the mixing variable
-      c <- -lgamma(d/2) - d/2*log(W) + (d/2 - 1)*matrix(rep(log(maha2.2), current.n), nrow = current.n, byrow = TRUE) - 
-        log(2) - outer(1/W, maha2.2)
+      c <- cbind(- (d/2) * log(2 * pi) - d/2 * log(W) - lrdet - maha2.2[1]/W, 
+                 -outer(1/W, maha2.2.diff))
+      # c <- -lgamma(d/2) - d/2*log(W) + (d/2 - 1)*matrix(rep(log(maha2.2), current.n), nrow = current.n, byrow = TRUE) - 
+      #   log(2) - outer(1/W, maha2.2)
       # c <- - (d/2) * log(2 * pi) - d/2 * log(W) - lrdet - outer(1/W, maha2.2)
       cmax <- apply(c, 2, max)
       next.estimate <- -log(current.n) + cmax + log(colSums(exp(c - rep(cmax, each = current.n))))
@@ -249,7 +252,7 @@ dnvmix.int.t <- function(qW, maha2.2, lrdet, d, control, verbose)
   } # while()
   
   ## Finalize 
-  ldensities <- .colMeans(rqmc.estimates, B, n, 0)
+  ldensities <- cumsum(.colMeans(rqmc.estimates, B, n, 0))
   ## Get correct error estimate:
   errors <- errors*CI.factor.sqrt.B
   ## Tolerance not reached?
