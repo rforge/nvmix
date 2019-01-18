@@ -191,10 +191,10 @@ dnvmix.int.t <- function(qW, maha2.2, lrdet, d, control, verbose)
       ## 2.2 Evaluate the integrand at the (next) point set #############
       
       W <- qW(U) # realizations of the mixing variable
-      c <- cbind(- (d/2) * log(2 * pi) - d/2 * log(W) - lrdet - maha2.2[1]/W, 
-                 -outer(1/W, maha2.2.diff))
-      # c <- -lgamma(d/2) - d/2*log(W) + (d/2 - 1)*matrix(rep(log(maha2.2), current.n), nrow = current.n, byrow = TRUE) - 
-      #   log(2) - outer(1/W, maha2.2)
+      # c <- cbind(- (d/2) * log(2 * pi) - d/2 * log(W) - lrdet - maha2.2[1]/W, 
+      #            -outer(1/W, maha2.2.diff))
+      c <- -lgamma(d/2) - d/2*log(W) + (d/2 - 1)*matrix(rep(log(maha2.2), current.n), nrow = current.n, byrow = TRUE) - 
+         log(2) - outer(1/W, maha2.2)
       # c <- - (d/2) * log(2 * pi) - d/2 * log(W) - lrdet - outer(1/W, maha2.2)
       cmax <- apply(c, 2, max)
       next.estimate <- -log(current.n) + cmax + log(colSums(exp(c - rep(cmax, each = current.n))))
