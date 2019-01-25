@@ -32,7 +32,7 @@ dnvmix.int.strat <- function(qW, maha2.2, lrdet, d, control, verbose){
                                                 do.reltol = do.reltol, q = 1, 
                                                 up = FALSE)
   ## Already converged?
-  (convd <- current.estimates.obj$converged)
+  convd <- current.estimates.obj$converged
   if(convd){
     ests.combined  <- current.estimates.obj$ldensities 
     errs.combined  <- current.estimates.obj$error
@@ -54,19 +54,19 @@ dnvmix.int.strat <- function(qW, maha2.2, lrdet, d, control, verbose){
     q <- control$dnvmix.qs[num.iter.strat] 
     ## log-density estimates of X given W < F_W^{-1}(q) [ (B, n) matrix ]
     ests.lower <- nvmix:::dnvmix.int.t(qW, maha2.2 = maha2.2, lrdet = lrdet,
-                                       d = d, control = control,  tol = tol,
-                                       do.reltol = do.reltol, q = q, 
-                                       up = FALSE)$rqmc.estimates
+                               d = d, control = control,  tol = tol,
+                               do.reltol = do.reltol, q = q, 
+                               up = FALSE)$rqmc.estimates
     ## log-density of X given W >= F_W^{-1}(q) [ (B, n) matrix ]
     ests.upper <- nvmix:::dnvmix.int.t(qW, maha2.2 = maha2.2, lrdet = lrdet,
-                                       d = d, control = control,  tol = tol,
-                                       do.reltol = do.reltol, q = q, 
-                                       up = TRUE)$rqmc.estimates
+                               d = d, control = control,  tol = tol,
+                               do.reltol = do.reltol, q = q, 
+                               up = TRUE)$rqmc.estimates
     ## Apply row-wise exp-log trick => (B, n) matrix of log-density estimates
     ## Mathematically, that's equivalent to 
     ##   ests.combi <- log( q*exp(ests.lower) + (1-q)*exp(ests.upper))
     ests.strat <- t(sapply(1:B, function(i) logsumexp(log(q) + ests.lower[i,],
-                                                      log(1-q) + ests.upper[i,])))
+                                                    log(1-q) + ests.upper[i,])))
     ## Store estimates and their estimated variances 
     strat.ests[num.iter.strat + 1, ]  <- colMeans(ests.strat)
     strat.vars[num.iter.strat + 1, ]  <- apply(ests.strat, 2, var)/B
@@ -81,11 +81,10 @@ dnvmix.int.strat <- function(qW, maha2.2, lrdet, d, control, verbose){
     ests.combined <- vars.combined *
       colSums(strat.ests[used, , drop = FALSE]*(1/strat.vars[used, , drop = FALSE]))
     ## Get error measure 
-    abserr <- control$CI.factor * sqrt(vars.combined)
     errs.combined <- if(!do.reltol){
-      abserr
+      control$CI.factor * sqrt(vars.combined)
     } else {
-      abserr/pmin(abs(ests.combined + abserr), abs(ests.combined - abserr))
+      control$CI.factor * sqrt(vars.combined)/abs(ests.combined)
     }
     ## Tolerance reached?
     convd <- (max(errs.combined) < tol)
@@ -154,7 +153,7 @@ dnvmix.int.t <- function(qW, maha2.2, lrdet, d, control, tol, do.reltol, q, up)
   ## the desired log-densities are calculated.
   while(max.error > tol && numiter < control$max.iter.rqmc && 
         total.fun.evals < control$fun.eval[2]) 
-  {
+    {
     ## Reset seed to have the same shifts in sobol( ... )
     if(control$method == "sobol" && numiter > 0)
       .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
@@ -417,7 +416,7 @@ dnvmix.t <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     maha2.2 <- maha2[ordering.maha]/2
     ## Call internal dnvix (which itself calls C-Code)
     ests <- nvmix:::dnvmix.int.strat(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d,
-                                     control = control, verbose = verbose)
+                         control = control, verbose = verbose)
     ## Grab results, correct 'error' and 'lres' if 'log = FALSE'
     lres[notNA] <- ests$ldensities[order(ordering.maha)]
     error <- if(log){
