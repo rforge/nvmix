@@ -13,11 +13,81 @@ logsumexp <- function(a, b){
 }
 
 
+
+
+rec <- function(qW, maha2.2, lrdet, d, control, tol, do.reltol, lower.q, upper.q){
+  est <- nvmix:::dnvmix.int.t(qW, maha2.2 = maha2.2, lrdet = lrdet,
+                              d = d, control = control,  tol = tol,
+                              do.reltol = do.reltol, lower.q = lower.q,
+                              upper.q = upper.q)
+  retMat <- est$rqmc.estimates
+  B <- control$B
+  if(!est$converged){
+    NotConvd <- which(est$error > tol) # where did we *not* converge?
+    num.notConvd <- length(NotConvd)
+    mid.q <- (upper.q - lower.q)/2 # splitting point 
+    if(mid.q - lower.q < control$dnvmix.rec.tol){
+      warning("intervals get too small")
+      return(retMat)
+    }
+    ## Obtain lower part with mass mid.q - lower.q
+    low.est <- nvmix:::rec(qW, maha2.2 = maha2.2[NotConvd], 
+                    lrdet = lrdet, d = d, control = control,
+                    tol = tol, do.reltol = do.reltol,
+                    lower.q = lower.q, upper.q = mid.q) 
+    ## Obtain lower part with mass upper.q - mid.q 
+    upp.est <- nvmix:::rec(qW, maha2.2 = maha2.2[NotConvd], 
+                   lrdet = lrdet, d = d, control = control,
+                   tol = tol, do.reltol = do.reltol,
+                   lower.q = mid.q, upper.q = upper.q)
+    ## Combine those matrices with B columns via exp-log-trick 
+    com.est <- if(num.notConvd > 1){
+      t(sapply(1:B, function(i) logsumexp(log(mid.q - lower.q) + low.est[i,],
+                                          log(upper.q - mid.q) + upp.est[i,]))) 
+    } else {
+      matrix(sapply(1:B, function(i) logsumexp(log(mid.q - lower.q) + low.est[i,],
+                                               log(upper.q - mid.q) + upp.est[i,])), ncol = 1)
+    }
+    retMat[, NotConvd] <- com.est 
+  }
+  retMat
+}
+
+
+dnvmix.int.strat.rec <- function(qW, maha2.2, lrdet, d, control, verbose){
+  ## Absolte/relative precision?
+  if(is.na(control$dnvmix.reltol)){
+    ## Use absolute error
+    tol <- control$dnvmix.abstol
+    do.reltol <- FALSE
+  } else {
+    ## Use relative error
+    tol <- control$dnvmix.reltol
+    do.reltol <- TRUE
+  }
+  ## Needed again and again:
+  B <- control$B
+  ## Get res-matrix
+  res <- rec(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d,
+             control = control, tol = tol, do.reltol = do.reltol,
+             lower.q = 0, upper.q = 1)
+  ldens <- colMeans(res)
+  vars  <- apply(res, 2, var)/B
+  ## Get error measure 
+  errors <- if(!do.reltol){
+    control$CI.factor * sqrt(vars)
+  } else {
+    control$CI.factor * sqrt(vars)/abs(ldens)
+  }
+  return(list(ldensities = ldens, numiter = 1, error = errors))
+}
+
+
 dnvmix.int.strat <- function(qW, maha2.2, lrdet, d, control, verbose){
-   ## Maximum number of stratified iterations; add 1 bc first iteration 
-   ## does not use stratification
-   max.iter.strat  <- control$dnvmix.max.iter.strat + 1 
-   
+  ## Maximum number of stratified iterations; add 1 bc first iteration 
+  ## does not use stratification
+  max.iter.strat   <- control$dnvmix.max.iter.strat + 1 
+  n                <- length(maha2.2)
   ## Absolte/relative precision?
   if(is.na(control$dnvmix.reltol)){
     ## Use absolute error
@@ -33,44 +103,61 @@ dnvmix.int.strat <- function(qW, maha2.2, lrdet, d, control, verbose){
   ## Start with q = 1, i.e. no stratification.
   current.estimates.obj <- nvmix:::dnvmix.int.t(qW, maha2.2 = maha2.2, lrdet = lrdet,
                                                 d = d, control = control,  tol = tol,
-                                                do.reltol = do.reltol, q = 1, 
-                                                up = FALSE)
+                                                do.reltol = do.reltol, lower.q = 0,
+                                                upper.q = 1)
   ## Already converged?
   convd <- current.estimates.obj$converged
   if(convd || max.iter.strat == 1){
+    ## In this case we will *not* enter the while loop below. 
     ests.combined  <- current.estimates.obj$ldensities 
     errs.combined  <- current.estimates.obj$error
   } else {
     ## Matrices to store all stratified estimates along with their estimated vars
-    strat.vars  <- matrix(NA, ncol = length(maha2.2), nrow = max.iter.strat)
-    strat.ests  <- matrix(NA, ncol = length(maha2.2), nrow = max.iter.strat)
+    strat.vars  <- matrix(NA, ncol = n, nrow = max.iter.strat)
+    strat.ests  <- matrix(NA, ncol = n, nrow = max.iter.strat)
     ## Store estimates just obtained:
     strat.ests[1, ] <- current.estimates.obj$ldensities 
     strat.vars[1, ] <- current.estimates.obj$vars 
+    ## Vector of dndices where accuracy *not* reached (length >=1 bc of if/else)
+    notRchd <- which(current.estimates.obj$error > tol)
+    num.notRchd <- length(notRchd) # number of 'x' that have not reached 'tol' 
   }
   num.iter.strat  <- 1
   ## Main loop: Update estimators until precision reached
   while(!convd && num.iter.strat < max.iter.strat){
     ## Next "cutting point": 
-    q <- control$dnvmix.qs[num.iter.strat] 
+    q <- 1 - 0.1^num.iter.strat # (0.9, 0.99, 0.999,...)
     ## log-density estimates of X given W < F_W^{-1}(q) [ (B, n) matrix ]
-    ests.lower <- nvmix:::dnvmix.int.t(qW, maha2.2 = maha2.2, lrdet = lrdet,
-                               d = d, control = control,  tol = tol,
-                               do.reltol = do.reltol, q = q, 
-                               up = FALSE)$rqmc.estimates
+    ests.lower <- nvmix:::dnvmix.int.t(qW, maha2.2 = maha2.2[notRchd], lrdet = lrdet,
+                                       d = d, control = control,  tol = tol,
+                                       do.reltol = do.reltol, lower.q = 0,
+                                       upper.q = q)$rqmc.estimates
     ## log-density of X given W >= F_W^{-1}(q) [ (B, n) matrix ]
-    ests.upper <- nvmix:::dnvmix.int.t(qW, maha2.2 = maha2.2, lrdet = lrdet,
-                               d = d, control = control,  tol = tol,
-                               do.reltol = do.reltol, q = q, 
-                               up = TRUE)$rqmc.estimates
+    ests.upper <- nvmix:::dnvmix.int.t(qW, maha2.2 = maha2.2[notRchd], lrdet = lrdet,
+                                       d = d, control = control,  tol = tol,
+                                       do.reltol = do.reltol, lower.q = q,
+                                       upper.q = 1)$rqmc.estimates
     ## Apply row-wise exp-log trick => (B, n) matrix of log-density estimates
     ## Mathematically, that's equivalent to 
-    ##   ests.combi <- log( q*exp(ests.lower) + (1-q)*exp(ests.upper))
-    ests.strat <- t(sapply(1:B, function(i) logsumexp(log(q) + ests.lower[i,],
-                                                    log(1-q) + ests.upper[i,])))
+    ##   ests.strat <- log( q*exp(ests.lower) + (1-q)*exp(ests.upper))
+    ests.strat <- if(num.notRchd > 1){
+      t(sapply(1:B, function(i) logsumexp(log(q) + ests.lower[i,, drop = FALSE],
+                                                            log(1-q) + ests.upper[i,, drop = FALSE]))) 
+    } else {
+      matrix(sapply(1:B, function(i) logsumexp(log(q) + ests.lower[i,, drop = FALSE],
+                                               log(1-q) + ests.upper[i,, drop = FALSE])), ncol = 1)
+    }
+    ## 'If..else' needed to get 'ests.strat' to be a matrix of proper dimensions
+    ## TODO: Do this smarter (need (B, num.notRchd) matrix, no matter what)
+    
     ## Store estimates and their estimated variances 
-    strat.ests[num.iter.strat + 1, ]  <- colMeans(ests.strat)
-    strat.vars[num.iter.strat + 1, ]  <- apply(ests.strat, 2, var)/B
+    strat.ests[num.iter.strat + 1, notRchd]  <- colMeans(ests.strat)
+    strat.vars[num.iter.strat + 1, notRchd]  <- apply(ests.strat, 2, var)/B
+    ## For cols that already reached accuracy, set estimator to zero and variance 
+    ## to infinity (=> 1/Var = 0, hence no weight) 
+    strat.ests[num.iter.strat + 1, setdiff(1:n, notRchd)]  <- 0
+    strat.vars[num.iter.strat + 1, setdiff(1:n, notRchd)]  <- Inf
+    
     ## Row-indices of the rows that have been filled:
     used <- 1:(num.iter.strat+1)
     ## Combine the first num.iter.strat + 1 estimators: If e_k is the k'th estimator
@@ -89,6 +176,11 @@ dnvmix.int.strat <- function(qW, maha2.2, lrdet, d, control, verbose){
     }
     ## Tolerance reached?
     convd <- (max(errs.combined) < tol)
+    ## If not, update indices where tolerance was *not* reached
+    if(!convd){
+      notRchd <- which(errs.combined > tol)
+      num.notRchd <- length(notRchd)
+    } 
     ## Increase counter
     num.iter.strat <- num.iter.strat + 1 
   }
@@ -97,8 +189,7 @@ dnvmix.int.strat <- function(qW, maha2.2, lrdet, d, control, verbose){
               error = errs.combined))
 }
 
-##' @title Density of a Multivariate Normal Variance Mixture - Internal version 
-##'        (not exported)
+##' @title Conditional density of a Multivariate Normal Variance Mixture 
 ##' @param qW function of one variable specifying the quantile function of W.
 ##' @param maha2.2 squared maha-distances divided by 2. Assumed to be *sorted*
 ##' @param lrdet log(sqrt(det(scale))) where 'scale' is the scale matrix of 
@@ -108,8 +199,9 @@ dnvmix.int.strat <- function(qW, maha2.2, lrdet, d, control, verbose){
 ##' @param control see ?dnvmix
 ##' @param tol desired tolerance (dnvmix.reltol / dnvmix.abstol)
 ##' @param do.reltol logical; if TRUE, 'tol' is interpreted as relative tolerance
-##' @param q numeric in (0,1); "cutting" point for stratification
-##' @param up logical; if true, upper tail estimated, lower tail o.w.        
+##' @param lower.q numeric in (0,1)
+##' @param upper.q numeric in (0,1), > lower.q. Density will be estimated 
+##'         conditional on W being between its lower.q and upper.q quantile. 
 ##' @param verbose see ?dnvmix
 ##' @return List of three:
 ##'         $ldensities n-vector with computed log-density values 
@@ -118,7 +210,8 @@ dnvmix.int.strat <- function(qW, maha2.2, lrdet, d, control, verbose){
 ##'         $numiter number of iterations needed 
 ##'         $rqmc.estimates (B, n) matrix of rqmc estimates for the log-density
 ##' @author Erik Hintz and Marius Hofert
-dnvmix.int.t <- function(qW, maha2.2, lrdet, d, control, tol, do.reltol, q, up)
+dnvmix.int.t <- function(qW, maha2.2, lrdet, d, control, tol, do.reltol, lower.q,
+                         upper.q, verbose)
 {
   ## 1 Basics ##################################################################
   ## Define various quantites:
@@ -144,7 +237,7 @@ dnvmix.int.t <- function(qW, maha2.2, lrdet, d, control, tol, do.reltol, q, up)
   ## Will be needed a lot:
   CI.factor.sqrt.B <- control$CI.factor / sqrt(B) 
   ## Define trafo-function that maps u to (q,1) or (1,q) depending on 'up'
-  trafo <- if(up) function(u) q + (1 - q)*u else function(u) q*u 
+  trafo <- function(u) lower.q + (upper.q - lower.q)*u
   ## Initialize 'max.error' to > tol so that we can enter the while loop:
   max.error <- tol + 42 
   

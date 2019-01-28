@@ -17,12 +17,9 @@ get.set.parameters <- function(control = list()){
     ## For dnvmix():
     dnvmix.abstol = 1e-3, 
     dnvmix.reltol = NA, # If !NA, 'reltol' is used instead of 'abstol'
-    dnvmix.max.iter.strat = 6,
-    dnvmix.qs = c(0.99, 0.999, 0.9999, 0.99999, 0.999999, 0.9999999),
+    dnvmix.max.iter.strat = 10,
+    dnvmix.rec.tol = 1e-6,
     dnvmix.extrap = FALSE,
-    dnvmix.extrap.num.fit = 7,
-    dnvmix.extrap.num.test = 7,
-    dnvmix.mult = 25,
     ## For qnvmix():
     max.iter.newton = 40, 
     newton.conv.abstol = 1e-4,
