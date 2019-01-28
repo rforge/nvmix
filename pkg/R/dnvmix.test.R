@@ -14,6 +14,10 @@ logsumexp <- function(a, b){
 
 
 dnvmix.int.strat <- function(qW, maha2.2, lrdet, d, control, verbose){
+   ## Maximum number of stratified iterations; add 1 bc first iteration 
+   ## does not use stratification
+   max.iter.strat  <- control$dnvmix.max.iter.strat + 1 
+   
   ## Absolte/relative precision?
   if(is.na(control$dnvmix.reltol)){
     ## Use absolute error
@@ -33,13 +37,10 @@ dnvmix.int.strat <- function(qW, maha2.2, lrdet, d, control, verbose){
                                                 up = FALSE)
   ## Already converged?
   convd <- current.estimates.obj$converged
-  if(convd){
+  if(convd || max.iter.strat == 1){
     ests.combined  <- current.estimates.obj$ldensities 
     errs.combined  <- current.estimates.obj$error
   } else {
-    ## Maximum number of stratified iterations; add 1 bc first iteration 
-    ## does not use stratification
-    max.iter.strat  <- control$dnvmix.max.iter.strat + 1 
     ## Matrices to store all stratified estimates along with their estimated vars
     strat.vars  <- matrix(NA, ncol = length(maha2.2), nrow = max.iter.strat)
     strat.ests  <- matrix(NA, ncol = length(maha2.2), nrow = max.iter.strat)
@@ -91,6 +92,7 @@ dnvmix.int.strat <- function(qW, maha2.2, lrdet, d, control, verbose){
     ## Increase counter
     num.iter.strat <- num.iter.strat + 1 
   }
+  num.iter.strat <- num.iter.strat - 1 
   return(list(ldensities = ests.combined, numiter = num.iter.strat, 
               error = errs.combined))
 }
@@ -138,7 +140,7 @@ dnvmix.int.t <- function(qW, maha2.2, lrdet, d, control, tol, do.reltol, q, up)
     denom <- 1
   }
   ## Matrix to store RQMC estimates
-  rqmc.estimates <- matrix(0, ncol = n, nrow = B) 
+  rqmc.estimates <- matrix(-Inf, ncol = n, nrow = B) 
   ## Will be needed a lot:
   CI.factor.sqrt.B <- control$CI.factor / sqrt(B) 
   ## Define trafo-function that maps u to (q,1) or (1,q) depending on 'up'
@@ -204,12 +206,15 @@ dnvmix.int.t <- function(qW, maha2.2, lrdet, d, control, tol, do.reltol, q, up)
         if(dblng) {
           ## In this case both, rqmc.estimates[b,] and
           ## next.estimate depend on n.current points
-          (rqmc.estimates[b,] + next.estimate) / denom
+          logsumexp(rqmc.estimates[b,], next.estimate) - log(denom)
+          #b(rqmc.estimates[b,] + next.estimate) / denom
         } else {
           ## In this case, rqmc.estimates[b,] depends on
           ## numiter * n.current points whereas next.estimate
           ## depends on n.current points
-          (numiter * rqmc.estimates[b,] + next.estimate) / (numiter + 1)
+          logsumexp(log(numiter) + rqmc.estimates[b, ], next.estimate) - 
+              log(numiter + 1)
+          # (numiter * rqmc.estimates[b,] + next.estimate) / (numiter + 1)
         }
       
     } # end for(b in 1:B)

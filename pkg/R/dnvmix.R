@@ -133,8 +133,8 @@ dnvmix.int <- function(qW, maha2.2, lrdet, d, control, verbose)
     if(control$method == "sobol") useskip <- 0
     denom <- 1
   }
-  ## Matrix to store RQMC estimates
-  rqmc.estimates <- matrix(0, ncol = n, nrow = B) 
+  ## Matrix to store RQMC estimates ( "-Inf = log(0)")
+  rqmc.estimates <- matrix(-Inf, ncol = n, nrow = B) 
   ## Absolute or relative precision required?
   CI.factor.sqrt.B <- control$CI.factor / sqrt(B) 
   if(is.na(control$dnvmix.reltol)){
@@ -208,16 +208,19 @@ dnvmix.int <- function(qW, maha2.2, lrdet, d, control, verbose)
       ## 2.3 Update RQMC estimates #######################################
       
       rqmc.estimates[b,] <-
-        if(dblng) {
-          ## In this case both, rqmc.estimates[b,] and
-          ## next.estimate depend on n.current points
-          (rqmc.estimates[b,] + next.estimate) / denom
-        } else {
-          ## In this case, rqmc.estimates[b,] depends on
-          ## numiter * n.current points whereas next.estimate
-          ## depends on n.current points
-          (numiter * rqmc.estimates[b,] + next.estimate) / (numiter + 1)
-        }
+         if(dblng) {
+            ## In this case both, rqmc.estimates[b,] and
+            ## next.estimate depend on n.current points
+            logsumexp(rqmc.estimates[b,], next.estimate) - log(denom)
+            #b(rqmc.estimates[b,] + next.estimate) / denom
+         } else {
+            ## In this case, rqmc.estimates[b,] depends on
+            ## numiter * n.current points whereas next.estimate
+            ## depends on n.current points
+            logsumexp(log(numiter) + rqmc.estimates[b, ], next.estimate) - 
+               log(numiter + 1)
+            # (numiter * rqmc.estimates[b,] + next.estimate) / (numiter + 1)
+         }
       
     } # end for(b in 1:B)
     
