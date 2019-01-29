@@ -85,15 +85,13 @@ void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
                 }
             }
         }
-        /* Calculate sum_1^current_n exp(ci-cmax) */
+        /* Calculate sum_1^current_n exp(ci-cmax): We omit the i=max term */
         sum_expc = 0;
         for(l = 0; l < current_n; l++){
             /* Was c_l already calculated? */
              if( (l >= startindex) && (l < maxindex ) ){
                 sum_expc += exp(c[l - startindex] - c_max);
-            } else if( l == maxindex){
-                sum_expc += 1;
-            } else {
+            } else if( l != maxindex){
                 current_W = W[l];
                 sum_expc += exp( negd2l2pi - k2 * log(current_W) - lrdet - current_maha/current_W - c_max);
             }
@@ -104,7 +102,9 @@ void eval_dnvmix_integrand_c(double *W, double *maha2_2, int current_n, int n,
          next maha2_2 value */
         startindex = maxindex;
         /* Done for maha2_2[j] */
-        ldensities[j] = neglogcurrent_n + c_max + log(sum_expc);
+        /* Use log1p(sum_expc) = log(1 + sum_expc) as the exp(0) term was omitted
+         when determining sum_expc */
+        ldensities[j] = neglogcurrent_n + c_max + log1p(sum_expc);
     }
 }
 
