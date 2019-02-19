@@ -7,7 +7,7 @@
 ##' @param upper d-vector of upper evaluation limits
 ##' @param scale (d, d)-covariance matrix (scale matrix)
 ##' @return list with lower, upper and scale after components/rows/columns
-##'         i and j have been switched
+##'         i and j have been switched 
 ##' @author Erik Hintz and Marius Hofert
 swap <- function(i, j, lower, upper, scale)
 {
@@ -32,6 +32,60 @@ swap <- function(i, j, lower, upper, scale)
   list(lower = lower, upper = upper, scale = scale)
 }
 
+##' Reorder limits and scale matrix according to a permutation (not exported)
+##'
+##' @param perm d-vector giving the desired permutation 
+##' @param upper see ?pnvmix
+##' @param lower see ?pnvmix
+##' @param scale see ?pnvmix
+##' @return list with lower, upper and scale after components/rows/columns
+##'         have been switched according to perm
+##' @author Erik Hintz 
+##' @note No input checking is done.         
+reorder.limits.scale <- function(perm, upper, lower = rep(-Inf, d), scale = diag(d)){
+  d <- length(upper)
+  ## Vector to save current positions of original variables 
+  org.perm <- 1:d
+  for(i in 1:d){
+    ## Variable at position i before swapping
+    curr.i <- org.perm[i]
+    ## Variable at position i after swapping
+    next.i <- perm[i]
+    ## Do we need to swap?
+    if(curr.i != next.i){
+      ## Index of the variable to be put to position i
+      ind.next.i <- which(org.perm == next.i)
+      ## Swap positions i and ind.next.i 
+      tmp <- swap(i, ind.next.i, lower = lower, upper = upper, scale = scale)
+      lower <- tmp$lower
+      upper <- tmp$upper
+      scale <- tmp$scale
+      ## Update position vector
+      org.perm[i] <- next.i
+      org.perm[ind.next.i] <- curr.i
+    }
+  }
+  ## Return
+  list(lower = lower, upper = upper, scale = scale)
+}
+
+##' Variance of a normal rv over truncated interval (a, b)
+##' @param a l-vector
+##' @param b l-vector
+##' @return l-vector 
+##' @author Erik Hintz
+##' @note Formula in Genz and Bretz (2009), p. 38
+trunc.var <- function(a, b){
+  p.diff <- pnorm(b) - pnorm(a)
+  ## Cases -Inf * 0 and Inf * 0:
+  adnorma <- a*dnorm(a)
+  adnorma[which(is.nan(adnorma))] <- 0
+  bdnormb <- b*dnorm(b)
+  bdnormb[which(is.nan(bdnormb))] <- 0
+  1 + (adnorma - bdnormb)/p.diff - ((dnorm(a)-dnorm(b))/p.diff)^2
+}
+
+
 ##' @title Preconditioning (Reordering Variables According to their Expected
 ##'        Integration Limits)
 ##' @param lower d-vector of lower evaluation limits
@@ -41,13 +95,16 @@ swap <- function(i, j, lower, upper, scale)
 ##' @param mean.sqrt.mix E(sqrt(W)) or NULL; the latter if not available
 ##'        in which case it is estimated by QMC
 ##' @return list with reordered integration limits, scale matrix and Cholesky factor
+##'          as well as a d-vector 'perm' giving the ordering obtained. 
 ##' @author Erik Hintz and Marius Hofert
 ##' @note See Genz and Bretz (2002, p. 957)
-precond <- function(lower, upper, scale, factor, mean.sqrt.mix)
+precondition <- function(lower, upper, scale, factor, mean.sqrt.mix, 
+                         precond.method = "ExpLength")
 {
   d <- length(lower)
   y <- rep(0, d - 1)
-  
+  perm <- 1:d
+  exp.lengths <- rep(NA, d)
   ## Main
   for(j in 1:(d-1)) {
     ## Case j = 1 somewhat special
@@ -58,25 +115,32 @@ precond <- function(lower, upper, scale, factor, mean.sqrt.mix)
       denom <- sqrt(diag(scale)[j:d] - rowSums(factor[j:d, 1:(j-1), drop = FALSE]^2))
       c <- factor[j:d, 1:(j-1), drop = FALSE] %*% y[1:(j-1)]
     }
+ 
+    ## Transformed limits with indices greater than j:
+    next.uppers <- (upper[j:d] / mean.sqrt.mix - c) / denom
+    next.lowers <- (lower[j:d] / mean.sqrt.mix - c) / denom
     
     ## Find i = argmin { <expected length of interval j> }
-    i <- which.min(pnorm((upper[j:d] / mean.sqrt.mix - c) / denom) -
-                     pnorm((lower[j:d] / mean.sqrt.mix - c) / denom)) + j - 1
-    
+    i <- if(precond.method == "ExpLength"){
+      which.min(pnorm(next.uppers) - pnorm(next.lowers)) + j - 1
+    } else {
+      ## Find i = argmin { <truncated variance of variable j> }
+      which.min(trunc.var(next.lowers, next.uppers)) + j - 1
+    }
+
     ## Swap i and j if they are different
     if(i != j){
       tmp <- swap(i = i, j = j, lower = lower, upper = upper, scale = scale)
       lower <- tmp$lower
       upper <- tmp$upper
       scale <- tmp$scale
-      
+      perm[c(i, j)] <- perm[c(j, i)]
       ## If j>1 and an actual swap has occured, need to reorder cholesky factor:
       if(j > 1){
         factor[c(i,j),]   <- factor[c(j,i),, drop = FALSE]
         factor[j,(j+1):i] <- matrix(0, ncol = i - j, nrow = 1)
       }
     }
-    
     ## Update Cholesky factor
     if(j == 1){
       factor[1, 1] <- sqrt(scale[1, 1])
@@ -101,9 +165,8 @@ precond <- function(lower, upper, scale, factor, mean.sqrt.mix)
     }
   } # for()
   factor[d, d] <- sqrt(scale[d, d] - sum(factor[d, 1:(d-1)]^2))
-  
   ## Return
-  list(lower = lower, upper = upper, scale = scale, factor = factor)
+  list(lower = lower, upper = upper, scale = scale, factor = factor, perm = perm)
 }
 
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture
@@ -154,7 +217,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
   ## Preconditioning (resorting the limits; only for d > 2)
   if(precond && d > 2) {
     ## Note that mean.sqrt.mix has already been calculated in pnvmix()
-    temp <- precond(lower = lower, upper = upper, scale = scale,
+    temp <- precondition(lower = lower, upper = upper, scale = scale,
                     factor = factor, mean.sqrt.mix = mean.sqrt.mix)
     lower <- temp$lower
     upper <- temp$upper

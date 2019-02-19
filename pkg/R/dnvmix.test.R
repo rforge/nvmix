@@ -338,7 +338,7 @@ dnvmix.int.t <- function(qW, maha2.2, lrdet, d, control, tol, do.reltol, lower.q
   } # while()
   
   ## Finalize 
-  ldensities <- .colMeans(rqmc.estimates, B, n, 0) 
+  ldensities <- log(.colMeans(exp(rqmc.estimates), B, n, 0))
   ## Get correct error estimate:
   errors <- errors*CI.factor.sqrt.B
   converged <- (max.error < tol)
