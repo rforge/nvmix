@@ -1,101 +1,6 @@
 ### dnvmix() ###################################################################
 
 
-##' @title Extrapolate log-densitiy of a NVM dist'n 
-##' @param maha2.2 vector of squared mahalanobis distances (sorted)
-##' @param ldensities log-densities of NVM density evaluated at maha2.2
-##' @param errors estimated errors of ldensities (from dnvmix.int)
-##' @param control list of control arguments, see ?dnvmix
-##' @author Erik Hintz
-
-dnvmix.extrapolate <- function(maha2.2, ldensities, errors, tol, control){
-  n <- length(maha2.2)
-  ## logical vector if precision reached
-  notRchd <- (errors >= tol)
-  ## First not reached in the *tail* (ignore first ones, if any)
-  fnotrchd <- if(!notRchd[1]) which.max(notRchd)[1] else {
-    if(prod(notRchd)) 1 else {
-      firstFalse <- which.min(notRchd)[1]
-      firstFalse - 1 + which.max(notRchd[firstFalse:n]) 
-    }
-  }
-  ## Indices used to fit:
-  ind.fit <- if(fnotrchd - control$dnvmix.extrap.num.fit > 1){
-    ## Do we have enough to fit?
-    (fnotrchd - control$dnvmix.extrap.num.fit - 1):fnotrchd
-  } else {
-    ## If not, just take the first 'dnvmix.extrap.num.fit' ones
-    1:control$dnvmix.extrap.num.fit 
-  }
-  ## Indices used to test:
-  ind.test <- if(fnotrchd + control$dnvmix.extrap.num.test - 1 <= n){
-    ## Do we have enough to test?
-    fnotrchd:(fnotrchd + control$dnvmix.extrap.num.test - 1)
-  } else {
-    ## If not, just take the 'dnvmix.extrap.num.test' ones after the fitting ones
-    (n - control$dnvmix.extrap.num.test + 1):n
-  }
-  
-  ## Maha distances + logdensities used to fit:
-  maha.fit  <- maha2.2[ind.fit]
-  ldens.fit <- ldensities[ind.fit]
-  ## ldensities used to test:
-  ldens.test <- maha2.2[ind.test]
-  
-  ## Set up optimizer function:
-  log.approx <- function(maha, dens, linear = FALSE){
-    err <- if(linear){
-      start <- c(dens[1], -1)
-      low <- c(-Inf, -Inf)
-      upp <- c(Inf, 0)
-      function(coeff){
-        sum((coeff[1] + coeff[2]*maha - dens)^2) 
-      }
-    } else {
-      start <- c(dens[1], 0, 0, 1, -1, 1)
-      low <- c(-Inf, -Inf, -1, 0 , -Inf, -Inf)
-      upp <- c(Inf, 0, Inf, Inf, Inf, Inf)
-      function(coeff){
-        sum((coeff[1] + coeff[2]*log(1 + coeff[3] + coeff[4]*maha)
-             + coeff[5]*maha^coeff[6] - dens)^2) 
-      } 
-    }
-    o <- optim( start,
-                err,
-                lower = low,
-                upper = upp,
-                method = c("L-BFGS-B"),
-                control = list(maxit = 500))
-    o$par
-  }
-  
-  ## Call optimizer, once linear, once general:
-  coeff_linear <- log.approx(maha.fit, ldens.fit, linear = TRUE)
-  coeff_notLin <- log.approx(maha.fit, ldens.fit, linear = FALSE)
-  
-  ## Approximate densities:
-  dens.approx_linear <- coeff_linear[1] + coeff_linear[2]*maha2.2
-  dens.approx_notLin <- coeff_notLin[1] + coeff_notLin[2]*log(coeff_notLin[3] + coeff_notLin[4]*maha2.2) +
-    coeff_notLin[5]*maha2.2^coeff_notLin[6] 
-  
-  ## Which one is better? 
-  err <- c( sum(dens.approx_linear[ind.test] - ldens.test)^2, 
-            sum(dens.approx_notLin[ind.test] - ldens.test)^2)
-  
-  ## Return correspondingly
-  ## Set errors for extrapolated values to 'NA' 
-  errors[fnotrchd:n] <- NA 
-  
-  ldensities[fnotrchd:n] <-  if(err[1] < err[2]){
-    dens.approx_linear[fnotrchd:n] 
-  } else {
-    dens.approx_notLin[fnotrchd:n]
-  }
-  ## Could probably return more later, e.g. the fitted parameters
-  return(list(ldensities = ldensities, errors = errors))
-}
-
-
 
 ##' @title Density of a Multivariate Normal Variance Mixture - Internal version 
 ##'        (not exported)
@@ -255,23 +160,7 @@ dnvmix.int <- function(qW, maha2.2, lrdet, d, control, verbose)
   ## Get correct error estimate:
   errors <- errors*CI.factor.sqrt.B
   ## Tolerance not reached?
-  if(max.error > tol){
-    if(control$dnvmix.extrap){
-      ## Extrapolation:
-      extrap.obj  <- dnvmix.extrapolate(maha2.2, ldensities = ldensities,
-                                        errors = errors, tol = 1.05*tol, 
-                                        control = control)
-      ldensities  <- extrap.obj$ldensities
-      errors      <- extrap.obj$errors
-      ## Print waring that extrapolation was used:
-      if(verbose){
-        if(do.reltol){
-          warning("'reltol' not reached for all inputs; extrapolation used")
-        } else {
-          warning("'abstol' not reached for all inputs; extrapolation used")
-        }
-      }
-    } else if(verbose){
+  if(max.error > tol && verbose){
       ## Tolerance not reached, no extrapolation but warning:
       if(do.reltol){
         warning("'reltol' not reached for all inputs; consider increasing 'max.iter.rqmc' in the 'control' argument.")
@@ -279,7 +168,7 @@ dnvmix.int <- function(qW, maha2.2, lrdet, d, control, verbose)
         warning("'abstol' not reached for all inputs; consider increasing 'max.iter.rqmc' in the 'control' argument.")
       }
     }
-  }
+  
   ## 4 Return ##################################################################
   return(list(ldensities = ldensities, numiter = numiter, error = errors))
 }
@@ -410,11 +299,11 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     lres[notNA] <- lgamma(df.d.2) - lgamma(df/2) - (d/2) * log(df * pi) -
       lrdet - df.d.2 * log1p(maha2 / df)
     if(!log) lres <- exp(lres) # already exponentiate
-    error <- rep(0, length(z))
+    error <- rep(0, length(maha2))
   } else if(is.const.mix) { # multivariate normal
     lres[notNA] <- -(d/2) * log(2 * pi) - lrdet - maha2/2
     if(!log) lres <- exp(lres) # already exponentiate
-    error <- rep(0, length(z))
+    error <- rep(0, length(maha2))
   } else { 
     ## General case of a multivariate normal variance mixture (RQMC)
     ## Prepare inputs for dnvmix.int

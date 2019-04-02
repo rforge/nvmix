@@ -20,6 +20,10 @@ get.set.parameters <- function(control = list()){
     dnvmix.max.iter.strat = 10,
     dnvmix.rec.tol = 1e-6,
     dnvmix.extrap = FALSE,
+    dnvmix.tol.int.lower = 1e-15,
+    dnvmix.tol.bisec.w = 0.1,
+    dnvmix.tol.stratlength = 1e-12,
+    dnvmix.max.iter.bisec.w = 50,
     ## For qnvmix():
     max.iter.newton = 40, 
     newton.conv.abstol = 1e-4,
