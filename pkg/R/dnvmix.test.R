@@ -1,9 +1,9 @@
 # # ### dnvmix() ###################################################################
 # 
 # ##' @title Exp - log trick for log(exp(a) + exp(b)) [not exported]
-# ##' @param a numeric vector 
+# ##' @param a numeric vector
 # ##' @param b numeric vector, same length as a
-# ##' @return numeric vector log(exp(a) + exp(b)) 
+# ##' @return numeric vector log(exp(a) + exp(b))
 # ##' @author Erik Hintz
 # ##' @note NO checking is done for efficiency reasons
 # logsumexp <- function(a, b){
@@ -12,7 +12,7 @@
 # 
 # ##' @title Exp - log trick for log(sum_i exp(a_i)) [not exported]
 # ##' @param M (n1, n2) matrix
-# ##' @return n2-vector log(colSums(exp(M))) 
+# ##' @return n2-vector log(colSums(exp(M)))
 # ##' @author Erik Hintz
 # ##' @note NO checking is done for efficiency reasons
 # logsumexp.matrix <- function(M){
@@ -20,37 +20,37 @@
 #   cmax + log(colSums(exp( M - rep(cmax, each = dim(M)[1]))))
 # }
 # 
-# ##' @title Conditional density of a Multivariate Normal Variance Mixture 
+# ##' @title Conditional density of a Multivariate Normal Variance Mixture [not exported]
 # ##' @param qW function of one variable specifying the quantile function of W.
 # ##' @param maha2.2 squared maha-distances divided by 2. Assumed to be *sorted*
-# ##' @param lrdet log(sqrt(det(scale))) where 'scale' is the scale matrix of 
-# ##'        the normal variance mixture distribution. 
-# ##' @param U0 vector of first input uniforms. Length has to be multiple of B. 
-# ##' @param d dimension of the Normal Variance Mixture        
+# ##' @param lrdet log(sqrt(det(scale))) where 'scale' is the scale matrix of
+# ##'        the normal variance mixture distribution.
+# ##' @param U0 vector of first input uniforms. Length has to be multiple of B.
+# ##' @param d dimension of the Normal Variance Mixture
 # ##' @param control see ?dnvmix
 # ##' @param tol desired tolerance (dnvmix.reltol / dnvmix.abstol)
 # ##' @param do.reltol logical; if TRUE, 'tol' is interpreted as relative tolerance
 # ##' @param lower.q numeric in (0,1)
-# ##' @param upper.q numeric in (0,1), > lower.q. Density will be estimated 
-# ##'         conditional on W being between its lower.q and upper.q quantile. 
-# ##' @param return.all logical; if true, matrix (U, qW(U)) also returned.       
+# ##' @param upper.q numeric in (0,1), > lower.q. Density will be estimated
+# ##'         conditional on W being between its lower.q and upper.q quantile.
+# ##' @param return.all logical; if true, matrix (U, qW(U)) also returned.
 # ##' @return List of three:
-# ##'         $ldensities n-vector with computed log-density values 
+# ##'         $ldensities n-vector with computed log-density values
 # ##'         $error n-vector of error estimates for log-densities; either relative
 # ##'         error or absolte error depending on is.na(control$dnvmix.reltol)
-# ##'         $numiter number of iterations needed 
+# ##'         $numiter number of iterations needed
 # ##'         $rqmc.estimates (B, n) matrix of rqmc estimates for the log-density
 # ##' @author Erik Hintz and Marius Hofert
-# dnvmix.int.t <- function(qW, maha2.2, lrdet, d, control, lower.q, upper.q, 
+# dnvmix.int.t <- function(qW, maha2.2, lrdet, d, control, lower.q, upper.q,
 #                          max.iter.rqmc, return.all)
 # {
 #   ## 1 Basics ##################################################################
 #   ## Define various quantites:
 #   dblng           <- (control$increment == "doubling")
 #   B               <- control$B # number of randomizations
-#   n               <- length(maha2.2) # sample size 
-#   current.n       <- control$fun.eval[1] #initial sample size 
-#   numiter         <- 0 # counter for the number of iterations 
+#   n               <- length(maha2.2) # sample size
+#   current.n       <- control$fun.eval[1] #initial sample size
+#   numiter         <- 0 # counter for the number of iterations
 #   total.fun.evals <- 0
 #   ## Absolte/relative precision?
 #   if(is.na(control$dnvmix.reltol)){
@@ -73,32 +73,32 @@
 #     denom <- 1
 #   }
 #   ## Matrix to store RQMC estimates
-#   rqmc.estimates <- matrix(-Inf, ncol = n, nrow = B) 
+#   rqmc.estimates <- matrix(-Inf, ncol = n, nrow = B)
 #   ## Will be needed a lot:
-#   CI.factor.sqrt.B <- control$CI.factor / sqrt(B) 
+#   CI.factor.sqrt.B <- control$CI.factor / sqrt(B)
 #   ## Define trafo-function that maps u to (q,1) or (1,q) depending on 'up'
 #   trafo <- function(u) lower.q + (upper.q - lower.q)*u
 #   ## Initialize 'max.error' to > tol so that we can enter the while loop:
-#   max.error <- tol + 42 
-#   ## Matrix to store U, W values => nrows = maximal number of funevals 
+#   max.error <- tol + 42
+#   ## Matrix to store U, W values => nrows = maximal number of funevals
 #   if(return.all){
 #     max.nrow <- if(doubling) current.n*B*2^(max.iter.rqmc-1) else max.iter.rqmc*B*current.n
 #     UsWs <- matrix(NA, ncol = 2, nrow = max.nrow)
 #     curr.lastrow <- 0 # will count row-index additional points are being inserted after
-#   } 
+#   }
 #   ## 2 Main loop ###############################################################
-#   
+# 
 #   ## while() runs until precision abstol is reached or the number of function
 #   ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
 #   ## the desired log-densities are calculated.
-#   while(max.error > tol && numiter < max.iter.rqmc && 
-#         total.fun.evals < control$fun.eval[2]) 
+#   while(max.error > tol && numiter < max.iter.rqmc &&
+#         total.fun.evals < control$fun.eval[2])
 #     {
 #     ## Reset seed to have the same shifts in sobol( ... )
 #     if(control$method == "sobol" && numiter > 0)
 #       .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
-#     
-#     
+# 
+# 
 #     for(b in 1:B){
 #       ## 2.1 Get the point set ###########################################
 #       U <- sort(switch(control$method,
@@ -120,13 +120,13 @@
 #                   "PRNG" = {
 #                     runif(current.n)
 #                   })) # sorted for later!
-#       
+# 
 #       ## 2.2 Evaluate the integrand at the (next) point set #############
-#       
+# 
 #       W <- qW(U <- trafo(U)) # realizations of the mixing variable; sorted!
 #       if(return.all){
 #         UsWs[(curr.lastrow + 1) : (curr.lastrow + current.n + 1)] <- cbind(U, W)
-#         curr.lastrow <- curr.lastrow + current.n 
+#         curr.lastrow <- curr.lastrow + current.n
 #       }
 #       next.estimate <- .Call("eval_dnvmix_integrand",
 #                              W          = as.double(sort(W)),
@@ -147,11 +147,11 @@
 #           ## In this case, rqmc.estimates[b,] depends on
 #           ## numiter * n.current points whereas next.estimate
 #           ## depends on n.current points
-#           logsumexp(log(numiter) + rqmc.estimates[b, ], next.estimate) - 
+#           logsumexp(log(numiter) + rqmc.estimates[b, ], next.estimate) -
 #               log(numiter + 1)
 #           # (numiter * rqmc.estimates[b,] + next.estimate) / (numiter + 1)
 #         }
-#       
+# 
 #     } # end for(b in 1:B)
 #     ## Update of various variables
 #     ## Double sample size and adjust denominator in averaging as well as useskip
@@ -169,7 +169,7 @@
 #     ## Total number of function evaluations:
 #     total.fun.evals <- total.fun.evals + B * current.n
 #     numiter <- numiter + 1
-#     ## Update error. 
+#     ## Update error.
 #     vars <- apply(rqmc.estimates, 2, var) # variances
 #     errors <- if(!do.reltol){
 #       sqrt(vars)*CI.factor.sqrt.B
@@ -178,10 +178,10 @@
 #     }
 #     max.error <- max(errors)
 #   } # while()
-#   
-#   ## Finalize 
+# 
+#   ## Finalize
 #   ldensities <- log(.colMeans(exp(rqmc.estimates), B, n, 0))
-#   
+# 
 #   ## 4 Return ##################################################################
 #   ret.obj <- if(return.all){
 #     list(ldensities = ldensities, numiter = numiter, error = errors,
@@ -192,26 +192,26 @@
 #   ret.obj
 # }
 # 
-# ##' @title Conditional density of a Multivariate Normal Variance Mixture 
+# ##' @title Internal dnvmix wrapper [not exported]
 # ##' @param qW function of one variable specifying the quantile function of W.
 # ##' @param maha2.2 squared maha-distances divided by 2. Assumed to be *sorted*
-# ##' @param lrdet log(sqrt(det(scale))) where 'scale' is the scale matrix of 
-# ##'        the normal variance mixture distribution. 
-# ##' @param d dimension of the Normal Variance Mixture        
+# ##' @param lrdet log(sqrt(det(scale))) where 'scale' is the scale matrix of
+# ##'        the normal variance mixture distribution.
+# ##' @param d dimension of the Normal Variance Mixture
 # ##' @param control see ?dnvmix
 # ##' @param verbose see ?dnvmix
 # ##' @return List of three:
-# ##'         $ldensities n-vector with computed log-density values 
+# ##'         $ldensities n-vector with computed log-density values
 # ##'         $error n-vector of error estimates for log-densities; either relative
 # ##'         error or absolte error depending on is.na(control$dnvmix.reltol)
-# ##'         $numiter number of iterations needed 
+# ##'         $numiter number of iterations needed
 # ##'         $rqmc.estimates (B, n) matrix of rqmc estimates for the log-density
 # ##' @author Erik Hintz and Marius Hofert
-# dnvmix.internal(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, control = control, 
+# dnvmix.internal(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, control = control,
 #                 verbose = verbose)
 # {
 #   ## 1 Basics ##################################################################
-#   
+# 
 #   ## Absolte/relative precision?
 #   if(is.na(control$dnvmix.reltol)){
 #     tol <- control$dnvmix.abstol
@@ -221,9 +221,9 @@
 #     tol <- control$dnvmix.reltol
 #     do.reltol <- TRUE
 #   }
-#   ## Call RQMC procedure without any stratification 
-#   rqmc.obj <- dnvmix.int.t(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, 
-#                          control = control, 
+#   ## Call RQMC procedure without any stratification
+#   rqmc.obj <- dnvmix.int.t(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d,
+#                          control = control,
 #                          lower.q = 0, upper.q = 1, max.iter.rqmc = 4,
 #                          return.all = TRUE)
 #   ## Extract results
@@ -234,14 +234,336 @@
 #     ## Accuracy not reached for at least one 'maha2.2' value
 #     ## => Use adaptive approach for those
 #     notRchd <- which(error > tol)
-#     rqmc.strat.obj <- dnvmix.int.strat(qW, maha2.2[notRchd], lrdet = lrdet, d = d,
+#     rqmc.strat.obj <- dnvmix.internal.adaptRQMC(qW, maha2.2[notRchd], lrdet = lrdet, d = d,
 #                                        UsWs = rqmc.obj$UsWs, control = contol)
-#     ldens[notRchd] <- rqmc.strat.obj$ldensities
-#     numiter[notRchd] <- numiter[notRchd] + rqmc.strat.obj$numiter
-#     error[notRchd] <- rqmc.strat.obj$error
+#     ldens[notRchd]    <- rqmc.strat.obj$ldensities
+#     numiter[notRchd]  <- numiter[notRchd] + rqmc.strat.obj$numiter
+#     error[notRchd]    <- rqmc.strat.obj$error
 #   }
 #   list(ldensities = ldens, numiter = numiter, error = error)
 # }
+# 
+# ##' @title Adaptive RQMC method to estimate the log-density of a NVMIX - dist'n [not exported]
+# ##' @param qW function of one variable specifying the quantile function of W.
+# ##' @param maha2.2 squared maha-distances divided by 2. Assumed to be *sorted*
+# ##' @param lrdet log(sqrt(det(scale))) where 'scale' is the scale matrix of
+# ##'        the normal variance mixture distribution.
+# ##' @param d dimension of the Normal Variance Mixture
+# ##' @param control see ?dnvmix
+# ##' @param UsWs matrix; each row is of the form (u, qW(u)) where u in (0,1)
+# ##' @return list of three ($ldensities, $error, $numiter); each vector of length(maha2.2)
+# ##' @author Erik Hintz and Marius Hofert
+# dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs){
+#   
+#   ## 1 Basics and initialization ###############################################
+#   control           <- nvmix:::get.set.parameters(control)
+#   numiter           <- 0 # counter for the number of iterations 
+#   ONE               <- 1-.Machine$double.neg.eps
+#   ZERO              <- .Machine$double.neg.eps 
+#   ## TODO! CHECK if that makes sense (shd be .xmin, but qW(.xmin) = 0 (often))
+#   tol.int.lower     <- control$dnvmix.tol.int.lower
+#   l.tol.int.lower   <- log(tol.int.lower)# sample only where integrand>tol.int.lower 
+#   tol.bisec.w       <- control$dnvmix.tol.bisec.w
+#   tol.stratlength   <- control$dnvmix.tol.stratlength
+#   max.iter.bisec.w  <- control$dnvmix.max.iter.bisec.w
+#   max.iter.bisec.lg <- max.iter.bisec.w
+#   tol.bisec.u       <- 1e-16
+#   tol.bisec.lg      <- 1
+#   ## For the result object
+#   n          <- length(maha2.2)
+#   ldensities <- rep(NA, n)
+#   errors     <- rep(NA, n)
+#   numiters   <- rep(NA, n)
+#   ## Grab 'UsWs'; store them in vectors and sort:
+#   ## Artificially add ZERO and ONE for convenience:  
+#   U <- c(ZERO, UsWs[ordering.U, 1], ONE)
+#   ## Realizations of W and the log-integrand. 
+#   ## Note: W[1] = smallest W we can generate; W[Bn0p2] largest W we can generate
+#   W <- c(qW(ZERO), UsWs[ordering.U, 2], qW(ONE))
+#   numObs <- length(U) # will store length(U/W/l.integrand) when appending elements
+#   
+#   ## 2 MAIN LOOP OVER MAHALANOBIS DISTANCES ####
+#   
+#   for(ind in 1:n){
+#     curr.maha2.2 <- maha2.2[ind]
+#     ## Realizations of log-integrand
+#     l.integrand   <- -log(2*pi*W)*d/2 - lrdet - curr.maha2.2/W # sorted according to ordering(U)!
+#     ## TODO maybe (U, W, l.integrand) in one matrix 
+#     numObs        <- length(U) # will store length(U/W/l.integrand) when appending elements
+#     ## Some more constants
+#     int.theo.max  <- (4 * pi * curr.maha2.2/d)^(-d/2) * exp(-d/2) # theoretical maximum of the integrand
+#     int.argmax.w  <- 2*curr.maha2.2/d # value of W = qmix(u*) at max
+#     ## Indicators for special cases:
+#     peekRight     <- (int.argmax.w > W[numObs]) # u* close too close to 1
+#     peekLeft      <- (int.argmax.w < W[1]) # u* close too close to 0
+#     outofreach.w  <- peekLeft ||  peekRight
+#     error         <- NA
+#     
+#     ## 2.1 Find u* = argmax_u{integrand(u)} ########################################
+#     
+#     if(!outofreach.w){
+#       ## Want fo find u* such that g(u*) ~= g_max where g is the original integrand
+#       ## Equivalently: Find u* such that qW(U*) = m/d (approximately) via binary search
+#       ## The follwing finds starting values (u1, u2): qW(u1)<int.argmax.w & qW(u2) > int.argmax.w
+#       if( int.argmax.w < W[2] ){
+#         ## "Peek" is close to u = 0
+#         u1u2 <- c(0, U[2])
+#       } else if(int.argmax.w > W[numObs - 1]){
+#         ## "Peek" is close to u = 1
+#         u1u2 <- c(U[numObs - 1], 1)
+#       } else {
+#         ## "Peek" is observed
+#         ## First index i such that W[i] >  int.argmax.w. Note: i > 1 bc of condition
+#         ind.first.bigger <- which(W > int.argmax.w)[1] 
+#         u1u2 <- c(U[ind.first.bigger - 1], U[ind.first.bigger])
+#       }
+#       ## Now find u:
+#       convd <- FALSE
+#       numiter <- 0
+#       ## Matrix to store additional u's and W's generated:
+#       additionalVals <- matrix(NA, ncol = 2, nrow = max.iter.bisec.w)
+#       index.first.u <- which(U >= u1u2[1])[1] # will insert after this index 
+#       while(!convd && numiter < max.iter.bisec.w){
+#         numiter <- numiter + 1
+#         ## Next point to check (midpoint of u1u2):
+#         u.next <- mean(u1u2)
+#         diff <- ((w.next <- qW(u.next)) - int.argmax.w)
+#         ## Store u.next and quanitle: 
+#         additionalVals[numiter, ] <- c(u.next, w.next)
+#         ## Update u1u2 depending on sign of 'diff' and check convergence:
+#         if(diff > 0) u1u2[2] <- u.next else u1u2[1] <- u.next
+#         convd <- (abs(diff) < tol.bisec.w) || (diff(u1u2) < tol.bisec.u)
+#       }
+#       int.argmax.u <- u.next
+#       ## Update the vectors 'U', 'W' and 'l.integrand' while *preserving the order*
+#       ## TODO could omit sorting if we inserted somehow smarter above 
+#       ## Order of first column = order of all columns 
+#       order.additional.Us <- order(additionalVals[1:numiter, 1, drop = FALSE]) 
+#       U <- append(U, values = additionalVals[order.additional.Us, 1, drop = FALSE],
+#                   after = index.first.u)
+#       ## TODO 'drop = FALSE' not needed here (I think? => check)
+#       WsToAdd <- additionalVals[order.additional.Us, 2, drop = FALSE] # needed twice
+#       W <- append(W, values = WsToAdd, after = index.first.u)
+#       l.integrand <- append(l.integrand, 
+#                             values = -log(2*pi*WsToAdd)*d/2 - lrdet - curr.maha2.2/WsToAdd,
+#                             after = index.first.u)
+#       numObs <- numObs + numiter 
+#     } else if(peekLeft) {
+#       u1u2 <- c(0, ZERO)
+#       int.argmax.u <- ZERO
+#     } else {
+#       u1u2 <- c(ONE, 1)
+#       int.argmax.u <- ONE 
+#     }
+#     
+#     ## 2.2 Find stratum (u.left, u.right) over which RQMC is applied ###############
+#     ## 2.2.1 Find "candidates" for bisection  ######################################
+#     ldens.right     <- NA
+#     ldens.left      <- NA
+#     ldens.stratum   <- NA
+#     ## Need to distinguish multiple special cases:
+#     greater.thshold <- (l.integrand > l.tol.int.lower)
+#     if(any(greater.thshold)){
+#       ## In this case there is at least one obs exceeding the threshold 
+#       ind.greater <- which(greater.thshold)
+#       ## Will use bisection to find 'u.left' and 'u.right'; starting values as follows:
+#       candid.left  <- c(max(0, U[ind.greater[1] - 1]), min(int.argmax.u, U[ind.greater[1]]) )
+#       ## Note: ind.greater[1] = 1 => U[ind.greater[1] - 1] = numeric(0)
+#       ## => max(0, U[ind.greater[1] - 1]) = 0
+#       ## Need several cases for 'candid.right': 
+#       candid.right <- if(ind.greater[length(ind.greater)] < Bn0p2){
+#         ## Let u^ = largest u >= u* such that g(u^) > threshold (exists)
+#         ## Case 1: 
+#         ## There is u' with u`>=u^ and g(u') < threshold 
+#         ## =>  'u.right' in (u^, u') 
+#         c(max(U[ind.greater[length(ind.greater)]], int.argmax.u), 
+#           U[ind.greater[length(ind.greater)] + 1] )
+#       } else {
+#         ## Case 2: the last point in U is such that g(u) > threshold, in other words:
+#         ## g(ONE) > threshold
+#         ## => u.right = 1 no matter where the peek is, but the handling of the region
+#         ## (ONE, 1) *does* depend on where the peek is. 
+#         if(peekRight){
+#           ## Area with peek right of ONE => can't simulate there
+#           ## => stratify from u.left to u.right = 1 (=ONE) 
+#           ## => use *crude* approximation for region (ONE, 1) where max is
+#           ldens.right <- log(.Machine$double.neg.eps) + log(int.theo.max) - log(2)
+#         } else {
+#           ## Area with the peek is left of ONE but theoretical 'u.right' is
+#           ## out of reach due to machine precision.
+#           ## => stratify from u.left to u.right = 1 (=ONE) 
+#           ## => do nothing in  (ONE, 1) 
+#           ldens.right <- -Inf 
+#         }
+#         c(1, 1) 
+#       }
+#     } else if(peekRight){
+#       ## In this case, none of the observations is > threshold and peek close to 1:
+#       ## Will use *all* obs to estimate in (0, ONE) and crude approximation in (ONE, 1)
+#       ## where max is. NO stratificatioN!
+#       candid.left  <- c(1, 1)
+#       candid.right <- c(1, 1)
+#       ldens.right <- log(.Machine$double.neg.eps) + log(int.theo.max) - log(2)
+#       ldens.stratum <- -Inf 
+#     } else if(peekLeft){
+#       candid.left  <- c(0, 0)
+#       candid.right <- c(0, 0)
+#       ldens.left <- log(.Machine$double.neg.eps) + log(int.theo.max) - log(2)
+#       ldens.stratum <- -Inf 
+#     }
+#     ## 2.2.2 Bisection to find 'u.left' and 'u.right'   ############################
+#     candids <- rbind(candid.left, candid.right)
+#     uLuR <- rep(NA, 2) # c('u.left', 'u.right')
+#     for(i in 1:2){
+#       curr.candid <- candids[i, ]
+#       uLuR[i] <- if(diff(curr.candid) <= tol.bisec.u) curr.candid[1] else {
+#         ## Use bisection similar to the one used to find u*
+#         convd <- FALSE
+#         numiter <- 0
+#         ## Matrix to store additional u's, W's, l.integrand's generated:
+#         additionalVals <- matrix(NA, ncol = 3, nrow = max.iter.bisec.w)
+#         while(!convd && numiter < max.iter.bisec.w){
+#           numiter <- numiter + 1
+#           ## Next point to check (midpoint of u1u2):
+#           u.next <- mean(curr.candid)
+#           w.next <- max(qW(u.next), ZERO)
+#           diff <- ((l.int.next <- -log(2*pi*w.next)*d/2 - lrdet - curr.maha2.2/w.next) -
+#                      l.tol.int.lower)
+#           ## Store values generated 
+#           additionalVals[numiter, ] <- c(u.next, w.next, l.int.next)
+#           ## Update 'candid.left' depending on sign of 'diff' and check convergence:
+#           if(diff > 0) curr.candid[2] <- u.next else curr.candid[1] <- u.next
+#           convd <- (abs(diff) < tol.bisec.lg)  || (diff(curr.candid) < tol.bisec.u)
+#         }
+#         ## Update the vectors 'U', 'W' and 'l.integrand' while *preserving the order*
+#         ## Order of first column = order of all columns 
+#         U <- append(U, values = additionalVals[1:numiter, 1, drop = FALSE],
+#                     after = numObs)
+#         ordering.U.new <- order(U)
+#         U <- U[ordering.U.new] # now U is correctly ordered
+#         W <- append(W, values = additionalVals[1:numiter, 2, drop = FALSE],
+#                     after = numObs)[ordering.U.new]
+#         l.integrand <- append(l.integrand,
+#                               values = additionalVals[1:numiter, 3, drop = FALSE],
+#                               after = numObs)[ordering.U.new]
+#         ## Update numObs (= length(U)) and return
+#         numObs <- numObs + numiter 
+#         u.next
+#       }
+#     }
+#     ## For readability
+#     u.left  <- if(uLuR[1] <= ZERO) 0 else uLuR[1]
+#     u.right <- if(uLuR[2] >= ONE) 1 else uLuR[2]
+#     
+#     
+#     ## 2.3 Estimate integral in the three regions ##################################
+#     ## 5.1 Estimate log of integral over (0, u.left) #############################
+#     ldens.left <- if(is.na(ldens.left)){
+#       ## 'ldens.left' not set yet => peek is *not* in (0, u.left) => Riemann sums 
+#       if(u.left == 0) -Inf else if(u.left == 1){
+#         ## => Special case where no obs > threshold
+#         ## => Use all obs and Riemann for this region
+#         weights <- c(U[1], U[2:numObs] - U[1:(numObs-1)])
+#         upper.sum <- logsumexp.matrix( 
+#           as.matrix(log(weights) + l.integrand[1:numObs], ncol = 1))
+#         lower.sum <- logsumexp.matrix( 
+#           as.matrix(log(weights) + c(-Inf, l.integrand[1:(numObs-1)]), ncol = 1))
+#         (lower.sum + upper.sum) / 2
+#       } else {
+#         ## 0 < u.left < 1 => Find obs in (0, u.left)
+#         ## Should exist (o.w. ldens.left already set) ?!
+#         ## TODO CHECK THAT!
+#         usUsed <- (U <= u.left) 
+#         sumusUsed <- sum(usUsed)
+#         if(sumusUsed > 1){ #
+#           ## Case 1: We have do have >1 observations in (0, u.left)
+#           lastUsed <- which(usUsed)[sumusUsed] 
+#           weights <- c(U[1], U[2:lastUsed] - U[1:(lastUsed-1)])
+#           upper.sum <- logsumexp.matrix( 
+#             as.matrix(log(weights) + l.integrand[1:lastUsed], ncol = 1))
+#           lower.sum <- logsumexp.matrix( 
+#             as.matrix(log(weights) + c(-Inf, l.integrand[1:(lastUsed-1)]), ncol = 1))
+#           (lower.sum + upper.sum) / 2
+#         } else {
+#           ## Case 2: No observations in (u.right, 1) => u.right > ONE 
+#           log(1 - u.left) + log(tol.int.lower) - log(2)
+#         }
+#       }
+#     } else {
+#       ldens.left
+#     }
+#     ## 5.2 Estimate log of integral over (u.right, 1) ############################
+#     ldens.right <- if(is.na(ldens.right)){
+#       ## 'ldens.right' not set yet => peek is *not* in (u.right, 1) => Riemann sums 
+#       if(u.right == 1) -Inf else if(u.right == 0){
+#         ## => Special case where no obs > threshold
+#         ## => Use all obs and Riemann for this region
+#         weights <- c(U[1], U[2:numObs] - U[1:(numObs-1)])
+#         upper.sum <- logsumexp.matrix( 
+#           as.matrix(log(weights) + l.integrand[1:numObs], ncol = 1))
+#         lower.sum <- logsumexp.matrix( 
+#           as.matrix(log(weights) + c(-Inf, l.integrand[1:(numObs-1)]), ncol = 1))
+#         (lower.sum + upper.sum) / 2
+#       } else {
+#         ## 0 < u.right < 1 => Find obs in (u.right, 1)
+#         ## Should exist (o.w. ldens.right already set) 
+#         ## TODO CHECK THAT!
+#         usUsed <- (U >= u.right) 
+#         if(any(usUsed)){ # maybe redundnat, see above 
+#           ## Case 1: We have do have observations in (u.right, 1)
+#           firstUsed <- which(usUsed)[1] 
+#           ## Case 1.1: We have only one obs in that region
+#           ## TODO can that actually happen? => CHECK
+#           ## Case 1.2: We have >1 obs in that region
+#           weights <- c(U[ (firstUsed+1):numObs ] - U[firstUsed:(numObs-1)],
+#                        .Machine$double.neg.eps)
+#           upper.sum <- logsumexp.matrix( 
+#             as.matrix(log(weights) + l.integrand[firstUsed:numObs], ncol = 1))
+#           lower.sum <- logsumexp.matrix( 
+#             as.matrix(log(weights) + c(l.integrand[(firstUsed+1):numObs], -Inf), ncol = 1))
+#           (lower.sum + upper.sum) / 2
+#         } else {
+#           ## Case 2: No observations in (u.right, 1) => u.right > ONE 
+#           log(1 - u.right) + log(tol.int.lower) - log(2)
+#         }
+#       }
+#     } else {
+#       ldens.right 
+#     } 
+#     ## 5.3 Estimate log of integral over (u.left, u.right) #######################
+#     ## We use RQMC in this region, unless 'ldens.strat' was already set. 
+#     stratlength <- u.right - u.left 
+#     rqmc.numiter <- 0
+#     
+#     ldens.stratum <- if(is.na(ldens.stratum)){
+#       if(stratlength > tol.stratlength){
+#         ldens.obj <- nvmix:::dnvmix.int.t(qW, maha2.2 = curr.maha2.2, lrdet = lrdet, d = d, 
+#                                           control = control, tol = tol, do.reltol = do.reltol,
+#                                           lower.q = u.left, upper.q = u.right, verbose = verbose)
+#         error        <- ldens.obj$error
+#         rqmc.numiter <- ldens.obj$numiter
+#         ldens.obj$ldensities + log(stratlength)
+#       } else {
+#         log(max(stratlength, ZERO)) + log(int.theo.max) - log(2)
+#       }
+#     } else {
+#       ldens.stratum
+#     }
+#     
+#     ## 6 Combine and return ######################################################
+#     ## Combine to one estimate:
+#     ldensities[ind] <- logsumexp.matrix(rbind(ldens.left, ldens.right, 
+#                                               ldens.stratum, deparse.level = 0)) 
+#     errors[ind]    <- error
+#     numiters[ind] <- rqmc.numiter
+#   }
+#   
+#   list(ldensities = ldensities, error = errors, numiter = numiters)
+# }
+# 
+# 
+# 
+# 
 # 
 # 
 # 
@@ -273,7 +595,7 @@
 # ##' @param fun.eval 2-vector giving the initial function evaluations (in the
 # ##'        first loop; typically powers of 2) and the maximal number of
 # ##'        function evaluations
-# ##' @param max.iter.rqmc maximum number of iterations in the RQMC approach        
+# ##' @param max.iter.rqmc maximum number of iterations in the RQMC approach
 # ##' @param B number of randomizations to get error estimates.
 # ##' @param log logical indicating whether the logarithmic density is to be computed
 # ##' @param verbose logical indicating whether a warning is given if the required
@@ -286,17 +608,17 @@
 #                      factor = NULL, # needs to be lower triangular!
 #                      control = list(), log = FALSE, verbose = TRUE,...)
 # {
-#   ## Checks 
+#   ## Checks
 #   if(!is.matrix(x)) x <- rbind(x)
 #   d <- ncol(x) # dimension
 #   if(!is.matrix(scale)) scale <- as.matrix(scale)
 #   stopifnot(length(loc) == d, dim(scale) == c(d, d))
 #   ## Deal with algorithm parameters, see also get.set.parameters():
-#   ## get.set.parameters() also does argument checking, so not needed here. 
+#   ## get.set.parameters() also does argument checking, so not needed here.
 #   control <- nvmix:::get.set.parameters(control)
 #   ## If factor is not provided, determine it here as a *lower* triangular matrix
 #   if(is.null(factor)) factor <- t(chol(scale)) # lower triangular
-#   
+# 
 #   ## 1 Define the quantile function of the mixing variable ###################
 #   ## If 'mix' is "constant" or "inverse.gamma", we use the analytical formulas
 #   is.const.mix <- FALSE # logical indicating whether we have a multivariate normal
@@ -345,7 +667,7 @@
 #   notNA <- rowSums(is.na(x)) == 0
 #   lres[!notNA] <- NA
 #   x <- x[notNA,, drop = FALSE] # non-missing data (rows)
-#   
+# 
 #   ## 2 Actual computation ######################################################
 #   ## Recall that 'scale' is *lower triangular*. For short, let 'scale' = L
 #   ## Solve L * z = x_i - mu for z, so z = L^{-1} * (x_i - mu)   (d vector)
@@ -376,7 +698,7 @@
 #     lres[notNA] <- -(d/2) * log(2 * pi) - lrdet - maha2/2
 #     if(!log) lres <- exp(lres) # already exponentiate
 #     error <- rep(0, length(maha2))
-#   } else { 
+#   } else {
 #     ## General case of a multivariate normal variance mixture (RQMC)
 #     ## Prepare inputs for dnvmix.int.t
 #     ## Sort maha-distance and divide by 2; store ordering to recover original
@@ -394,16 +716,16 @@
 #       lres <- exp(lres)
 #       ests$error[order(ordering.maha)]*pmax(lres[notNA], 1)
 #     }
-#     numiter <- ests$numiter 
+#     numiter <- ests$numiter
 #   }
 #   ## Return
-#   ## Note that 'lres' was exponentiated already if necessary. 
+#   ## Note that 'lres' was exponentiated already if necessary.
 #   attr(lres, "error")   <- error
 #   attr(lres, "numiter") <- numiter
-#   lres 
+#   lres
 # }
 # 
-
+# 
 
 
 
