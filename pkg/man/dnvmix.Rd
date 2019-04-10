@@ -77,11 +77,9 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
 \value{
   \code{dnvmix()}, \code{dStudent()} and \code{dNorm()} return
   a \code{\link{numeric}} \eqn{n}-vector with the computed (log-)density
-  values and attributes \code{"error"} (containing the error estimate of the
-  RQMC estimator) and \code{"numiter"} (containing the number of
-  iterations). If \eqn{n > 1} (so \code{x} has more than one row),
-  the error estimate reported is the largest error estimate among
-  the \eqn{n} density estimates.
+  values and attributes \code{"error"} (containing the absolte error estimates of the
+  of the (log-)density) and \code{"numiter"} (containing the number of
+  iterations). 
 }
 \details{
   Internally used is \code{factor}, so \code{scale} is not required
@@ -122,13 +120,11 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
          number generator.}
     }
   }
-  \item{\code{abstol}}{non-negative \code{\link{numeric}} providing the
-    absolute precision required, defaults to \code{1e-3}. If \code{abstol = 0},
-    the algorithm will typically run until the total number of function
-    evaluations exceeds \code{fun.eval[2]}. If \eqn{n > 1} (so
-    \code{x} has more than one row), the algorithm
-    runs until the precision requirement is reached for all
-    \eqn{n} density estimates.}
+  \item{\code{dnvmix.reltol}}{non-negative \code{\link{numeric}} providing the
+    relative precision required, defaults to \code{0.025}. If not provided, 
+    \code{dnvmix.abstol} will be used.}
+  \item{\code{dnvmix.abstol}}{non-negative numeric providing the absolute precision required.
+  Used only when \code{dnvmix.reltol} is \code{NA}.}  
   \item{\code{CI.factor}}{multiplier of the Monte Carlo confidence interval
     bounds.  The algorithm runs until \code{CI.factor} times the estimated
     standard error is less than \code{abstol}. If \code{CI.factor = 3.3}
@@ -150,7 +146,8 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
   performance of the algorithm depends heavily on the (quasi-)Monte
   Carlo point-set used.
 
-  If the absolute error tolerance \code{abstol} cannot be achieved with
+  If the error tolerance \code{dnvmix.reltol} (or, if not supplied, \code{dnvmix.reltol})
+  cannot be achieved within \code{max.iter.rqmc} iterations and 
   \code{fun.eval[2]} function evaluations, an additional warning is
   thrown.
 }
