@@ -41,6 +41,7 @@ dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, control, lower.q, upper.
   current.n       <- control$fun.eval[1] #initial sample size
   numiter         <- 0 # counter for the number of iterations
   total.fun.evals <- 0
+  ZERO            <- .Machine$double.neg.eps
   ## Absolte/relative precision?
   if(is.na(control$dnvmix.reltol)){
     ## Use absolute error
@@ -107,7 +108,7 @@ dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, control, lower.q, upper.
                          runif(current.n)
                        })) # sorted for later!
       ## 2.2 Evaluate the integrand at the (next) point set #############
-      W <- qW(U <- trafo(U)) # realizations of the mixing variable; sorted!
+      W <- pmax(qW(U <- trafo(U)), ZERO) # realizations of the mixing variable; sorted!
       if(return.all){
         UsWs[(curr.lastrow + 1) : (curr.lastrow + current.n), ] <- cbind(U, W)
         curr.lastrow <- curr.lastrow + current.n
@@ -161,7 +162,7 @@ dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, control, lower.q, upper.
     max.error <- max(errors)
   } # while()
   ## Finalize
-  ldensities <- log(.colMeans(exp(rqmc.estimates), B, n, 0))
+  ldensities <- logsumexp(rqmc.estimates) - log(B)
   ## 4 Return ##################################################################
   ret.obj <- if(return.all){
     list(ldensities = ldensities, numiter = numiter, error = errors,
@@ -210,16 +211,26 @@ dnvmix.internal <- function(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, control
     ## Accuracy not reached for at least one 'maha2.2' value
     ## => Use adaptive approach for those
     notRchd <- which(error > tol)
-    rqmc.strat.obj <- dnvmix.internal.adaptRQMC(qW, maha2.2[notRchd], lrdet = lrdet, 
+    rqmc.obj <- dnvmix.internal.adaptRQMC(qW, maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
                                                 d = d, UsWs = rqmc.obj$UsWs, 
                                                 control = control)
-    ldens[notRchd]    <- rqmc.strat.obj$ldensities
-    numiter[notRchd]  <- numiter[notRchd] + rqmc.strat.obj$numiter
-    error[notRchd]    <- rqmc.strat.obj$error
-    if(any(error > tol)) warning("Tolerance not reached for all inputs; consider increasing
-                                 'max.iter.rqmc' in the 'control' argument.")
+    ldens[notRchd]    <- rqmc.obj$ldensities
+    numiter[notRchd]  <- numiter[notRchd] + rqmc.obj$numiter
+    error[notRchd]    <- rqmc.obj$error
+    ## Handle warnings:
+    if(verbose){
+      if(any(!is.na(error))){
+        ## At least one error is not NA
+        if(any(is.na(error))) warning("Estimation unreliable, corresponding error estimate NA")
+        if(any(error > tol)) warning("Tolerance not reached for all inputs; consider increasing
+                                     'max.iter.rqmc' in the 'control' argument.")
+      } else {
+        ## All errors are NA
+        warning("Estimation unreliable, corresponding error estimate NA")
+      } 
+    }
     ## Transform error back to *absolute* errors:
-    if(do.reltol) error <- error * ldens 
+    if(do.reltol) error <- error * abs(ldens)
   }
   list(ldensities = ldens, numiter = numiter, error = error)
 }
@@ -237,13 +248,12 @@ dnvmix.internal <- function(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, control
 dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
 {
   ## 1 Basics and initialization ###############################################
-  control           <- get.set.parameters(control)
   numiter           <- 0 # counter for the number of iterations
   ONE               <- 1-.Machine$double.neg.eps
   ZERO              <- .Machine$double.neg.eps
   ## TODO! CHECK if that makes sense (shd be .xmin, but qW(.xmin) = 0 (often))
   tol.int.lower     <- control$dnvmix.tol.int.lower
-  l.tol.int.lower   <- log(tol.int.lower)# sample only where integrand>tol.int.lower
+  l.tol.int.lower.m <- log(tol.int.lower)# sample only where integrand>tol.int.lower
   tol.bisec.w       <- control$dnvmix.tol.bisec.w
   tol.stratlength   <- control$dnvmix.tol.stratlength
   max.iter.bisec.w  <- control$dnvmix.max.iter.bisec.w
@@ -295,6 +305,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
       ldens.right <- -Inf
       -log(2*pi*W.max)*d/2 - lrdet - curr.maha2.2/W.max
     }
+    l.tol.int.lower <- min(max(l.tol.int.lower.m, l.int.theo.max - 10*log(10)), 0)
     ## 2.1 Find u* = argmax_u{integrand(u)} ####################################
     ## Only needed if int.argmax.u is NA (otherwise, we already have it)
     if(!outofreach.w && is.na(int.argmax.u)){
@@ -400,6 +411,9 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
       candid.right <- c(0, 0)
       ldens.left <- log(.Machine$double.neg.eps) + l.int.theo.max - log(2)
       ldens.stratum <- -Inf
+    } else {
+      candid.left <- c(0, int.argmax.u)
+      candid.right <- c(int.argmax.u, 1)
     }
     ## 2.2.2 Bisection to find 'u.left' and 'u.right'   ########################
     candids <- rbind(candid.left, candid.right)
@@ -528,7 +542,8 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
         ldens.obj <- dnvmix.internal.RQMC(qW, maha2.2 = curr.maha2.2, lrdet = lrdet, 
                                           d = d, control = control, lower.q = u.left, 
                                           upper.q = u.right, return.all = FALSE, 
-                                          max.iter.rqmc = control$max.iter.rqmc)
+                                          max.iter.rqmc = control$max.iter.rqmc -
+                                            control$dnvmix.max.iter.rqmc.pilot)
         error        <- ldens.obj$error
         rqmc.numiter <- ldens.obj$numiter
         ldens.obj$ldensities + log(stratlength)
@@ -544,6 +559,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
                                        deparse.level = 0))
     errors[ind]     <- error
     numiters[ind]   <- rqmc.numiter
+    #ind <- ind + 1
   }
   list(ldensities = ldensities, error = errors, numiter = numiters)
 }
@@ -596,7 +612,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   stopifnot(length(loc) == d, dim(scale) == c(d, d))
   ## Deal with algorithm parameters, see also get.set.parameters():
   ## get.set.parameters() also does argument checking, so not needed here.
-  control <- get.set.parameters(control)
+  control <- nvmix:::get.set.parameters(control)
   ## If factor is not provided, determine it here as a *lower* triangular matrix
   if(is.null(factor)) factor <- t(chol(scale)) # lower triangular
   
@@ -686,7 +702,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     ## ordering later:
     ordering.maha <- order(maha2)
     maha2.2 <- maha2[ordering.maha]/2
-    ## Call internal dnvix (which itself calls C-Code)
+    ## Call internal dnvmix (which itself calls C-Code)
     ests <- dnvmix.internal(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d,
                             control = control, verbose = verbose)
     ## Grab results, correct 'error' and 'lres' if 'log = FALSE'

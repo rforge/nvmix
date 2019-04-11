@@ -1,3 +1,7 @@
+### dnvmix questions #######################################################
+- Warning handling 
+
+
 
 ### For the next release #######################################################
 
@@ -13,25 +17,16 @@
 - TODO	Finish copula.rd 
 - TODO! Re-think verbose and warnings for copula functions! Error estimates not reliable,
 	as approximations are plugged into approximations etc pp 
-- TODO	can we re-think how we handle all these arguments? For instance, could we provide
-	all optional arguments as one "list" and then just check if that list was provided?
-	I feel like there are way too many arguments that nobody ever changes anyway...
-		DONE
-- TODO? instead of providing maximum number of fun-evals, maybe max number of iterations?
-	it's a little easier to grasp and easier to work with. That holds for dnvmix and
-	pnvmix
-		DONE
+
+
 - TODO  'loc' right now has to be a vector, shd maybe also work for 'loc' being (d,1) matrix?
-- TODO  write 'pnvmix1d' (special case of pnvmix, just for one dimension => no reordering,
-	can vectorize. Could be useful for copulas / fitting copulas ?
-		DONE
 - TODO: 'factor' should most likely also be an argument of pnvmix() -- sometimes one already
         has that computed and by passing it one could avoid it being computed
 	every time
 - TODO: cite our own paper on ?pnvmix, ?dnvmix and ?rnvmix and in the vignette
         (e.g. when saying 'has proven to outperform the others')
 - TODO Allow rmix() to be specified in pnvmix() for method = 'PRNG'. This can be a first
-       Step towards evaluation GIG mixtures, where qmix() is not available but one can
+       step towards evaluation GIG mixtures, where qmix() is not available but one can
        sample from the mixing distribution.
 - TODO look into quantile functions of univariate (marginal) normal variance mixtures.
        If we have a function, say, qnvmix1 (for 1 dimensional normal variance mixtures),
@@ -186,6 +181,14 @@
 
 ### Some former DONE ###########################################################
 
+
+
+-DONE instead of providing maximum number of fun-evals, maybe max number of iterations?
+	it's a little easier to grasp and easier to work with. That holds for dnvmix and
+	pnvmix
+-DONE an we re-think how we handle all these arguments? For instance, could we provide 
+	all optional arguments as one "list" and then just check if that list wasprovided?
+	I feel like there are way too many arguments that nobody ever changes anyway...
 -DONE Does it make sense to choose the default of fun.eval[2] differently?
        MH: I feel it should be something like 1/abstol, so that if one plays
            with abstol, one has a reasonable chance not having to modify
