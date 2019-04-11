@@ -17,6 +17,7 @@ get.set.parameters <- function(control = list()){
     ## For dnvmix():
     dnvmix.abstol = 1e-3, 
     dnvmix.reltol = 0.025, # If !NA, 'reltol' is used instead of 'abstol'
+    dnvmix.max.iter.rqmc.pilot = 4,
     dnvmix.tol.int.lower = 1e-30,
     dnvmix.tol.bisec.w = 0.1,
     dnvmix.tol.stratlength = 1e-20,
