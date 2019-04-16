@@ -487,7 +487,7 @@ dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, control, lower.q, upper.
     numiter <- numiter + 1
     ## Update error. The following is slightly faster than 'apply(..., 2, var)' 
     ldensities <- logsumexp(rqmc.estimates) - log(B) # performs better than .colMeans
-    vars <- .colMeans((rqmc.estimates - ldensities)^2, B, n, 0)
+    vars <- .colMeans((rqmc.estimates - rep(ldensities, each = B))^2, B, n, 0)
     #vars <- apply(rqmc.estimates, 2, var) 
     errors <- if(!do.reltol){
       sqrt(vars)*CI.factor.sqrt.B
@@ -547,7 +547,7 @@ dnvmix.internal <- function(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, control
     ## Accuracy not reached for at least one 'maha2.2' value
     ## => Use adaptive approach for those
     notRchd <- which(error > tol)
-    rqmc.obj <- dnvmix.internal.adaptRQMC(qW, maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
+    rqmc.obj <- nvmix:::dnvmix.internal.adaptRQMC(qW, maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
                                                 d = d, UsWs = rqmc.obj$UsWs, 
                                                 control = control)
     ldens[notRchd]    <- rqmc.obj$ldensities
@@ -555,15 +555,13 @@ dnvmix.internal <- function(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, control
     error[notRchd]    <- rqmc.obj$error
     ## Handle warnings:
     if(verbose){
-      if(any(!is.na(error))){
-        ## At least one error is not NA
-        if(any(is.na(error))) warning("Estimation unreliable, corresponding error estimate NA")
-        if(any(error > tol)) warning("Tolerance not reached for all inputs; consider increasing
-                                     'max.iter.rqmc' in the 'control' argument.")
-      } else {
-        ## All errors are NA
+      if(any(is.na(error))){
+        ## At least one error is NA
         warning("Estimation unreliable, corresponding error estimate NA")
-      } 
+      }
+      whichNA <- which(is.na(error))
+      if(any(error[setdiff(1:length(error), whichNA)] > tol)) # 'setdiff' needed if 'whichNA' is empty
+        warning("Tolerance not reached for all inputs; consider increasing 'max.iter.rqmc' in the 'control' argument.")
     }
     ## Transform error back to *absolute* errors:
     if(do.reltol) error <- error * abs(ldens)

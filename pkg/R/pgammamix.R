@@ -67,7 +67,7 @@ pgammamix <- function(m, qmix, d, lower.tail = TRUE,
   pres <- rep(0, n) # n-vector of results
   notNA <- which(!is.na(m)) 
   pres[!notNA] <- NA
-  m <- m[notNA,, drop = FALSE] # non-missing data (rows)
+  m <- m[notNA, drop = FALSE] # non-missing data (rows)
     ## Counter
   numiter <- 0 # initialize counter (0 for 'inv.gam' and 'is.const.mix')
   ## 1 Basics ##################################################################
@@ -171,7 +171,7 @@ pgammamix <- function(m, qmix, d, lower.tail = TRUE,
     numiter <- numiter + 1
     ## Update error. The following is slightly faster than 'apply(..., 2, var)' 
     pres <- .colMeans(rqmc.estimates, B, n , 0)
-    vars <- .colMeans((rqmc.estimates - pres)^2, B, n, 0)
+    vars <- .colMeans((rqmc.estimates - rep(pres, each = B))^2, B, n, 0)
     errors <- if(!do.reltol){
       sqrt(vars)*CI.factor.sqrt.B
     } else {

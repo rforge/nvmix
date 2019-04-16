@@ -22,6 +22,9 @@ get.set.parameters <- function(control = list()){
     dnvmix.tol.bisec.w = 0.1,
     dnvmix.tol.stratlength = 1e-20,
     dnvmix.max.iter.bisec.w = 55,
+    ## For pgammamix:
+    pgammamix.reltol = NA,
+    pgammamix.abstol = 1e-3,
     ## For qnvmix():
     max.iter.newton = 40, 
     newton.conv.abstol = 1e-4,
