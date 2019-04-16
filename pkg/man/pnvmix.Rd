@@ -215,7 +215,7 @@ set.seed(1)
 pt1 <- pnvmix(b, lower = a, qmix = "inverse.gamma", df = df, scale = P)
 
 ## Here is a version providing the quantile function of the mixing distribution
-qW <- function(u, df) 1 / qgamma(u, shape = df/2, rate = df/2)
+qW <- function(u, df) 1 / qgamma(1-u, shape = df/2, rate = df/2)
 mean.sqrt.mix <- sqrt(df) * gamma(df/2) / (sqrt(2) * gamma((df+1) / 2))
 set.seed(1)
 pt2 <- pnvmix(b, lower = a, qmix = qW, df  = df, scale = P,

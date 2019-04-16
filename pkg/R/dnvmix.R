@@ -315,7 +315,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
     rqmc.numiter <- 0
     ldens.stratum <- if(is.na(ldens.stratum)){
       if(stratlength > tol.stratlength){
-        ldens.obj <- dnvmix.internal.RQMC(qW, maha2.2 = curr.maha2.2, lrdet = lrdet, 
+        ldens.obj <- nvmix:::dnvmix.internal.RQMC(qW, maha2.2 = curr.maha2.2, lrdet = lrdet, 
                                           d = d, control = control, lower.q = u.left, 
                                           upper.q = u.right, return.all = FALSE, 
                                           max.iter.rqmc = control$max.iter.rqmc -
@@ -335,7 +335,6 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
                                        deparse.level = 0))
     errors[ind]     <- error
     numiters[ind]   <- rqmc.numiter
-    #ind <- ind + 1
   }
   list(ldensities = ldensities, error = errors, numiter = numiters)
 }

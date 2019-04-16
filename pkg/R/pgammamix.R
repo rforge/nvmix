@@ -108,7 +108,7 @@ pgammamix <- function(m, qmix, d, lower.tail = TRUE,
   ## while() runs until precision abstol is reached or the number of function
   ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
   ## the desired log-densities are calculated.
-  while(max.error > tol && numiter < max.iter.rqmc &&
+  while(max.error > tol && numiter < control$max.iter.rqmc &&
         total.fun.evals < control$fun.eval[2])
   {
     ## Reset seed to have the same shifts in sobol( ... )
@@ -182,7 +182,7 @@ pgammamix <- function(m, qmix, d, lower.tail = TRUE,
   if(verbose && max.error > tol)
     warning("Tolerance not reached for all inputs; consider increasing 'max.iter.rqmc' in the 'control' argument.")
   ## 4 Return ##################################################################
-  attr(pres, "error")   <- error # these are absolute errors, no matter what!
+  attr(pres, "error")   <- errors 
   attr(pres, "numiter") <- numiter
   pres
 }

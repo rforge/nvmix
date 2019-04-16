@@ -127,7 +127,7 @@ u <- matrix(runif(2*d), ncol = d)
 ## We illustrate using a t-copula
 df = 2.1
 ## Define quantile function which is inverse-gamma here:
-qmix. <- function(u) 1/qgamma(u, shape = df/2, rate = df/2) 
+qmix. <- function(u) 1/qgamma(1-u, shape = df/2, rate = df/2) 
 
 
 ### Example for dnvmixcop() ####################################################

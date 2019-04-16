@@ -177,7 +177,7 @@ stopifnot(all.equal(dt1, c(0.013266542, 0.011967156, 0.010760575, 0.009648682),
                     tol = 1e-7, check.attributes = FALSE))
 
 ## Here is a version providing the quantile function of the mixing distribution
-qW <- function(u, df) 1 / qgamma(u, shape = df/2, rate = df/2)
+qW <- function(u, df) 1 / qgamma(1-u, shape = df/2, rate = df/2)
 dt2 <- dnvmix(x, qmix = qW, df = df, scale = P)
 
 ## Compare

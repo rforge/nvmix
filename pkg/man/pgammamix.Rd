@@ -33,6 +33,8 @@ pgammamix(m, qmix, d, lower.tail = TRUE, control = list(), verbose = TRUE, ...)
     }
   }
   \item{d}{degree of freedom parameter.}
+  \item{lower.tail}{\code{\link{logical}}; if \code{TRUE} (default), probabilities are
+  \eqn{P(X\le m)}, otherwise \eqn{P(X > m)}.}
   \item{control}{\code{\link{list}} specifying algorithm specific
     parameters; see ?pnvmix.}   
   \item{verbose}{% *not* the same as in ?dnvmix()
