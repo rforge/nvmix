@@ -11,230 +11,6 @@ logsumexp <- function(M)
   cmax + log(colSums(exp( M - rep(cmax, each = dim(M)[1]))))
 }
 
-##' @title Density of a Multivariate Normal Variance Mixture for restricted W [not exported]
-##' @param qW function of one variable specifying the quantile function of W.
-##' @param maha2.2 squared maha-distances divided by 2. Assumed to be *sorted*
-##' @param lrdet log(sqrt(det(scale))) where 'scale' is the scale matrix of
-##'        the normal variance mixture distribution.
-##' @param d dimension of the Normal Variance Mixture
-##' @param control see ?dnvmix
-##' @param lower.q numeric in (0,1)
-##' @param upper.q numeric in (0,1), > lower.q. Density will be estimated
-##'         conditional on W being between its lower.q and upper.q quantile.
-##' @param max.iter.rqmc maximum number of iterations        
-##' @param return.all logical; if true, matrix (U, qW(U)) also returned.
-##' @return List of three:
-##'         $ldensities n-vector with computed log-density values
-##'         $numiter numeric, number of iterations needed
-##'         $error n-vector of error estimates for log-densities; either relative
-##'         error or absolte error depending on is.na(control$dnvmix.reltol)
-##'         $UsWs (B, n) matrix (U, qW(U)) where U are uniforms (only if return.all = TRUE)
-##' @author Erik Hintz and Marius Hofert
-dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, control, lower.q, upper.q,
-                                 max.iter.rqmc, return.all)
-{
-  ## 1 Basics ##################################################################
-  ## Define various quantites:
-  dblng           <- (control$increment == "doubling")
-  B               <- control$B # number of randomizations
-  n               <- length(maha2.2) # sample size
-  current.n       <- control$fun.eval[1] #initial sample size
-  numiter         <- 0 # counter for the number of iterations
-  total.fun.evals <- 0
-  ZERO            <- .Machine$double.neg.eps
-  ## Absolte/relative precision?
-  if(is.na(control$dnvmix.reltol)){
-    ## Use absolute error
-    tol <- control$dnvmix.abstol
-    do.reltol <- FALSE
-  } else {
-    ## Use relative error
-    tol <- control$dnvmix.reltol
-    do.reltol <- TRUE
-  }
-  ## Store seed if 'sobol' is used to get the same shifts later:
-  if(control$method == "sobol") {
-    if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
-    seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used
-  }
-  ## Additional variables needed if the increment chosen is "dblng"
-  if(dblng) {
-    if(control$method == "sobol") useskip <- 0
-    denom <- 1
-  }
-  ## Matrix to store RQMC estimates
-  rqmc.estimates <- matrix(-Inf, ncol = n, nrow = B)
-  ## Will be needed a lot:
-  CI.factor.sqrt.B <- control$CI.factor / sqrt(B)
-  ## Define trafo-function that maps u to (q,1) or (1,q) depending on 'up'
-  trafo <- function(u) lower.q + (upper.q - lower.q)*u
-  ## Initialize 'max.error' to > tol so that we can enter the while loop:
-  max.error <- tol + 42
-  ## Matrix to store U, W values => nrows = maximal number of funevals
-  if(return.all){
-    max.nrow <- if(dblng) current.n*B*2^(max.iter.rqmc-1) else max.iter.rqmc*B*current.n
-    UsWs <- matrix(NA, ncol = 2, nrow = max.nrow)
-    curr.lastrow <- 0 # will count row-index additional points are being inserted after
-  }
-  ## 2 Main loop ###############################################################
-  ## while() runs until precision abstol is reached or the number of function
-  ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
-  ## the desired log-densities are calculated.
-  while(max.error > tol && numiter < max.iter.rqmc &&
-        total.fun.evals < control$fun.eval[2])
-  {
-    ## Reset seed to have the same shifts in sobol( ... )
-    if(control$method == "sobol" && numiter > 0)
-      .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
-    for(b in 1:B){
-      ## 2.1 Get the point set ###########################################
-      U <- sort(switch(control$method,
-                       "sobol" = {
-                         if(dblng) {
-                           qrng::sobol(n = current.n, d = 1,
-                                       randomize = TRUE,
-                                       skip = (useskip * current.n))
-                         } else {
-                           qrng::sobol(n = current.n, d = 1,
-                                       randomize = TRUE,
-                                       skip = (numiter * current.n))
-                         }
-                       },
-                       "ghalton" = {
-                         qrng::ghalton(n = current.n, d = 1,
-                                       method = "generalized")
-                       },
-                       "PRNG" = {
-                         runif(current.n)
-                       })) # sorted for later!
-      ## 2.2 Evaluate the integrand at the (next) point set #############
-      W <- pmax(qW(U <- trafo(U)), ZERO) # realizations of the mixing variable; sorted!
-      if(return.all){
-        UsWs[(curr.lastrow + 1) : (curr.lastrow + current.n), ] <- cbind(U, W)
-        curr.lastrow <- curr.lastrow + current.n
-      }
-      next.estimate <- .Call("eval_dnvmix_integrand",
-                             W          = as.double(W),
-                             maha2_2    = as.double(maha2.2),
-                             current_n  = as.integer(current.n),
-                             n          = as.integer(n),
-                             d          = as.integer(d),
-                             k          = as.integer(d),
-                             lrdet      = as.double(lrdet))
-      ## 2.3 Update RQMC estimates #######################################
-      rqmc.estimates[b,] <-
-        if(dblng) {
-          ## In this case both, rqmc.estimates[b,] and
-          ## next.estimate depend on n.current points
-          logsumexp(rbind(rqmc.estimates[b,], next.estimate, 
-                          deparse.level = 0)) - log(denom)
-        } else {
-          ## In this case, rqmc.estimates[b,] depends on
-          ## numiter * n.current points whereas next.estimate
-          ## depends on n.current points
-          logsumexp(rbind(log(numiter) + rqmc.estimates[b, ], next.estimate, 
-                          deparse.level = 0)) - log(numiter + 1)
-        }
-    } # end for(b in 1:B)
-    ## Update of various variables
-    ## Double sample size and adjust denominator in averaging as well as useskip
-    if(dblng) {
-      ## Change denom and useksip (exactly once, in the first iteration)
-      if(numiter == 0){
-        denom <- 2
-        useskip <- 1
-      } else {
-        ## Increase sample size n. This is done in all iterations
-        ## except for the first two
-        current.n <- 2 * current.n
-      }
-    }
-    ## Total number of function evaluations:
-    total.fun.evals <- total.fun.evals + B * current.n
-    numiter <- numiter + 1
-    ## Update error.
-    vars <- apply(rqmc.estimates, 2, var) # variances
-    errors <- if(!do.reltol){
-      sqrt(vars)*CI.factor.sqrt.B
-    } else {
-      sqrt(vars)/abs(.colMeans(rqmc.estimates, B, n, 0))*CI.factor.sqrt.B
-    }
-    max.error <- max(errors)
-  } # while()
-  ## Finalize
-  ldensities <- logsumexp(rqmc.estimates) - log(B)
-  ## 4 Return ##################################################################
-  ret.obj <- if(return.all){
-    list(ldensities = ldensities, numiter = numiter, error = errors,
-         UsWs = UsWs)
-  } else {
-    list(ldensities = ldensities, numiter = numiter, error = errors)
-  }
-  ret.obj
-}
-
-##' @title Internal dnvmix wrapper [not exported]
-##' @param qW function of one variable specifying the quantile function of W.
-##' @param maha2.2 squared maha-distances divided by 2. Assumed to be *sorted*
-##' @param lrdet log(sqrt(det(scale))) where 'scale' is the scale matrix of
-##'        the normal variance mixture distribution.
-##' @param d dimension of the Normal Variance Mixture
-##' @param control see ?dnvmix
-##' @param verbose see ?dnvmix
-##' @return List of three:
-##'         $ldensities n-vector with computed log-density values
-##'         $error n-vector of *absolute* error estimates for log-densities
-##'         $numiter n-vector of number of iterations needed
-##' @author Erik Hintz and Marius Hofert
-dnvmix.internal <- function(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, control,
-                            verbose = verbose)
-{
-  ## Absolte/relative precision?
-  if(is.na(control$dnvmix.reltol)){
-    tol <- control$dnvmix.abstol
-    do.reltol <- FALSE
-  } else {
-    ## Use relative error
-    tol <- control$dnvmix.reltol
-    do.reltol <- TRUE
-  }
-  ## Call RQMC procedure without any stratification
-  rqmc.obj <- dnvmix.internal.RQMC(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, 
-                                   control = control, lower.q = 0, upper.q = 1, 
-                                   max.iter.rqmc = control$dnvmix.max.iter.rqmc.pilot,
-                                   return.all = TRUE)
-  ## Extract results
-  ldens   <- rqmc.obj$ldensities
-  numiter <- rep(rqmc.obj$numiter, length(maha2.2))
-  error   <- rqmc.obj$error
-  if(any(error > tol)){
-    ## Accuracy not reached for at least one 'maha2.2' value
-    ## => Use adaptive approach for those
-    notRchd <- which(error > tol)
-    rqmc.obj <- dnvmix.internal.adaptRQMC(qW, maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
-                                                d = d, UsWs = rqmc.obj$UsWs, 
-                                                control = control)
-    ldens[notRchd]    <- rqmc.obj$ldensities
-    numiter[notRchd]  <- numiter[notRchd] + rqmc.obj$numiter
-    error[notRchd]    <- rqmc.obj$error
-    ## Handle warnings:
-    if(verbose){
-      if(any(!is.na(error))){
-        ## At least one error is not NA
-        if(any(is.na(error))) warning("Estimation unreliable, corresponding error estimate NA")
-        if(any(error > tol)) warning("Tolerance not reached for all inputs; consider increasing
-                                     'max.iter.rqmc' in the 'control' argument.")
-      } else {
-        ## All errors are NA
-        warning("Estimation unreliable, corresponding error estimate NA")
-      } 
-    }
-    ## Transform error back to *absolute* errors:
-    if(do.reltol) error <- error * abs(ldens)
-  }
-  list(ldensities = ldens, numiter = numiter, error = error)
-}
-
 ##' @title Adaptive RQMC method to estimate the log-density of a NVMIX - dist'n [not exported]
 ##' @param qW function of one variable specifying the quantile function of W.
 ##' @param maha2.2 squared maha-distances divided by 2. Assumed to be *sorted*
@@ -432,7 +208,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
           u.next <- mean(curr.candid)
           w.next <- max(qW(u.next), ZERO)
           diff <- ((l.int.next <- -log(2*pi*w.next)*d/2 - lrdet - curr.maha2.2/w.next) -
-                   l.tol.int.lower)
+                     l.tol.int.lower)
           ## Store values generated
           additionalVals[numiter, ] <- c(u.next, w.next, l.int.next)
           ## Update 'candid.left' depending on sign of 'diff' and check convergence:
@@ -482,9 +258,9 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
           lastUsed <- which(usUsed)[sumusUsed]
           weights <- c(U[1], U[2:lastUsed] - U[1:(lastUsed-1)])
           upper.sum <- logsumexp(as.matrix(log(weights) + 
-                                           l.integrand[1:lastUsed], ncol = 1))
+                                             l.integrand[1:lastUsed], ncol = 1))
           lower.sum <- logsumexp(as.matrix(log(weights) + 
-                                           c(-Inf, l.integrand[1:(lastUsed-1)]), 
+                                             c(-Inf, l.integrand[1:(lastUsed-1)]), 
                                            ncol = 1))
           (lower.sum + upper.sum) / 2
         } else {
@@ -521,9 +297,9 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
           weights <- c(U[ (firstUsed+1):numObs ] - U[firstUsed:(numObs-1)],
                        .Machine$double.neg.eps)
           upper.sum <- logsumexp(as.matrix(log(weights) + 
-                                           l.integrand[firstUsed:numObs], ncol = 1))
+                                             l.integrand[firstUsed:numObs], ncol = 1))
           lower.sum <- logsumexp(as.matrix(log(weights) + 
-                                           c(l.integrand[(firstUsed+1):numObs], -Inf), ncol = 1))
+                                             c(l.integrand[(firstUsed+1):numObs], -Inf), ncol = 1))
           (lower.sum + upper.sum) / 2
         } else {
           ## Case 2: No observations in (u.right, 1) => u.right > ONE
@@ -563,6 +339,239 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
   }
   list(ldensities = ldensities, error = errors, numiter = numiters)
 }
+
+
+##' @title Density of a Multivariate Normal Variance Mixture for restricted W [not exported]
+##' @param qW function of one variable specifying the quantile function of W.
+##' @param maha2.2 squared maha-distances divided by 2. Assumed to be *sorted*
+##' @param lrdet log(sqrt(det(scale))) where 'scale' is the scale matrix of
+##'        the normal variance mixture distribution.
+##' @param d dimension of the Normal Variance Mixture
+##' @param control see ?dnvmix
+##' @param lower.q numeric in (0,1)
+##' @param upper.q numeric in (0,1), > lower.q. Density will be estimated
+##'         conditional on W being between its lower.q and upper.q quantile.
+##' @param max.iter.rqmc maximum number of iterations        
+##' @param return.all logical; if true, matrix (U, qW(U)) also returned.
+##' @return List of three:
+##'         $ldensities n-vector with computed log-density values
+##'         $numiter numeric, number of iterations needed
+##'         $error n-vector of error estimates for log-densities; either relative
+##'         error or absolte error depending on is.na(control$dnvmix.reltol)
+##'         $UsWs (B, n) matrix (U, qW(U)) where U are uniforms (only if return.all = TRUE)
+##' @author Erik Hintz and Marius Hofert
+dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, control, lower.q, upper.q,
+                                 max.iter.rqmc, return.all)
+{
+  ## 1 Basics ##################################################################
+  ## Define various quantites:
+  dblng           <- (control$increment == "doubling")
+  B               <- control$B # number of randomizations
+  n               <- length(maha2.2) # sample size
+  current.n       <- control$fun.eval[1] #initial sample size
+  numiter         <- 0 # counter for the number of iterations
+  total.fun.evals <- 0
+  ZERO            <- .Machine$double.neg.eps
+  ## Absolte/relative precision?
+  if(is.na(control$dnvmix.reltol)){
+    ## Use absolute error
+    tol <- control$dnvmix.abstol
+    do.reltol <- FALSE
+  } else {
+    ## Use relative error
+    tol <- control$dnvmix.reltol
+    do.reltol <- TRUE
+  }
+  ## Store seed if 'sobol' is used to get the same shifts later:
+  if(control$method == "sobol") {
+    if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
+    seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used
+  }
+  ## Additional variables needed if the increment chosen is "dblng"
+  if(dblng) {
+    if(control$method == "sobol") useskip <- 0
+    denom <- 1
+  }
+  ## Matrix to store RQMC estimates
+  rqmc.estimates <- matrix(-Inf, ncol = n, nrow = B)
+  ## Will be needed a lot:
+  CI.factor.sqrt.B <- control$CI.factor / sqrt(B)
+  ## Define trafo-function that maps u to (q,1) or (1,q) depending on 'up'
+  trafo <- function(u) lower.q + (upper.q - lower.q)*u
+  ## Initialize 'max.error' to > tol so that we can enter the while loop:
+  max.error <- tol + 42
+  ## Matrix to store U, W values => nrows = maximal number of funevals
+  if(return.all){
+    max.nrow <- if(dblng) current.n*B*2^(max.iter.rqmc-1) else max.iter.rqmc*B*current.n
+    UsWs <- matrix(NA, ncol = 2, nrow = max.nrow)
+    curr.lastrow <- 0 # will count row-index additional points are being inserted after
+  }
+  ## 2 Main loop ###############################################################
+  ## while() runs until precision abstol is reached or the number of function
+  ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
+  ## the desired log-densities are calculated.
+  while(max.error > tol && numiter < max.iter.rqmc &&
+        total.fun.evals < control$fun.eval[2])
+  {
+    ## Reset seed to have the same shifts in sobol( ... )
+    if(control$method == "sobol" && numiter > 0)
+      .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
+    for(b in 1:B){
+      ## 2.1 Get the point set ###########################################
+      U <- sort(switch(control$method,
+                       "sobol" = {
+                         if(dblng) {
+                           qrng::sobol(n = current.n, d = 1,
+                                       randomize = TRUE,
+                                       skip = (useskip * current.n))
+                         } else {
+                           qrng::sobol(n = current.n, d = 1,
+                                       randomize = TRUE,
+                                       skip = (numiter * current.n))
+                         }
+                       },
+                       "ghalton" = {
+                         qrng::ghalton(n = current.n, d = 1,
+                                       method = "generalized")
+                       },
+                       "PRNG" = {
+                         runif(current.n)
+                       })) # sorted for later!
+      ## 2.2 Evaluate the integrand at the (next) point set #############
+      W <- pmax(qW(U <- trafo(U)), ZERO) # realizations of the mixing variable; sorted!
+      if(return.all){
+        UsWs[(curr.lastrow + 1) : (curr.lastrow + current.n), ] <- cbind(U, W)
+        curr.lastrow <- curr.lastrow + current.n
+      }
+      next.estimate <- .Call("eval_dnvmix_integrand",
+                             W          = as.double(W),
+                             maha2_2    = as.double(maha2.2),
+                             current_n  = as.integer(current.n),
+                             n          = as.integer(n),
+                             d          = as.integer(d),
+                             k          = as.integer(d),
+                             lrdet      = as.double(lrdet))
+      ## 2.3 Update RQMC estimates #######################################
+      rqmc.estimates[b,] <-
+        if(dblng) {
+          ## In this case both, rqmc.estimates[b,] and
+          ## next.estimate depend on n.current points
+          .Call("logsumexp2",
+                a = as.double(rqmc.estimates[b,]),
+                b = as.double(next.estimate),
+                n = as.integer(n)) - log(denom)
+        } else {
+          ## In this case, rqmc.estimates[b,] depends on
+          ## numiter * n.current points whereas next.estimate
+          ## depends on n.current points
+          .Call("logsumexp2",
+                a = as.double(rqmc.estimates[b,] + log(numiter)),
+                b = as.double(next.estimate),
+                n = as.integer(n)) - log(numiter + 1)
+        }
+    } # end for(b in 1:B)
+    ## Update of various variables
+    ## Double sample size and adjust denominator in averaging as well as useskip
+    if(dblng) {
+      ## Change denom and useksip (exactly once, in the first iteration)
+      if(numiter == 0){
+        denom <- 2
+        useskip <- 1
+      } else {
+        ## Increase sample size n. This is done in all iterations
+        ## except for the first two
+        current.n <- 2 * current.n
+      }
+    }
+    ## Total number of function evaluations:
+    total.fun.evals <- total.fun.evals + B * current.n
+    numiter <- numiter + 1
+    ## Update error. The following is slightly faster than 'apply(..., 2, var)' 
+    ldensities <- logsumexp(rqmc.estimates) - log(B) # performs better than .colMeans
+    vars <- .colMeans((rqmc.estimates - ldensities)^2, B, n, 0)
+    #vars <- apply(rqmc.estimates, 2, var) 
+    errors <- if(!do.reltol){
+      sqrt(vars)*CI.factor.sqrt.B
+    } else {
+      sqrt(vars)/abs(ldensities)*CI.factor.sqrt.B
+    }
+    max.error <- max(errors)
+  } # while()
+  ## Finalize:
+  ## Use logsumexp() instd of colMeans (i.e. geometric instd of arithmetic mean)
+  # ldensities <- logsumexp(rqmc.estimates) - log(B) 
+  ## 4 Return ##################################################################
+  ret.obj <- if(return.all){
+    list(ldensities = ldensities, numiter = numiter, error = errors,
+         UsWs = UsWs)
+  } else {
+    list(ldensities = ldensities, numiter = numiter, error = errors)
+  }
+  ret.obj
+}
+
+##' @title Internal dnvmix wrapper [not exported]
+##' @param qW function of one variable specifying the quantile function of W.
+##' @param maha2.2 squared maha-distances divided by 2. Assumed to be *sorted*
+##' @param lrdet log(sqrt(det(scale))) where 'scale' is the scale matrix of
+##'        the normal variance mixture distribution.
+##' @param d dimension of the Normal Variance Mixture
+##' @param control see ?dnvmix
+##' @param verbose see ?dnvmix
+##' @return List of three:
+##'         $ldensities n-vector with computed log-density values
+##'         $error n-vector of *absolute* error estimates for log-densities
+##'         $numiter n-vector of number of iterations needed
+##' @author Erik Hintz and Marius Hofert
+dnvmix.internal <- function(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, control,
+                            verbose = verbose)
+{
+  ## Absolte/relative precision?
+  if(is.na(control$dnvmix.reltol)){
+    tol <- control$dnvmix.abstol
+    do.reltol <- FALSE
+  } else {
+    ## Use relative error
+    tol <- control$dnvmix.reltol
+    do.reltol <- TRUE
+  }
+  ## Call RQMC procedure without any stratification
+  rqmc.obj <- nvmix:::dnvmix.internal.RQMC(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, 
+                                   control = control, lower.q = 0, upper.q = 1, 
+                                   max.iter.rqmc = control$dnvmix.max.iter.rqmc.pilot,
+                                   return.all = TRUE)
+  ## Extract results
+  ldens   <- rqmc.obj$ldensities
+  numiter <- rep(rqmc.obj$numiter, length(maha2.2))
+  error   <- rqmc.obj$error
+  if(any(error > tol)){
+    ## Accuracy not reached for at least one 'maha2.2' value
+    ## => Use adaptive approach for those
+    notRchd <- which(error > tol)
+    rqmc.obj <- dnvmix.internal.adaptRQMC(qW, maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
+                                                d = d, UsWs = rqmc.obj$UsWs, 
+                                                control = control)
+    ldens[notRchd]    <- rqmc.obj$ldensities
+    numiter[notRchd]  <- numiter[notRchd] + rqmc.obj$numiter
+    error[notRchd]    <- rqmc.obj$error
+    ## Handle warnings:
+    if(verbose){
+      if(any(!is.na(error))){
+        ## At least one error is not NA
+        if(any(is.na(error))) warning("Estimation unreliable, corresponding error estimate NA")
+        if(any(error > tol)) warning("Tolerance not reached for all inputs; consider increasing
+                                     'max.iter.rqmc' in the 'control' argument.")
+      } else {
+        ## All errors are NA
+        warning("Estimation unreliable, corresponding error estimate NA")
+      } 
+    }
+    ## Transform error back to *absolute* errors:
+    if(do.reltol) error <- error * abs(ldens)
+  }
+  list(ldensities = ldens, numiter = numiter, error = error)
+}
+
 
 ##' @title Density of a Multivariate Normal Variance Mixture
 ##' @param x (n, d)-matrix of evaluation points

@@ -39,7 +39,7 @@ get.set.parameters <- function(control = list()){
     max.iter.rqmc = NA, # defined below, depending on 'increment'
     CI.factor = 3.3,
     fun.eval = c(2^7, 1e12), 
-    B = 12)
+    B = 15)
   if(length(control) > 0){
     ## If input provided, grab input controls and overwrite:
     names.control <- names(ctrl)
@@ -56,6 +56,12 @@ get.set.parameters <- function(control = list()){
     stopifnot(is.logical(ctrl$precond),
               ctrl$pnvmix.abstol >= 0,
               ctrl$dnvmix.abstol >= 0,
+              ctrl$dnvmix.reltol >= 0,
+              ctrl$dnvmix.max.iter.rqmc.pilot >= 1,
+              ctrl$dnvmix.tol.int.lower > 0,
+              ctrl$dnvmix.tol.bisec.w >0,
+              ctrl$dnvmix.tol.stratlength > 0,
+              ctrl$dnvmix.max.iter.bisec.w > 0, 
               ctrl$max.iter.newton >= 0,
               ctrl$newton.conv.abstol >= 0,
               ctrl$newton.df.abstol >= 0,
