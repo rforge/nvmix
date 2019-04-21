@@ -110,7 +110,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
         numiter <- numiter + 1
         ## Next point to check (midpoint of u1u2):
         u.next <- mean(u1u2)
-        diff <- ((w.next <- qW(u.next)) - int.argmax.w)
+        diff <- ((w.next <- max(ZERO, qW(u.next))) - int.argmax.w)
         ## Store u.next and quanitle:
         additionalVals[numiter, ] <- c(u.next, w.next)
         ## Update u1u2 depending on sign of 'diff' and check convergence:
