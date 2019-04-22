@@ -368,13 +368,10 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
         }
       
     } # end for(b in 1:B)
-    
     ## Update of various variables
-    
     ## Number of function evaluations
     ## (* 2 since antithetic variates are used in eval_nvmix_integral())
     total.fun.evals <- total.fun.evals + 2 * B * current.n
-    
     ## Double sample size and adjust denominator in averaging as well as useskip
     if(increment == "doubling") {
       ## Change denom and useksip (exactly once, in the first iteration)
@@ -387,16 +384,12 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
         current.n <- 2 * current.n
       }
     }
-    
     ## Update error; note that this CI.factor is actually CI.factor/sqrt(B) (see above)
     error <- CI.factor * sd(rqmc.estimates)
     numiter <- numiter + 1 # update counter
-    
   } # while()
-  
   ## Finalize
   value <- mean(rqmc.estimates) # calculate the RQMC estimator
-  
   ## Return
   list(value = value, error = error, numiter = numiter)
 }
@@ -509,8 +502,6 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
                     increment = increment, B = control$B, 
                     verbose = verbose))
   }
-  
-  
   ## Grab / approximate mean.sqrt.mix, which will be needed for preconditioning
   ## in pnvmix1(). This only depends on 'qmix', hence it is done (once) here in pnvmix.
   if(control$precond && d > 2){
@@ -521,13 +512,10 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     if(mean.sqrt.mix <= 0)
       stop("'mean.sqrt.mix' has to be positive (possibly after being generated in pnvmix())")
   }
-  
   ## Build temporary result list
   res1 <- vector("list", length = n) # results from calls of pnvmix1()
-  
   ## Deal with NA
   NAs <- apply(is.na(lower) | is.na(upper), 1, any) # at least one NA => use NA => nothing left to do
-  
   ## Standardize 'scale' if necessary; limits will be standardized later
   if(!standardized){
     Dinv <- diag(1/sqrt(diag(scale)))
@@ -535,27 +523,21 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
   }
   ## Get (lower triangular) Cholesky factor of 'scale';
   factor <- t(chol(scale))
-  
   ## Loop over observations ##################################################
-  
   reached <- rep(TRUE, n) # indicating whether 'abstol' has been reached in the ith integration bounds (needs default TRUE)
   for(i in seq_len(n)) {
-    
     if(NAs[i]) {
       res1[[i]] <- list(value = NA, error = 0, numiter = 0)
       next # => 'reached' already has the right value
     }
-    
     ## Pick out ith row of lower and upper
     low <- lower[i,]
     up  <- upper[i,]
-    
     ## Deal with equal bounds (result is 0 as integral over null set)
     if(any(low == up)) {
       res1[[i]] <- list(value = 0, error = 0, numiter = 0)
       next # => 'reached' already has the right value
     }
-    
     ## Deal with case where components of both low and up are Inf
     lowFin <- is.finite(low)
     upFin  <- is.finite(up)
@@ -579,7 +561,6 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
       ## If no such component exists, set Choleksy factor correctly
       factorFin <- factor
     }
-    
     ## Standardize the ith row of lower and upper if necessary
     ## Shift
     if(any(loc != 0)) {
@@ -592,7 +573,6 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
       low[lowFin] <- as.vector(Dinv[lowFin, lowFin] %*% low[lowFin]) # only works for !(+/- Inf)
       up [upFin]  <- as.vector(Dinv[upFin,   upFin] %*% up [upFin])
     }
-    
     ## If d = 1, deal with multivariate normal or t via pnorm() and pt()
     ## Note that everything has been standardized.  
     if(d == 1){
@@ -607,7 +587,6 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
         next
       }
     }
-    
     ## Compute result for ith row of lower and upper (in essence,
     ## because of the preconditioning, one has to treat each such
     ## row separately)
@@ -626,7 +605,6 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     if(verbose >= 2 && !reached[i])
       warning(sprintf("'abstol' not reached for pair %d of integration bounds; consider increasing 'fun.eval[2]' and 'max.iter.rqmc'", i))
   } # for()
-  
   if(verbose == 1 && any(!reached)) { # <=> verbose == 1
     ii <- which(!reached) # (beginning of) indices
     strng <- if(length(ii) > 6) {
@@ -636,14 +614,12 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     }
     warning("'abstol' not reached for pair(s) ",strng," of integration bounds; consider increasing 'fun.eval[2]' and 'max.iter.rqmc'")
   }
-  
   ## Return
   res <- vapply(res1, function(r) r$value, NA_real_)
   attr(res, "error")   <- vapply(res1, function(r) r$error, NA_real_)
   attr(res, "numiter") <- vapply(res1, function(r) r$numiter, NA_real_)
   res
 }
-
 
 
 ##' @title Distribution Function of a 1d Normal Variance Mixture (not exported)
@@ -676,60 +652,48 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
   n <- length(upper)
   if(!is.vector(upper)) upper <- as.vector(upper)
   if(!is.vector(lower)) lower <- as.vector(lower)
-  
   ## Standardize
   if(!standardized){
     upper <- (upper - loc) / sqrt(scale)
     lower <- (lower - loc) / sqrt(scale)
   }
-  
   ## Error is calculated as CI.factor * sd( estimates) / sqrt(B); replace
   ## CI.factor by CI.factor / sqrt(B) to avoid repeated calculating of sqrt(B)
   CI.factor <- CI.factor / sqrt(B)
-  
   ## Grab the number of sample points for the first iteration
   current.n <- fun.eval[1] #
-  
   ## Matrix to store the B * length(upper) RQMC estimates
   rqmc.estimates <- matrix(0, ncol = n, nrow = B)
-  
   ## Initialize error to something bigger than abstol so that we can enter the while loop below
   error <- abstol + 42
   ## Initialize the total number of function evaluations
   total.fun.evals <- 0
   ## Initialize a variable that counts the number of iterations in the while loop below
   numiter <- 0
-  
   ## It may happen that qnorm(u) for u too close to 1 (or 0) is evaluated; in those
   ## cases, u will be replaced by ONE and ZERO which is the largest (smallest) number
   ## different from 1 (0) such that qnorm(u) is not +/- Inf
   ZERO <- .Machine$double.eps # for symmetry reasons (-8/+8), use this instead of .Machine$double.xmin
   ONE  <- 1-.Machine$double.neg.eps
-  
   ## If method == sobol, we want the same random shifts in each iteration below,
   ## this is accomplished by reseting to the "original" seed
   if(method == "sobol") {
     if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
     seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used.
   }
-  
   ## Additional variables needed if the increment chosen is "doubling"
   if(increment == "doubling") {
     if(method == "sobol") useskip <- 0
     denom <- 1
   }
-  
   ## 2 Major while() loop ####################################################
-  
   ## while() runs until precision abstol is reached or the number of function
   ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
   ## the desired probability are calculated.
-  
   while(max(error) > abstol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
   {
     if(method == "sobol" && numiter > 0)
       .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
-    
     ## Get B RQCM estimates
     for(b in 1:B)
     {
@@ -755,16 +719,13 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
                   })
       ## U will contain realizations of 1 / sqrt(W): 
       U <- 1 / cbind( sqrt(qW(U)), sqrt(qW(1-U)))
-      
       ## 2.2 Evaluate the integrand at the (next) point set #############
       
       next.estimate <- colMeans( (pnorm(outer( U[,1], upper)) - 
                                     pnorm(outer(U[,1], lower)) +
                                     pnorm(outer(U[,2], upper)) - 
                                     pnorm(outer(U[,2], lower)))/2)
-      
       ## 2.3 Update RQMC estimates #######################################
-      
       rqmc.estimates[b, ] <-
         if(increment == "doubling") {
           ## In this case both, rqmc.estimates[b] and
@@ -777,13 +738,10 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
           (numiter * rqmc.estimates[b, ] + next.estimate) / (numiter + 1)
         }
     } # end for(b in 1:B)
-    
     ## Update of various variables
-    
     ## Number of function evaluations
     ## (* 2 since antithetic variates are used in eval_nvmix_integral())
     total.fun.evals <- total.fun.evals + 2 * B * current.n
-    
     ## Double sample size and adjust denominator in averaging as well as useskip
     if(increment == "doubling") {
       ## Change denom and useksip (exactly once, in the first iteration)
@@ -796,12 +754,10 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
         current.n <- 2 * current.n
       }
     }
-    
     ## Update error; note that this CI.factor is actually CI.factor/sqrt(B) (see above)
     error <- CI.factor * apply(rqmc.estimates, 2, sd) 
     numiter <- numiter + 1 # update counter
   } # while()
-  
   ## 3 Finalize: ###############################################################
   ## Check if error tolerance reached and print warnings accordingly
   reached <- (error <= abstol)
@@ -827,13 +783,3 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
   ## Return
   res
 }
-
-
-
-  
-  
-  
-  
-  
-  
-  

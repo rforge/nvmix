@@ -4,7 +4,7 @@
 #' Estimate weights for fitnvmix() (corresponds to delta_ki in the paper)
 #' (internal function)
 #'
-#' @param tX t(X) with X as in fitnvmix()
+#' @param tx t(x) with x as in fitnvmix()
 #' @param qW see ?fitnvmix()
 #' @param nu parameter (vector) nu of W
 #' @param loc location vector
@@ -12,20 +12,20 @@
 #' @param U initial point-set of uniforms to estimate weights
 #' @param control see ?fitnvmix()
 #' @param seed seed to get the same shifts if 'method = "sobol"'
-#' @return vector of length nrow(tX) with corresponding weights
+#' @return vector of length nrow(tx) with corresponding weights
 #' @author Erik Hintz
-get.weights <- function(tX, qW, nu, loc, scale, U, control, seed, verbose)
+get.weights <- function(tx, qW, nu, loc, scale, U, control, seed, verbose)
 {
   ## Define various quantities needed later:
   B <- control$B
   CI.factor.sqrt.B <- control$CI.factor/sqrt(B)
   abstol <- control$weights.abstol
-  d <- nrow(tX)
-  n <- ncol(tX)
+  d <- nrow(tx)
+  n <- ncol(tx)
   method <- control$method
   ## Get (x-loc)^T scale^{-1} (x-loc)/2, sorted for eval_dnvmix_integrand
   factor <- t(chol(scale))
-  z <- forwardsolve(factor, tX - loc, transpose = FALSE) # use the full sample!
+  z <- forwardsolve(factor, tx - loc, transpose = FALSE) # use the full sample!
   maha2.2 <- colSums(z^2)/2
   # need maha2.2 ordered for eval_dnvmix_int:
   ordering.maha2.2 <- order(maha2.2)
@@ -134,7 +134,7 @@ get.weights <- function(tX, qW, nu, loc, scale, U, control, seed, verbose)
 
 #' Estimate nu given loc, scale by maximizing log-likelihood (internal function)
 #'
-#' @param tX t(X) where X is as in ?fitnmvix()
+#' @param tx t(x) where x is as in ?fitnmvix()
 #' @param qW quantile function of W; must be function(u, nu)
 #' @param init.nu initial estimate of nu
 #' @param factor cholesky factor of the scale matrix
@@ -148,18 +148,18 @@ get.weights <- function(tX, qW, nu, loc, scale, U, control, seed, verbose)
 #' @return list of two: $nu.est (scalar of vector of length init.nu; MLE estimate of nu)
 #'                      $max.ll (negative log-likelihood at nu.est)
 #' @author Erik Hintz
-estim.nu <- function(tX, qW, init.nu, loc, scale, control, control.optim,
+estim.nu <- function(tx, qW, init.nu, loc, scale, control, control.optim,
                      mix.param.bounds, inv.gam, seed, verbose)
 {
   factor <- t(chol(scale))
   if(inv.gam){ ## in this case, dnvmix() uses analytical formula for density
     neg.log.likelihood.nu <- function(nu){
-      -sum(dnvmix(t(tX), qmix = "inverse.gamma", loc = loc, scale = scale,
+      -sum(dnvmix(t(tx), qmix = "inverse.gamma", loc = loc, scale = scale,
                   df = nu, log = TRUE, verbose = verbose))
     }
   } else {
     ## Get various quantitites passed to 'dnvmix.internal'
-    z <- forwardsolve(factor, tX - loc, transpose = FALSE)
+    z <- forwardsolve(factor, tx - loc, transpose = FALSE)
     maha2.2 <- sort(colSums(z^2)/2)
     lrdet <- sum(log(diag(factor)))
     d <- ncol(factor)
@@ -186,7 +186,7 @@ estim.nu <- function(tX, qW, init.nu, loc, scale, control, control.optim,
 
 ##' @title Fitting Multivariate Normal Variance Mixtures
 ##'        (only Student-t right now)
-##' @param X (n,d) data matrix
+##' @param x (n,d) data matrix
 ##' @param qmix character string ("constant", "inverse.gamma") or function. If
 ##'        function, it *has* to be qmix(u, nu) and the length of nu has
 ##'        to be provided in mix.param.length.
@@ -214,14 +214,15 @@ estim.nu <- function(tX, qW, init.nu, loc, scale, control, control.optim,
 ##' TODO    include option to give names to parameters etc
 ##' TODO    maybe hide some arguments (CI.factor etc) or have them passed via ...
 ##' @author Erik Hintz
-fitnvmix <- function(X, qmix,
+fitnvmix <- function(x, qmix,
                      mix.param.length = 1, mix.param.bounds = NA,
                      size.subsample = n, resample = FALSE,
                      ECMEstep = TRUE, control.optim = list(),  control = list(),
-                     verbose = TRUE)
+                     verbose = TRUE,
+                     useCorr = FALSE)
 {
   ## 0: Initialize various quantities: #######################################
-  control <- get.set.parameters(control)
+  control <- nvmix:::get.set.parameters(control)
   ## Get quantile function:
   ## If 'mix' is "constant" or "inverse.gamma", we use the analytical formulas
   is.const.mix  <- FALSE # logical indicating whether we have a multivariate normal
@@ -255,27 +256,27 @@ fitnvmix <- function(X, qmix,
   } else stop("'qmix' must be a character string, list or quantile function.")
   ## Case of MVN: MLEs are sample mean and sample cov matrix
   if(is.const.mix){
-    loc.est <- colMeans(X)
+    loc.est <- colMeans(x)
     ## TODO: Do this better (as.matrix to remove attributes, can be done better)
-    scale.est <- as.matrix(nearPD(cov(X))$mat) # sample covariance matrix
+    scale.est <- as.matrix(nearPD(cov(x))$mat) # sample covariance matrix
     return(list(loc = loc.est, scale = scale.est, iter = 0))
   }
   ## Check inputs, get dimensions
   ## TODO: More checking (INFs, ...)
-  if(!is.matrix(X)) X <- rbind(X)
-  notNA <- rowSums(is.na(X)) == 0
-  X     <- X[notNA,] # non-missing data (rows)
-  tX    <- t(X)
-  n     <- nrow(X)
-  d     <- ncol(X)
+  if(!is.matrix(x)) x <- rbind(x)
+  notNA <- rowSums(is.na(x)) == 0
+  x     <- x[notNA,] # non-missing data (rows)
+  tx    <- t(x)
+  n     <- nrow(x)
+  d     <- ncol(x)
   ## Use only sub-sample to estimate nu?
   if(size.subsample < n){
     sampled.ind <- sample(n, size.subsample)
-    X.sub       <- X[sampled.ind,]
-    tX.sub      <- tX[, sampled.ind]
+    x.sub       <- x[sampled.ind,]
+    tx.sub      <- tx[, sampled.ind]
   } else {
-    X.sub  <- X
-    tX.sub <- tX
+    x.sub  <- x
+    tx.sub <- tx
   }
   ## Check/define parameter bounds on nu
   if(!any(!is.na(mix.param.bounds))){
@@ -300,44 +301,70 @@ fitnvmix <- function(X, qmix,
                })
   ## 1: Initial estimates for nu, loc, scale: ##################################
   ## Unbiased estimator for 'loc' based on full sample:
-  loc.est <- colMeans(X)
+  loc.est <- colMeans(x)
   ## Sample covariance matrix based on full sample:
-  SCov    <- as.matrix(nearPD(cov(X))$mat) # TODO do this smarter
+  SCov    <- as.matrix(nearPD(cov(x))$mat) # TODO do this smarter
   ## Determine maha distance and determinant of 'SCov'
   chol.SCov <- t(chol(SCov))
-  z         <- forwardsolve(chol.SCov, tX.sub - loc.est, transpose = FALSE)
+  z         <- forwardsolve(chol.SCov, tx.sub - loc.est, transpose = FALSE)
   maha2.2   <- sort(colSums(z^2))/2 # sorted for nvmix:::dnvmix.int
   lrdet     <- sum(log(diag(chol.SCov)))
   ## Optimize log-likelihood:
-  ## -loglikelihood as function of param=(nu,c) of length mix.param.length + 1
-  neg.log.likelihood.init <- function(param){
-    if(inv.gam){
-      ## In case of inv.gam, a closed formula for the density exists:
-      return(-sum(dnvmix(X.sub, qmix = "inverse.gamma", 
-                         factor = sqrt(param[2])*chol.SCov, loc = loc.est, 
-                         df = param[1], log = TRUE)))
-    } else {
-      ## Define a 'qmix' function of u only that can be passed to dnvmix():
-      qmix. <- function(u) qW(u, nu = param[1:mix.param.length]) 
-      c <- param[mix.param.length + 1]
-      .Random.seed <<- seed # for monotonicity
-      ## Call 'dnvmix.internal' which by default returns the log-density
-      ldens.obj <- dnvmix.internal(qW = qmix., maha2.2 = maha2.2/c, 
-                                   lrdet = (lrdet + d/2*log(c)), d = d, 
-                                   control = control, verbose = verbose)
-      ## Return -log-density
-      -sum(ldens.obj$ldensities)
+  if(!useCorr){
+    ## -loglikelihood as function of param=(nu,c) of length mix.param.length + 1
+    neg.log.likelihood.init <- function(param){
+      if(inv.gam){
+        ## In case of inv.gam, a closed formula for the density exists:
+        return(-sum(dnvmix(x.sub, qmix = "inverse.gamma", 
+                           factor = sqrt(param[2])*chol.SCov, loc = loc.est, 
+                           df = param[1], log = TRUE)))
+      } else {
+        ## Define a 'qmix' function of u only that can be passed to dnvmix():
+        qmix. <- function(u) qW(u, nu = param[1:mix.param.length]) 
+        c <- param[mix.param.length + 1]
+        .Random.seed <<- seed # for monotonicity
+        ## Call 'dnvmix.internal' which by default returns the log-density
+        ldens.obj <- nvmix:::dnvmix.internal(qW = qmix., maha2.2 = maha2.2/c, 
+                                     lrdet = (lrdet + d/2*log(c)), d = d, 
+                                     control = control, verbose = verbose)
+        ## Return -log-density
+        -sum(ldens.obj$ldensities)
+      }
     }
+    ## Optimize -log.likelihood over (nu, c)
+    opt.obj <- optim(rep(1, mix.param.length + 1), fn = neg.log.likelihood.init,
+                     lower = c(mix.param.bounds[, 1], 0.1),
+                     upper = c(mix.param.bounds[, 2], NA),
+                     method = "L-BFGS-B", control = control.optim)
+    ## Grab estimate for 'nu' as well as for the 'scale' matrix
+    nu.est    <- opt.obj$par[1:mix.param.length]
+    scale.est <- opt.obj$par[mix.param.length + 1] * SCov
+    max.ll    <- opt.obj$value
+  } else {
+    x. <- scale(x.sub)
+    corr.x. <- cor(x)
+    ## -loglikelihood as function of param=(nu,c) of length mix.param.length + 1
+    neg.log.likelihood.init2 <- function(nu){
+        ## Define a 'qmix' function of u only that can be passed to dnvmix():
+        qmix. <- function(u) qW(u, nu = nu[1:mix.param.length]) 
+        .Random.seed <<- seed # for monotonicity
+        ## Call 'dnvmix.internal' which by default returns the log-density
+        -sum(dnvmix(x., qmix = qmix., control = control, log = TRUE,
+                            verbose = TRUE, scale = corr.x.))
+        ## Return -log-density
+        # -sum(ldens.obj$ldensities)
+    }
+    ## Optimize -log.likelihood over (nu, c)
+    opt.obj <- optim(rep(4, mix.param.length), fn = neg.log.likelihood.init2,
+                     lower = mix.param.bounds[, 1],
+                     upper = mix.param.bounds[, 2],
+                     method = "L-BFGS-B", control = control.optim)
+    ## Grab estimate for 'nu' as well as for the 'scale' matrix
+    nu.est    <- opt.obj$par[1:mix.param.length]
+    scale.est <- 1/mean(qW(runif(500), nu = nu.est)) * SCov
+    max.ll    <- opt.obj$value
   }
-  ## Optimize -log.likelihood over (nu, c)
-  opt.obj <- optim(rep(1, mix.param.length + 1), fn = neg.log.likelihood.init,
-                   lower = c(mix.param.bounds[, 1], 0.1),
-                   upper = c(mix.param.bounds[, 2], NA),
-                   method = "L-BFGS-B", control = control.optim)
-  ## Grab estimate for 'nu' as well as for the 'scale' matrix
-  nu.est    <- opt.obj$par[1:mix.param.length]
-  scale.est <- opt.obj$par[mix.param.length + 1] * SCov
-  max.ll    <- opt.obj$value
+
   ## 2: ECME step: #############################################################
   if(ECMEstep){
     ## Initialize various quantities
@@ -347,30 +374,32 @@ fitnvmix <- function(X, qmix,
     converged.locscale <- FALSE
     while(num.iter < control$ECME.maxiter && !converged){
       ## Get new weights
-      weights <- get.weights(tX, qW = qW, nu = nu.est, loc = loc.est,
+      weights <- nvmix:::get.weights(tx, qW = qW, nu = nu.est, loc = loc.est,
                              scale = scale.est, U = U0, control = control,
                              seed = seed, verbose = verbose)
-      ## Get new 'scale.est': 1/n * sum_{i=1}^n weights_i (X_i-mu)(X_i-mu)^T
+      ## Get new 'scale.est': 1/n * sum_{i=1}^n weights_i (x_i-mu)(x_i-mu)^T
       diff.scale <- scale.est -
-        (scale.est <- as.matrix(nearPD(cov.wt(X, wt = weights,
+        (scale.est <- as.matrix(nearPD(cov.wt(x, wt = weights,
                                               center = loc.est,
-                                              method = "ML")$cov)$mat))
-      ## Get new 'loc.est': sum_{i=1}^n weights_i X_i / (sum weights)
+                                              method = "ML")$cov)$mat)*sum(weights) / n )
+      
+      ## Get new 'loc.est': sum_{i=1}^n weights_i x_i / (sum weights)
       ## as.vector because we need 'loc.est' as a vector, not (d, 1) matrix
       diff.loc <- loc.est -
-        (loc.est <- as.vector(crossprod(X, weights)/sum(weights)))
+        (loc.est <- as.vector(crossprod(x, weights)/sum(weights)))
       converged.locscale <- (sqrt(sum(diff.loc^2)) < control$ECME.conv.tol[1]) &&
         (norm(diff.scale, "F") < control$ECME.conv.tol[2])
       ## Update nu, if desired/necessary:
       if(control$ECMEstep.do.nu && !converged.nu){
         if(resample && size.subsample < n){
-          ## TODO: Do this smarter
-          runif(num.iter) # destroy the reseted seed 
+          ## TODO: Is this sketchy? 
+          rm(".Random.seed") # destroy the reseted seed 
+          runif(1) # get a new seed
           sampled.ind <- sample(n, size.subsample)
-          tX.sub      <- tX[,sampled.ind]
+          tx.sub      <- tx[,sampled.ind]
         }
         ## Optimize neg.log.likelihood over nu
-        est.obj <- estim.nu(tX.sub, qW = qW, init.nu = nu.est,
+        est.obj <- estim.nu(tx.sub, qW = qW, init.nu = nu.est,
                             loc = loc.est, scale = scale.est,
                             control = control, control.optim = control.optim,
                             mix.param.bounds = mix.param.bounds, inv.gam = inv.gam,
@@ -388,7 +417,7 @@ fitnvmix <- function(X, qmix,
     ## Another last nu update?
     if(control$laststep.do.nu){
       ## One last nu update with the *full* sample.
-      est.obj <- nvmix:::estim.nu(tX, qW = qW, init.nu = nu.est, loc = loc.est,
+      est.obj <- nvmix:::estim.nu(tx, qW = qW, init.nu = nu.est, loc = loc.est,
                                   scale = scale.est, control = control, 
                                   control.optim = control.optim,
                                   mix.param.bounds = mix.param.bounds, 
