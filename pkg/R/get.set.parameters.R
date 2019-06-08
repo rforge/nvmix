@@ -31,18 +31,24 @@ get.set.parameters <- function(control = list()){
     newton.df.abstol = 1e-4,
     newton.logdens.abstol = 1e-2, 
     ## For fitnvmix():
-    weights.abstol = 1e-1, 
+    weights.abstol = 1e-1, # currently not used
+    weights.reltol = 5e-2,
     ECMEstep.do.nu = TRUE,
     laststep.do.nu = TRUE,
-    ECME.maxiter = 20,
-    ECME.conv.tol = c(rep(1e-1, 2), 1e-2), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
+    max.iter.locscaleupdate = 50,
+    ECME.maxiter = 50,
+    ECME.rel.conv.tol = rep(1e-2, 3), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
+    weights.interpol.reltol = 0.01,
     ## For all (randomized) algorithms:
     method = "sobol", 
     increment = "doubling", # "doubling" or "num.init" 
     max.iter.rqmc = NA, # defined below, depending on 'increment'
     CI.factor = 3.3,
     fun.eval = c(2^7, 1e12), 
-    B = 15)
+    B = 15,
+    ## Additional returns for testing? (eg estimates after each iteration in
+    ## 'fitnvmix')
+    addReturns = FALSE)
   if(length(control) > 0){
     ## If input provided, grab input controls and overwrite:
     names.control <- names(ctrl)
@@ -73,7 +79,7 @@ get.set.parameters <- function(control = list()){
               is.logical(ctrl$ECMEstep.do.nu),
               is.logical(ctrl$laststep.do.nu),
               ctrl$ECME.maxiter >= 0,
-              length(ctrl$ECME.conv.tol) == 3, ctrl$ECME.conv.tol >= 0, 
+              length(ctrl$ECME.rel.conv.tol) == 3, ctrl$ECME.rel.conv.tol >= 0, 
               ctrl$CI.factor >= 0,
               length(ctrl$fun.eval) == 2, ctrl$fun.eval >= 0,
               ctrl$B > 1) # If B = 1 error estimates are NA => need B > 1

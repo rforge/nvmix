@@ -437,7 +437,11 @@ dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, control, lower.q, upper.
                          runif(current.n)
                        })) # sorted for later!
       ## 2.2 Evaluate the integrand at the (next) point set #############
-      W <- pmax(qW(U <- trafo(U)), ZERO) # realizations of the mixing variable; sorted!
+      W <- qW(U <- trafo(U)) # realizations of the mixing variable; sorted!
+      ## Need to replace values < ZERO by ZERO. W is *sorted*, so check using
+      ## loop instd of 'pmax' (more efficient)
+      for(ind in 1:current.n) if(W[ind] < ZERO) W[ind] <- ZERO else break
+      ## Update 'UsWs'
       if(return.all){
         UsWs[(curr.lastrow + 1) : (curr.lastrow + current.n), ] <- cbind(U, W)
         curr.lastrow <- curr.lastrow + current.n
