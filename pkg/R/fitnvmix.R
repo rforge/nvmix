@@ -1,45 +1,6 @@
 ##### fitnvmix() #################################################################
 
-# Estimate nu using copula density (internal function)#'
-#' @param U matrix of pseudo obs
-#' @param qW quantile function of W; must be function(u, nu)
-#' @param init.nu initial estimate of nu
-#' @param factor cholesky factor of the scale matrix
-#' @param control see ?fitnvmix()
-#' @param control.optim passed to optim; see ?optim
-#' @param mix.param.bounds see ?fitnvmix()
-#' @param verbose see ?fitnvmix()
-#' @param inv.gam logical indicating if W is inv.gamma (special case)
-#' @param seed current seed.
-#' @return list of two: $nu.est (scalar of vector of length init.nu; MLE estimate of nu)
-#'                      $max.ll (negative log-likelihood at nu.est)
-#' @author Erik Hintz
-estim.nu.cop <- function(U, qW, init.nu, factor, control, control.optim,
-                         mix.param.bounds, verbose, inv.gam, seed){
-   ## Set up -log likelihood as a function of nu (given P), based on copula
-   neg.log.likelihood.nu <- if(inv.gam){
-      function(nu){
-         -sum(dnvmixcop(U, qmix = "inverse.gamma", factor = factor,
-                        control = control, verbose = verbose,
-                        log = TRUE, df = nu))}
-   } else {
-      function(nu){
-         .Random.seed <<- seed
-         qmix. <- function(u) qW(u, nu = nu) # function of u
-         - sum(dnvmixcop(U, qmix = qmix., factor = factor, control = control,
-                         verbose = verbose, log = TRUE))}
-   }
-   ## Optimize neg.log.likelihood over nu
-   opt.obj <- optim(init.nu, fn = neg.log.likelihood.nu,
-                    lower = mix.param.bounds[, 1],
-                    upper = mix.param.bounds[, 2],
-                    method = "L-BFGS-B", control = control.optim)
-   list(nu.est = opt.obj$par,
-        max.ll = opt.obj$value)
-}
-
-
-
+## 1. Functions to estimate weights ##############################################
 
 #' Weights for fitnvmix() (corresponds to delta_ki in the paper)
 #' for the special case of a t dist'n
@@ -57,22 +18,32 @@ get.weights.t <- function(tx, nu, loc, scale, ...){
    maha2 <- colSums(z^2)
    (nu + d) / (nu + maha2)
 }
-
+#' Weights for fitnvmix() (corresponds to delta_ki in the paper)
+#' for the special case of a t dist'n
+#'
+#' @param maha2.2 
+#' @param nu degree of freedom parameter
+#' @param d dimension
+#' @param ... nothing (will be ignored)
+#' @return vector with the same lenght as 'maha2.2' with corresponding weights
+#' @author Erik Hintz
 get.weights.maha2.2 <- function(maha2.2, nu, d,...){
    (nu + d) / (nu + maha2.2*2)
 }
 
+
 #' Estimate weights for fitnvmix() (corresponds to delta_ki in the paper)
 #' (internal function)
 #'
-#' @param tx t(x) with x as in fitnvmix()
-#' @param qW see ?fitnvmix()
+#' @param maha2.2 squared maha distances divided by 2
+#' @param qW see ?fitnvmix() ('qmix' there)
 #' @param nu parameter (vector) nu of W
-#' @param loc location vector
-#' @param scale scale matrix
+#' @param lrdet log(sqrt(det(scale)))
+#' @param d dimension 
 #' @param U initial point-set of uniforms to estimate weights
 #' @param control see ?fitnvmix()
 #' @param seed seed to get the same shifts if 'method = "sobol"'
+#' @param verbose see ?fitnvmix
 #' @return vector of length nrow(tx) with corresponding weights
 #' @author Erik Hintz
 get.weights <- function(maha2.2, qW, nu, lrdet, d, U, control, seed, verbose)
@@ -123,7 +94,7 @@ get.weights <- function(maha2.2, qW, nu, lrdet, d, U, control, seed, verbose)
    vars           <- .colMeans((rqmc.estimates.logweights - rep(lweights, each = B))^2, B, n, 0)
    errors         <- sqrt(vars)/abs(lweights)*CI.factor.sqrt.B
    max.rel.error  <- max(errors)
-
+   
    ## Update counters 
    total.fun.evals <- B * current.n
    numiter <- 1
@@ -190,9 +161,280 @@ get.weights <- function(maha2.2, qW, nu, lrdet, d, U, control, seed, verbose)
    }
    ## Return
    weights <- exp(lweights)
-   if(max.error > abstol && verbose) warning('weights.abstol in get.weights not reached')
+   if(max.rel.error > reltol && verbose) warning('weights.abstol in get.weights not reached')
    weights
 }
+
+#' Estimate weights for fitnvmix() (corresponds to delta_ki in the paper)
+#' (internal function)
+#'
+#' @param maha2.2 squared maha distances divided by 2 (length n)
+#' @param qW see ?fitnvmix() ('qmix' there)
+#' @param nu parameter (vector) nu of W
+#' @param lrdet log(sqrt(det(scale)))
+#' @param d dimension 
+#' @param control see ?fitnvmix()
+#' @param verbose see ?fitnvmix
+#' @param return.all logical; if true, matrix (U, qW(U)) also returned.
+#' @return List of three:
+#'         $weights n-vector with computed log-density values
+#'         $numiter numeric, number of iterations needed
+#'         $error n-vector of error estimates for log-densities; either relative
+#'         error or absolte error depending on is.na(control$dnvmix.reltol)
+#'         $UsWs (B, n) matrix (U, qW(U)) where U are uniforms (only if return.all = TRUE)
+#' @author Erik Hintz
+weights.internal.RQMC <- function(maha2.2, qW, nu, lrdet, d, max.iter.rqmc,
+                                  control, verbose, return.all)
+{
+   ## 1 Basics ##################################################################
+   ## Define various quantites:
+   dblng           <- TRUE
+   B               <- control$B # number of randomizations
+   n               <- length(maha2.2) # sample size
+   current.n       <- control$fun.eval[1] #initial sample size
+   numiter         <- 0 # counter for the number of iterations
+   ZERO            <- .Machine$double.neg.eps
+   total.fun.evals <- 0
+   ## Absolte/relative precision?
+   if(is.na(control$weights.reltol)){
+      ## Use absolute error
+      tol <- control$weights.abstol
+      do.reltol <- FALSE
+   } else {
+      ## Use relative error
+      tol <- control$weights.reltol
+      do.reltol <- TRUE
+   }
+   ## Store seed if 'sobol' is used to get the same shifts later:
+   if(control$method == "sobol") {
+      useskip <- 0 # to get correct shifts if method = "sobol"
+      if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
+      seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used
+   }
+   denom <- 1 
+   ## Matrix to store RQMC estimates
+   rqmc.estimates.lweights <- matrix(-Inf, ncol = n, nrow = B)
+   ## Will be needed a lot:
+   CI.factor.sqrt.B <- control$CI.factor / sqrt(B)
+   ## Initialize 'max.error' to > tol so that we can enter the while loop:
+   max.error <- tol + 42
+   ## Matrix to store U, W values => nrows = maximal number of funevals
+   if(return.all){
+      max.nrow <- current.n*B*2^(max.iter.rqmc-1)
+      UsWs <- matrix(NA, ncol = 2, nrow = max.nrow)
+      curr.lastrow <- 0 # will count row-index additional points are being inserted after
+   }
+   ## 2 Main loop ###############################################################
+   ## while() runs until precision abstol is reached or the number of function
+   ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
+   ## the desired log-densities are calculated.
+   while(max.error > tol && numiter < max.iter.rqmc &&
+         total.fun.evals < control$fun.eval[2])
+   {
+      ## Reset seed to have the same shifts in sobol( ... )
+      if(control$method == "sobol" && numiter > 0)
+         .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
+      for(b in 1:B){
+         ## 2.1 Get the point set ###########################################
+         U <- sort(switch(control$method,
+                          "sobol" = {
+                             if(dblng) {
+                                qrng::sobol(n = current.n, d = 1,
+                                            randomize = TRUE,
+                                            skip = (useskip * current.n))
+                             } else {
+                                qrng::sobol(n = current.n, d = 1,
+                                            randomize = TRUE,
+                                            skip = (numiter * current.n))
+                             }
+                          },
+                          "ghalton" = {
+                             qrng::ghalton(n = current.n, d = 1,
+                                           method = "generalized")
+                          },
+                          "PRNG" = {
+                             runif(current.n)
+                          })) # sorted for later!
+         ## 2.2 Evaluate the integrand at the (next) point set #############
+         W <- qW(U, nu = nu) # realizations of the mixing variable; sorted!
+         ## Need to replace values < ZERO by ZERO. W is *sorted*, so check using
+         ## loop instd of 'pmax' (more efficient)
+         for(ind in 1:current.n) if(W[ind] < ZERO) W[ind] <- ZERO else break
+         ## Update 'UsWs'
+         if(return.all){
+            UsWs[(curr.lastrow + 1) : (curr.lastrow + current.n), ] <- cbind(U, W)
+            curr.lastrow <- curr.lastrow + current.n
+         }
+         next.est.condexp <- .Call("eval_dnvmix_integrand",
+                                   W          = as.double(W),
+                                   maha2_2    = as.double(maha2.2),
+                                   current_n  = as.integer(current.n),
+                                   n          = as.integer(n),
+                                   d          = as.integer(d),
+                                   k          = as.integer(d + 2), # k=d+2 here!
+                                   lrdet      = as.double(lrdet))
+         next.est.ldens <- .Call("eval_dnvmix_integrand",
+                                 W          = as.double(W),
+                                 maha2_2    = as.double(maha2.2),
+                                 current_n  = as.integer(current.n),
+                                 n          = as.integer(n),
+                                 d          = as.integer(d),
+                                 k          = as.integer(d), # k=d+2 here!
+                                 lrdet      = as.double(lrdet))
+         
+         ## 2.3 Update RQMC estimates #######################################
+         rqmc.estimates.lweights[b, ] <-
+            .Call("logsumexp2",
+                  a = as.double(rqmc.estimates.lweights[b, ]),
+                  b = as.double(next.est.condexp - next.est.ldens),
+                  n = as.integer(n)) - log(denom)
+         
+      } # end for(b in 1:B)
+      ## Update of various variables
+      ## Double sample size and adjust denominator in averaging as well as useskip
+      if(numiter == 0){
+         ## Change denom and useksip (exactly once, in the first iteration)
+         denom <- 2
+         useskip <- 1
+      } else {
+         ## Increase sample size n. This is done in all iterations
+         ## except for the first two
+         current.n <- 2 * current.n
+      }
+      ## Total number of function evaluations:
+      total.fun.evals <- total.fun.evals + B * current.n
+      numiter <- numiter + 1
+      ## Update error for 'weights' (NOT log values!)
+      rqmc.estimates.weights <- exp(rqmc.estimates.lweights)
+      weights  <- colMeans(rqmc.estimates.weights) 
+      vars     <- .colMeans((rqmc.estimates.weights - rep(weights, each = B))^2, B, n, 0)
+      errors   <- if(!do.reltol){
+         sqrt(vars)*CI.factor.sqrt.B
+      } else {
+         sqrt(vars)/abs(weights)*CI.factor.sqrt.B
+      }
+      max.error <- max(errors)
+   } # while()
+   ## 4 Return ##################################################################
+   ret.obj <- if(return.all){
+      list(weights = weights, numiter = numiter, error = errors,
+           UsWs = UsWs)
+   } else {
+      list(weights = weights, numiter = numiter, error = errors)
+   }
+   ret.obj
+}
+
+#' Estimate weights for fitnvmix() (corresponds to delta_ki in the paper)
+#' (internal function)
+#'
+#' @param maha2.2 squared maha distances divided by 2 (length n)
+#' @param qW see ?fitnvmix() ('qmix' there)
+#' @param nu parameter (vector) nu of W
+#' @param lrdet log(sqrt(det(scale)))
+#' @param d dimension 
+#' @param control see ?fitnvmix()
+#' @param verbose see ?fitnvmix
+#' @return List of three:
+#'         $weights n-vector with computed log-density values
+#'         $numiter numeric, number of iterations needed
+#'         $error n-vector of error estimates for log-densities; either relative
+#'         error or absolte error depending on is.na(control$dnvmix.reltol)
+#'         $UsWs (B, n) matrix (U, qW(U)) where U are uniforms (only if return.all = TRUE)
+#' @author Erik Hintz
+weights.internal <- function(maha2.2, qW, nu, lrdet, d, control,
+                             verbose = verbose)
+{
+   ## Absolte/relative precision?
+   if(is.na(control$weights.reltol)){
+      tol <- control$weights.abstol
+      do.reltol <- FALSE
+   } else {
+      ## Use relative error
+      tol <- control$weights.reltol
+      do.reltol <- TRUE
+   }
+   
+   ## Call RQMC procedure without any stratification
+   rqmc.obj <- nvmix:::weights.internal.RQMC(maha2.2, qW = qW, nu = nu, lrdet = lrdet, 
+                                             d = d, max.iter.rqmc = control$dnvmix.max.iter.rqmc.pilot,
+                                             control = control, verbose = TRUE, 
+                                             return.all = TRUE)
+   ## Extract results
+   weights <- rqmc.obj$weights
+   numiter <- rep(rqmc.obj$numiter, length(maha2.2))
+   error   <- rqmc.obj$error
+   if(any(error > tol)){
+      ## Accuracy not reached for at least one 'maha2.2' value
+      ## => Use adaptive approach for those
+      notRchd <- which(error > tol)
+      qW. <- function(u) qW(u, nu = nu)
+      ldens.obj <- nvmix:::dnvmix.internal.adaptRQMC(qW., maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
+                                                     d = d, UsWs = rqmc.obj$UsWs, 
+                                                     control = control)
+      lcond.obj <- nvmix:::dnvmix.internal.adaptRQMC(qW., maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
+                                                     d = d, k = d + 2, UsWs = rqmc.obj$UsWs, 
+                                                     control = control)
+      weights[notRchd]  <- exp(lcond.obj$ldensities - ldens.obj$ldensities)
+      # numiter[notRchd]  <- numiter[notRchd] + rqmc.obj$numiter
+      # error[notRchd]    <- rqmc.obj$error
+      # ## Handle warnings:
+      # if(verbose){
+      #    if(any(is.na(error))){
+      #       ## At least one error is NA
+      #       warning("Estimation unreliable, corresponding error estimate NA")
+      #    }
+      #    whichNA <- which(is.na(error))
+      #    if(any(error[setdiff(1:length(error), whichNA)] > tol)) # 'setdiff' needed if 'whichNA' is empty
+      #       warning("Tolerance not reached for all inputs; consider increasing 'max.iter.rqmc' in the 'control' argument.")
+      # }
+      # ## Transform error back to *absolute* errors:
+      # if(do.reltol) error <- error * abs(ldens)
+   }
+   list(weights = weights, numiter = numiter, error = error)
+}
+
+## 2. Functions to estimate wnu given 'loc', 'scale'############################
+
+# Estimate nu using copula density (internal function)#'
+#' @param U matrix of pseudo obs
+#' @param qW quantile function of W; must be function(u, nu)
+#' @param init.nu initial estimate of nu
+#' @param factor cholesky factor of the scale matrix
+#' @param control see ?fitnvmix()
+#' @param control.optim passed to optim; see ?optim
+#' @param mix.param.bounds see ?fitnvmix()
+#' @param verbose see ?fitnvmix()
+#' @param inv.gam logical indicating if W is inv.gamma (special case)
+#' @param seed current seed.
+#' @return list of two: $nu.est (scalar of vector of length init.nu; MLE estimate of nu)
+#'                      $max.ll (negative log-likelihood at nu.est)
+#' @author Erik Hintz
+estim.nu.cop <- function(U, qW, init.nu, factor, control, control.optim,
+                         mix.param.bounds, verbose, inv.gam, seed){
+   ## Set up -log likelihood as a function of nu (given P), based on copula
+   neg.log.likelihood.nu <- if(inv.gam){
+      function(nu){
+         -sum(dnvmixcop(U, qmix = "inverse.gamma", factor = factor,
+                        control = control, verbose = verbose,
+                        log = TRUE, df = nu))}
+   } else {
+      function(nu){
+         .Random.seed <<- seed
+         qmix. <- function(u) qW(u, nu = nu) # function of u
+         - sum(dnvmixcop(U, qmix = qmix., factor = factor, control = control,
+                         verbose = verbose, log = TRUE))}
+   }
+   ## Optimize neg.log.likelihood over nu
+   opt.obj <- optim(init.nu, fn = neg.log.likelihood.nu,
+                    lower = mix.param.bounds[, 1],
+                    upper = mix.param.bounds[, 2],
+                    method = "L-BFGS-B", control = control.optim)
+   list(nu.est = opt.obj$par,
+        max.ll = opt.obj$value)
+}
+
+
 
 
 #' Estimate nu given loc, scale by maximizing log-likelihood (internal function)
@@ -212,7 +454,7 @@ get.weights <- function(maha2.2, qW, nu, lrdet, d, U, control, seed, verbose)
 #'                      $max.ll (negative log-likelihood at nu.est)
 #' @author Erik Hintz
 estim.nu <- function(tx, qW, init.nu, loc, scale, control, control.optim,
-                     mix.param.bounds, inv.gam, seed, verbose)
+                     mix.param.bounds, inv.gam = TRUE, seed, verbose)
 {
    factor <- t(chol(scale))
    if(inv.gam){ ## in this case, dnvmix() uses analytical formula for density
@@ -246,6 +488,9 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, control, control.optim,
         max.ll = opt.obj$value,
         num.llevals = opt.obj$counts[1])
 }
+
+
+## 3. Main function ('fitnvmix') that is exported ###############################
 
 ##' @title Fitting Multivariate Normal Variance Mixtures
 ##'        (only Student-t right now)
@@ -491,10 +736,13 @@ fitnvmix <- function(x, qmix,
                if(inv.gam){
                   weights <- nvmix:::get.weights.maha2.2(maha2.2.new, nu = nu.est, d = d)
                } else {
-                  weights <- nvmix:::get.weights(maha2.2.new, qW = qW, nu = nu.est,
-                                                 lrdet = lrdet, d = d, U = U0, 
-                                                 control = control, seed = seed, 
-                                                 verbose = verbose)
+                  #weights <- nvmix:::get.weights(maha2.2.new, qW = qW, nu = nu.est,
+                  #                               lrdet = lrdet, d = d, U = U0, 
+                  #                               control = control, seed = seed, 
+                  #                               verbose = verbose)
+                  weights <- nvmix:::weights.internal(maha2.2.new, qW = qW, nu = nu.est,
+                                                      lrdet = lrdet, d = d, control = control,
+                                                      verbose = verbose)$weights
                }
                weights.new <- weights[order(order.maha2.2.new)]
                maha2.2     <- maha2.2.new # need to store maha-distances for interpolation
@@ -542,10 +790,13 @@ fitnvmix <- function(x, qmix,
                      nvmix:::get.weights.maha2.2(maha2.2.new[notInterpol], 
                                                  nu = nu.est, d = d)
                   } else {
-                     nvmix:::get.weights(maha2.2.new[notInterpol], qW = qW, 
-                                         nu = nu.est, lrdet = lrdet, d = d, U = U0, 
-                                         control = control, seed = seed, 
-                                         verbose = verbose)
+                     #nvmix:::get.weights(maha2.2.new[notInterpol], qW = qW, 
+                     #                    nu = nu.est, lrdet = lrdet, d = d, U = U0, 
+                     #                    control = control, seed = seed, 
+                     #                    verbose = verbose)
+                     nvmix:::weights.internal(maha2.2.new[notInterpol], qW = qW, nu = nu.est,
+                                              lrdet = lrdet, d = d, control = control,
+                                              verbose = verbose)$weights
                   }
                   ## Add estimated weights to 'weights' and corresponding 
                   ## 'maha2.2.new' to 'maha2.2' so that they can be reused
@@ -558,62 +809,62 @@ fitnvmix <- function(x, qmix,
                ## Recover original ordering and set negative weights to zero.
                weights.new <- weights.new[order(order.maha2.2.new)] ## TODO: Omit?
                
-#                OLD:
-#               
-#                ## First: We *avoid* EXTRApolation and estimate weights for those maha's 
-#                ## that are out of range of the previous maha's
-#                anyTooSmall <- (maha2.2.new[1] < maha2.2[1])
-#                anyTooBig   <- (maha2.2.new[n] > maha2.2[n])
-#                if(anyTooBig || anyTooSmall){
-#                   ## Find indices of too small and too big 'maha2.2new' values
-#                   if(anyTooSmall){
-#                      lastTooSmall <- which.min((maha2.2.new < maha2.2[1]))[1]-1
-#                      length.maha  <- length.maha + lastTooSmall
-#                      whichTooSmall <- 1:lastTooSmall
-#                   } else {
-#                      whichTooSmall <- c()
-#                   }
-#                   if(anyTooBig){
-#                      firstTooBig <- which.max((maha2.2.new > maha2.2[length.maha]))[1]
-#                      length.maha <- length.maha + n - firstTooBig + 1
-#                      whichTooBig <- firstTooBig:n
-#                   } else {
-#                      whichTooBig <- c()
-#                   }
-#                   ## Update 'maha2.2' so that those values can be used again
-#                   maha2.2 <- c(maha2.2.new[whichTooSmall], maha2.2, maha2.2.new[whichTooBig])
-#                   weights.new[c(whichTooSmall, whichTooBig)] <- 
-#                      if(inv.gam){
-#                         nvmix:::get.weights.maha2.2(maha2.2.new[c(whichTooSmall, whichTooBig)], 
-#                                                     nu = nu.est, d = d)
-#                      } else {
-#                         nvmix:::get.weights(maha2.2.new[c(whichTooSmall, whichTooBig)], qW = qW, 
-#                                             nu = nu.est, lrdet = lrdet, d = d, U = U0, 
-#                                             control = control, seed = seed, 
-#                                             verbose = verbose)
-#                      }
-#                   ## Store those additionally estimated weights in 'weights'
-#                   weights <- c(weights.new[whichTooSmall], weights, weights.new[whichTooBig])
-#                   whichInRange <- setdiff(1:n, c(whichTooSmall, whichTooBig))
-#                } else {
-#                   whichInRange <- 1:n
-#                }
-#                ## Second: Interpolation for those weights whose maha's are in the range
-#                curr.index <- 1 # current index to look up values in 'maha2.2'
-#                for(ind in whichInRange){
-#                   curr.maha2.2 <- maha2.2.new[ind]
-#                   found <- FALSE
-#                   while(!found && curr.index < length.maha){
-#                      if(maha2.2[curr.index] <= curr.maha2.2 && curr.maha2.2 <= maha2.2[curr.index+1]){
-#                         found <- TRUE
-#                         weights.new[ind] <- weights[curr.index] + (curr.maha2.2 - maha2.2[curr.index])*
-#                            (weights[curr.index+1] - weights[curr.index])/
-#                            (maha2.2[curr.index+1]-maha2.2[curr.index])
-#                      } else {
-#                         curr.index <- curr.index + 1
-#                      }
-#                   }
-#                }
+               #                OLD:
+               #               
+               #                ## First: We *avoid* EXTRApolation and estimate weights for those maha's 
+               #                ## that are out of range of the previous maha's
+               #                anyTooSmall <- (maha2.2.new[1] < maha2.2[1])
+               #                anyTooBig   <- (maha2.2.new[n] > maha2.2[n])
+               #                if(anyTooBig || anyTooSmall){
+               #                   ## Find indices of too small and too big 'maha2.2new' values
+               #                   if(anyTooSmall){
+               #                      lastTooSmall <- which.min((maha2.2.new < maha2.2[1]))[1]-1
+               #                      length.maha  <- length.maha + lastTooSmall
+               #                      whichTooSmall <- 1:lastTooSmall
+               #                   } else {
+               #                      whichTooSmall <- c()
+               #                   }
+               #                   if(anyTooBig){
+               #                      firstTooBig <- which.max((maha2.2.new > maha2.2[length.maha]))[1]
+               #                      length.maha <- length.maha + n - firstTooBig + 1
+               #                      whichTooBig <- firstTooBig:n
+               #                   } else {
+               #                      whichTooBig <- c()
+               #                   }
+               #                   ## Update 'maha2.2' so that those values can be used again
+               #                   maha2.2 <- c(maha2.2.new[whichTooSmall], maha2.2, maha2.2.new[whichTooBig])
+               #                   weights.new[c(whichTooSmall, whichTooBig)] <- 
+               #                      if(inv.gam){
+               #                         nvmix:::get.weights.maha2.2(maha2.2.new[c(whichTooSmall, whichTooBig)], 
+               #                                                     nu = nu.est, d = d)
+               #                      } else {
+               #                         nvmix:::get.weights(maha2.2.new[c(whichTooSmall, whichTooBig)], qW = qW, 
+               #                                             nu = nu.est, lrdet = lrdet, d = d, U = U0, 
+               #                                             control = control, seed = seed, 
+               #                                             verbose = verbose)
+               #                      }
+               #                   ## Store those additionally estimated weights in 'weights'
+               #                   weights <- c(weights.new[whichTooSmall], weights, weights.new[whichTooBig])
+               #                   whichInRange <- setdiff(1:n, c(whichTooSmall, whichTooBig))
+               #                } else {
+               #                   whichInRange <- 1:n
+               #                }
+               #                ## Second: Interpolation for those weights whose maha's are in the range
+               #                curr.index <- 1 # current index to look up values in 'maha2.2'
+               #                for(ind in whichInRange){
+               #                   curr.maha2.2 <- maha2.2.new[ind]
+               #                   found <- FALSE
+               #                   while(!found && curr.index < length.maha){
+               #                      if(maha2.2[curr.index] <= curr.maha2.2 && curr.maha2.2 <= maha2.2[curr.index+1]){
+               #                         found <- TRUE
+               #                         weights.new[ind] <- weights[curr.index] + (curr.maha2.2 - maha2.2[curr.index])*
+               #                            (weights[curr.index+1] - weights[curr.index])/
+               #                            (maha2.2[curr.index+1]-maha2.2[curr.index])
+               #                      } else {
+               #                         curr.index <- curr.index + 1
+               #                      }
+               #                   }
+               #                }
             }
             ## Get new 'scale.est': 1/n * sum_{i=1}^n weights_i (x_i-mu)(x_i-mu)^T
             ## where 'mu' corresponds to current 'loc.est'

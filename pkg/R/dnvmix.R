@@ -21,7 +21,7 @@ logsumexp <- function(M)
 ##' @param UsWs matrix; each row is of the form (u, qW(u)) where u in (0,1)
 ##' @return list of three ($ldensities, $error, $numiter); each vector of length(maha2.2)
 ##' @author Erik Hintz and Marius Hofert
-dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
+dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsWs)
 {
   ## 1 Basics and initialization ###############################################
   numiter           <- 0 # counter for the number of iterations
@@ -36,6 +36,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
   max.iter.bisec.lg <- max.iter.bisec.w
   tol.bisec.u       <- 1e-16
   tol.bisec.lg      <- 1
+  negl2pid.2        <- -log(2*pi)*d/2
   ## For the result object
   n          <- length(maha2.2)
   ldensities <- rep(NA, n)
@@ -66,20 +67,20 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
     uLuR          <- rep(NA, 2) # c('u.left', 'u.right') for later
     int.argmax.u  <- NA # u* such that qmix(u*) = W where integrand is max 
     ## Realizations of log-integrand
-    l.integrand   <- -log(2*pi*W)*d/2 - lrdet - curr.maha2.2/W # sorted according to ordering(U)!
+    l.integrand   <- negl2pid.2 - log(W)*k/2 - lrdet - curr.maha2.2/W # sorted according to ordering(U)!
     ## TODO maybe (U, W, l.integrand) in one matrix
     numObs        <- length(U) # will store length(U/W/l.integrand) when appending elements
     ## Deal with the case that W is bounded:
     l.int.theo.max <- if(!isWbounded){
-      (-d/2)*(log(4*pi*curr.maha2.2/d) + 1) - lrdet # theoretical maximum of the log-integrand
+      (-d/2)*(log(4*pi*curr.maha2.2/k) + 1) - lrdet # theoretical maximum of the log-integrand
     } else if(int.argmax.w < W.max) {
-      (-d/2)*(log(4*pi*curr.maha2.2/d) + 1) - lrdet # theoretical maximum of the log-integrand
+      (-d/2)*(log(4*pi*curr.maha2.2/k) + 1) - lrdet # theoretical maximum of the log-integrand
     } else {
       int.argmax.w <- W.max # maximum is at W.max => u* = 1
       int.argmax.u <- 1
       uLuR[2] <- 1 # means: u.right = 1 
       ldens.right <- -Inf
-      -log(2*pi*W.max)*d/2 - lrdet - curr.maha2.2/W.max
+      negl2pid.2-log(W)*k/2 - lrdet - curr.maha2.2/W.max
     }
     l.tol.int.lower <- min(max(l.tol.int.lower.m, l.int.theo.max - 10*log(10)), 0)
     ## 2.1 Find u* = argmax_u{integrand(u)} ####################################
@@ -128,7 +129,8 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
       WsToAdd <- additionalVals[order.additional.Us, 2, drop = FALSE] # needed twice
       W <- append(W, values = WsToAdd, after = index.first.u)
       l.integrand <- append(l.integrand,
-                            values = -log(2*pi*WsToAdd)*d/2 - lrdet - curr.maha2.2/WsToAdd,
+                            values = negl2pid.2 -log(WsToAdd)*k/2 
+                            - lrdet - curr.maha2.2/WsToAdd,
                             after = index.first.u)
       numObs <- numObs + numiter
     } else if(peekLeft && is.na(int.argmax.u)){
@@ -207,8 +209,8 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
           ## Next point to check:
           u.next <- mean(curr.candid)
           w.next <- max(qW(u.next), ZERO)
-          diff <- ((l.int.next <- -log(2*pi*w.next)*d/2 - lrdet - curr.maha2.2/w.next) -
-                     l.tol.int.lower)
+          diff <- ((l.int.next <- negl2pid.2 -log(w.next)*k/2 - lrdet - 
+                       curr.maha2.2/w.next) - l.tol.int.lower)
           ## Store values generated
           additionalVals[numiter, ] <- c(u.next, w.next, l.int.next)
           ## Update 'candid.left' depending on sign of 'diff' and check convergence:
@@ -316,7 +318,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
     ldens.stratum <- if(is.na(ldens.stratum)){
       if(stratlength > tol.stratlength){
         ldens.obj <- nvmix:::dnvmix.internal.RQMC(qW, maha2.2 = curr.maha2.2, lrdet = lrdet, 
-                                          d = d, control = control, lower.q = u.left, 
+                                          d = d, k = k, control = control, lower.q = u.left, 
                                           upper.q = u.right, return.all = FALSE, 
                                           max.iter.rqmc = control$max.iter.rqmc -
                                             control$dnvmix.max.iter.rqmc.pilot)
@@ -346,6 +348,8 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
 ##' @param lrdet log(sqrt(det(scale))) where 'scale' is the scale matrix of
 ##'        the normal variance mixture distribution.
 ##' @param d dimension of the Normal Variance Mixture
+##' @param k power of qW^{-1} in the root (k=d => density, k=d+2 =>unnormalized 
+##'        conditional expectation of 1/W)
 ##' @param control see ?dnvmix
 ##' @param lower.q numeric in (0,1)
 ##' @param upper.q numeric in (0,1), > lower.q. Density will be estimated
@@ -359,7 +363,8 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, control, UsWs)
 ##'         error or absolte error depending on is.na(control$dnvmix.reltol)
 ##'         $UsWs (B, n) matrix (U, qW(U)) where U are uniforms (only if return.all = TRUE)
 ##' @author Erik Hintz and Marius Hofert
-dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, control, lower.q, upper.q,
+dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, k = d, control,  
+                                 lower.q = 0, upper.q = 1,
                                  max.iter.rqmc, return.all)
 {
   ## 1 Basics ##################################################################
@@ -452,7 +457,7 @@ dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, control, lower.q, upper.
                              current_n  = as.integer(current.n),
                              n          = as.integer(n),
                              d          = as.integer(d),
-                             k          = as.integer(d),
+                             k          = as.integer(k),
                              lrdet      = as.double(lrdet))
       ## 2.3 Update RQMC estimates #######################################
       rqmc.estimates[b,] <-
