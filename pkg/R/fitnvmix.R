@@ -343,7 +343,7 @@ weights.internal.RQMC <- function(maha2.2, qW, nu, lrdet, d, max.iter.rqmc,
 #'         $UsWs (B, n) matrix (U, qW(U)) where U are uniforms (only if return.all = TRUE)
 #' @author Erik Hintz
 weights.internal <- function(maha2.2, qW, nu, lrdet, d, control,
-                             verbose = verbose)
+                             verbose)
 {
    ## Absolte/relative precision?
    if(is.na(control$weights.reltol)){
@@ -375,7 +375,41 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, control,
       lcond.obj <- nvmix:::dnvmix.internal.adaptRQMC(qW., maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
                                                      d = d, k = d + 2, UsWs = rqmc.obj$UsWs, 
                                                      control = control)
-      weights[notRchd]  <- exp(lcond.obj$ldensities - ldens.obj$ldensities)
+      weights[notRchd]   <- exp(lcond.obj$ldensities - ldens.obj$ldensities)
+      ## Which weights cannot be reliably estimated?
+      which.errorNA     <- which(is.na(lcond.obj$error) | is.na(ldens.obj$error))
+      if(any(which.errorNA)){
+         if(verbose) warning('Some weights cannot be reliably estimated')
+         ## Check if 'weights' decreasing in 'maha2.2'
+         n <- length(weights)
+         for(i in 1:n){
+            if(i == 1) next else if(weights[i] <= weights[i-1]) next else {
+               ## In this case, weights[i] > weights[i-1]
+               ## Case 1: Is there any weight beyond i which is smaller than weights[i-1]?
+               smallerthani <- which(weights[i:n] <= weights[i-1]) + i - 1
+               if(length(smallerthani) > 0){
+                  ## If that's the case, interpolate all weights between i 
+                  ## and the first one smaller than weights[i-1]
+                  firstsmaller <- smallerthani[1]
+                  slope <- (weights[firstsmaller] - weights[i-1])/(maha2.2[firstsmaller] - maha2.2[i-1])
+                  weights[i:(firstsmaller-1)] <- weights[i-1] + slope*
+                     (maha2.2[i:(firstsmaller-1)] - maha2.2[i-1])
+               } else {
+                  ## In this case we extrapolate
+                  ## Following extrapolates linearly based on weights, maha2.2
+                  ## slope <- (weights[i-1] - weights[i-2])/(maha2.2[i-1] - maha2.2[i-2])
+                  ## weights[i:n] <- pmax(weights[i-1] + slope*
+                  ##   (maha2.2[i:n] - maha2.2[i-1]), 1e-16)
+                  ##   
+                  ## Behavior of the function suggests log-log extrapolation:
+                  slope <- log(weights[i-1]/weights[i-2])/log(maha2.2[i-1]/maha2.2[i-2])
+                  weights[i:n] <- weights[i-1]*exp(slope*log(maha2.2[i:n]/maha2.2[i-1]))
+               }
+            }
+         }
+      }
+      #weights.est[errorNA] <- get.weights.maha2.2(maha2.2[notRchd][errorNA], nu = nu, d = d)
+      #weights[notRchd]  <- weights.est 
       # numiter[notRchd]  <- numiter[notRchd] + rqmc.obj$numiter
       # error[notRchd]    <- rqmc.obj$error
       # ## Handle warnings:
@@ -536,6 +570,7 @@ fitnvmix <- function(x, qmix,
    ## If 'mix' is "constant" or "inverse.gamma", we use the analytical formulas
    is.const.mix  <- FALSE # logical indicating whether we have a multivariate normal
    inv.gam       <- FALSE # logical indicating whether we have a multivariate t
+   inv.gam.weights <- FALSE
    ## Set up qW as function(u, nu)
    qW <- if(is.character(qmix)) {# 'qmix' is a character vector
       qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
@@ -733,7 +768,7 @@ fitnvmix <- function(x, qmix,
             if(iter.locscaleupdate == 1){
                ## Only in the first iteration do we approximate all weights by RQMC.
                ## Get weights 
-               if(inv.gam){
+               if(inv.gam.weights){
                   weights <- nvmix:::get.weights.maha2.2(maha2.2.new, nu = nu.est, d = d)
                } else {
                   #weights <- nvmix:::get.weights(maha2.2.new, qW = qW, nu = nu.est,
@@ -786,7 +821,7 @@ fitnvmix <- function(x, qmix,
                ## Now need to approximate weights for those maha in 'notInterpol'
                if(notInterpolcounter > 1){
                   notInterpol <- notInterpol[1:(notInterpolcounter-1)]
-                  weights.new[notInterpol] <- if(inv.gam){
+                  weights.new[notInterpol] <- if(inv.gam.weights){
                      nvmix:::get.weights.maha2.2(maha2.2.new[notInterpol], 
                                                  nu = nu.est, d = d)
                   } else {

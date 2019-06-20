@@ -182,7 +182,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
       ## where max is. NO stratificatioN!
       candid.left  <- c(1, 1)
       candid.right <- c(1, 1)
-      ldens.right <- log(.Machine$double.neg.eps) + l.int.theo.max - log(2)
+      log(.Machine$double.neg.eps)+ l.int.theo.max-log(2) +log(.Machine$double.neg.eps)+ l.tol.int.lower-log(4)
       ldens.stratum <- -Inf
     } else if(peekLeft){
       candid.left  <- c(0, 0)
@@ -244,9 +244,9 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
         ## => Special case where no obs > threshold
         ## => Use all obs and Riemann for this region
         weights <- c(U[1], U[2:numObs] - U[1:(numObs-1)])
-        upper.sum <- logsumexp(
+        upper.sum <- nvmix:::logsumexp(
           as.matrix(log(weights) + l.integrand[1:numObs], ncol = 1))
-        lower.sum <- logsumexp(
+        lower.sum <- nvmix:::logsumexp(
           as.matrix(log(weights) + c(-Inf, l.integrand[1:(numObs-1)]), ncol = 1))
         (lower.sum + upper.sum) / 2
       } else {
@@ -333,7 +333,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
     }
     ## 3 Combine and return ####################################################
     ## Combine to one estimate:
-    ldensities[ind] <- logsumexp(rbind(ldens.left, ldens.right, ldens.stratum, 
+    ldensities[ind] <- nvmix:::logsumexp(rbind(ldens.left, ldens.right, ldens.stratum, 
                                        deparse.level = 0))
     errors[ind]     <- error
     numiters[ind]   <- rqmc.numiter
