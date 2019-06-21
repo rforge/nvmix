@@ -32,6 +32,10 @@ get.weights.maha2.2 <- function(maha2.2, nu, d,...){
 }
 
 
+
+
+
+
 #' Estimate weights for fitnvmix() (corresponds to delta_ki in the paper)
 #' (internal function)
 #'
@@ -383,7 +387,7 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, control,
          ## Check if 'weights' decreasing in 'maha2.2'
          n <- length(weights)
          for(i in 1:n){
-            if(i == 1) next else if(weights[i] <= weights[i-1]) next else {
+            if(i <= 2) next else if(weights[i] <= weights[i-1]) next else {
                ## In this case, weights[i] > weights[i-1]
                ## Case 1: Is there any weight beyond i which is smaller than weights[i-1]?
                smallerthani <- which(weights[i:n] <= weights[i-1]) + i - 1
@@ -488,7 +492,7 @@ estim.nu.cop <- function(U, qW, init.nu, factor, control, control.optim,
 #'                      $max.ll (negative log-likelihood at nu.est)
 #' @author Erik Hintz
 estim.nu <- function(tx, qW, init.nu, loc, scale, control, control.optim,
-                     mix.param.bounds, inv.gam = TRUE, seed, verbose)
+                     mix.param.bounds, inv.gam = FALSE, seed, verbose)
 {
    factor <- t(chol(scale))
    if(inv.gam){ ## in this case, dnvmix() uses analytical formula for density
@@ -668,6 +672,7 @@ fitnvmix <- function(x, qmix,
    if(!is.na(nu.init)){
       nu.est <- nu.init
       scale.est <- 1/mean(qW(runif(100000), nu.est))* SCov
+      scale.est <- SCov
    } else if(!useCop) {
       ## Optimize log-likelihood:
       ## -loglikelihood as function of param=(nu, c) of length mix.param.length + 1
@@ -903,9 +908,9 @@ fitnvmix <- function(x, qmix,
             }
             ## Get new 'scale.est': 1/n * sum_{i=1}^n weights_i (x_i-mu)(x_i-mu)^T
             ## where 'mu' corresponds to current 'loc.est'
-            scale.est.new <- as.matrix(nearPD(cov.wt(x, wt = weights.new,
-                                                     center = loc.est,
-                                                     method = "ML")$cov)$mat)*sum(weights.new) / n
+            scale.est.new <- crossprod(sqrt(weights.new)*sweep(x, 2, loc.est, check.margin = FALSE))/n
+            
+
             
             ## Get new 'loc.est': sum_{i=1}^n weights_i x_i / (sum weights)
             ## as.vector because we need 'loc.est' as a vector, not (d, 1) matrix

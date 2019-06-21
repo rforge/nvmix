@@ -44,69 +44,82 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
   numiters   <- rep(NA, n)
   ## Grab 'UsWs'; store them in vectors and sort:
   ## Artificially add ZERO and ONE for convenience:
-  ordering.U <- order(UsWs[, 1, drop = FALSE])
-  U <- c(ZERO, UsWs[ordering.U, 1], ONE)
-  numObs <- length(U) # will store length(U/W/l.integrand) when appending elements
+  ordering.U   <- order(UsWs[, 1, drop = FALSE])
+  ## Will store length(U/W/l.integrand) when appending elements in 'numObs'
+  numObs       <- dim(UsWs)[1] + 2 # will add 'ZERO' and 'ONE' 
+  ## Set up matrix of the form  U | qW(U) | l.integrand
+  U.W.lint     <- matrix(NA, ncol = 3, nrow = numObs)
+  U.W.lint[,1] <- c(ZERO, UsWs[ordering.U, 1], ONE)
+  U.W.lint[,2] <- qW(U.W.lint[,1])
+
+  #U <- c(ZERO, UsWs[ordering.U, 1], ONE)
+  #numObs <- length(U) # will store length(U/W/l.integrand) when appending elements
   ## Realizations of W and the log-integrand.
-  ## Note: W[1] = smallest W we can generate; W[numObs] largest W we can generate
-  W <- c(qW(ZERO), UsWs[ordering.U, 2], qW(ONE))
-  isWbounded <- is.finite(qW(1)) # logical 
-  if(isWbounded) W.max <- qW(1) 
+  ## Note: U.W.lint[1,2] = smallest W we can generate; U.W.lint[numObs, 2] largest W we can generate
+  W.max <- qW(1) # <= inf
+  W.min <- qW(0) # >= 0
+  isWbounded <- is.finite(W.max) | (W.min > 0)
   ## 2 MAIN LOOP OVER MAHALANOBIS DISTANCES ####
   for(ind in 1:n){
     curr.maha2.2 <- maha2.2[ind]
     ## 2.0 Initialize various quantities #######################################
-    int.argmax.w  <- 2*curr.maha2.2/d # value of W = qmix(u*) at max assuming W is *unbounded*
-    peekRight     <- (int.argmax.w > W[numObs]) && !isWbounded # u* close too close to 1
-    peekLeft      <- (int.argmax.w < W[1]) # u* close too close to 0
-    outofreach.w  <- peekLeft ||  peekRight
     error         <- NA
     ldens.right   <- NA
     ldens.left    <- NA
     ldens.stratum <- NA
     uLuR          <- rep(NA, 2) # c('u.left', 'u.right') for later
+    ## Determine location of maximum 
     int.argmax.u  <- NA # u* such that qmix(u*) = W where integrand is max 
-    ## Realizations of log-integrand
-    l.integrand   <- negl2pid.2 - log(W)*k/2 - lrdet - curr.maha2.2/W # sorted according to ordering(U)!
-    ## TODO maybe (U, W, l.integrand) in one matrix
-    numObs        <- length(U) # will store length(U/W/l.integrand) when appending elements
-    ## Deal with the case that W is bounded:
-    l.int.theo.max <- if(!isWbounded){
-      (-d/2)*(log(4*pi*curr.maha2.2/k) + 1) - lrdet # theoretical maximum of the log-integrand
-    } else if(int.argmax.w < W.max) {
-      (-d/2)*(log(4*pi*curr.maha2.2/k) + 1) - lrdet # theoretical maximum of the log-integrand
-    } else {
-      int.argmax.w <- W.max # maximum is at W.max => u* = 1
-      int.argmax.u <- 1
-      uLuR[2] <- 1 # means: u.right = 1 
-      ldens.right <- -Inf
-      negl2pid.2-log(W)*k/2 - lrdet - curr.maha2.2/W.max
+    int.argmax.w  <- 2*curr.maha2.2/k # value of W = qmix(u*) at max assuming W is *unbounded*
+    peekRight     <- (int.argmax.w > U.W.lint[numObs, 2]) && !isWbounded # u* close too close to 1
+    peekLeft      <- (int.argmax.w < U.W.lint[1, 2]) && !isWbounded # u* close too close to 0
+    outofreach.w  <- peekLeft ||  peekRight
+    ## Deal with the case that W has support on (W.min, W.max) where W.min>0, W.max<inf
+    if(maxLeft <- ((int.argmax.w < W.min) && isWbounded)){
+       uLuR[1]       <- 0 # u.left = 0
+       int.argmax.u   <- 0
+       int.argmax.w  <- W.min
+       ldens.left    <- -Inf 
     }
+    if(maxRight <- ((int.argmax.w > W.max) && isWbounded)){
+       uLuR[2]       <- 1 # u.right = 1
+       int.argmax.u   <- 1
+       int.argmax.w  <- W.max
+       ldens.right   <- -Inf
+    }
+    
+    ## Realizations of log-integrand
+    U.W.lint[,3]  <- negl2pid.2 - log(U.W.lint[,2])*k/2 - lrdet - curr.maha2.2/U.W.lint[,2] # sorted according to ordering(U)!
+    ## Value of the theoretical maximum of the log-integrand
+    l.int.theo.max <- negl2pid.2 -log(int.argmax.w)*k/2 - lrdet - curr.maha2.2/int.argmax.w
+    ## Threshold: Will only use RQMC where l.integrand > l.tol.int.lower
     l.tol.int.lower <- min(max(l.tol.int.lower.m, l.int.theo.max - 10*log(10)), 0)
+    
     ## 2.1 Find u* = argmax_u{integrand(u)} ####################################
     ## Only needed if int.argmax.u is NA (otherwise, we already have it)
     if(!outofreach.w && is.na(int.argmax.u)){
       ## Want fo find u* such that g(u*) ~= g_max where g is the original integrand
       ## Equivalently: Find u* such that qW(U*) = m/d (approximately) via binary search
       ## The follwing finds starting values (u1, u2): qW(u1)<int.argmax.w & qW(u2) > int.argmax.w
-      if( int.argmax.w < W[2] ){
+      if( int.argmax.w < U.W.lint[1,2] ){
         ## "Peek" is close to u = 0
-        u1u2 <- c(0, U[2])
-      } else if(int.argmax.w > W[numObs - 1]){
+        u1u2 <- c(0, U.W.lint[1, 1])
+      } else if(int.argmax.w > U.W.lint[numObs - 1, 2]){
         ## "Peek" is close to u = 1
-        u1u2 <- c(U[numObs - 1], 1)
+        u1u2 <- c(U.W.lint[numObs - 1, 1], 1)
       } else {
         ## "Peek" is observed
-        ## First index i such that W[i] >  int.argmax.w. Note: i > 1 bc of condition
-        ind.first.bigger <- which(W > int.argmax.w)[1]
-        u1u2 <- c(U[ind.first.bigger - 1], U[ind.first.bigger])
+        ## First index i such that U.W.lint[i,2] (ie W[i]) >  int.argmax.w. 
+        ## Note: i > 1 bc of condition
+        ind.first.bigger <- which(U.W.lint[,2] > int.argmax.w)[1]
+        u1u2 <- c(U.W.lint[ind.first.bigger - 1, 1], U.W.lint[ind.first.bigger, 1])
       }
       ## Now find u:
       convd <- FALSE
       numiter <- 0
       ## Matrix to store additional u's and W's generated:
       additionalVals <- matrix(NA, ncol = 2, nrow = max.iter.bisec.w)
-      index.first.u <- which(U >= u1u2[1])[1] # will insert after this index
+      index.first.u <- which(U.W.lint[,1] >= u1u2[1])[1] # will insert after this index
       while(!convd && numiter < max.iter.bisec.w){
         numiter <- numiter + 1
         ## Next point to check (midpoint of u1u2):
@@ -123,15 +136,21 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
       ## TODO could omit sorting if we inserted somehow smarter above
       ## Order of first column = order of all columns
       order.additional.Us <- order(additionalVals[1:numiter, 1, drop = FALSE])
-      U <- append(U, values = additionalVals[order.additional.Us, 1, drop = FALSE],
-                  after = index.first.u)
-      ## TODO 'drop = FALSE' not needed here (I think? => check)
       WsToAdd <- additionalVals[order.additional.Us, 2, drop = FALSE] # needed twice
-      W <- append(W, values = WsToAdd, after = index.first.u)
-      l.integrand <- append(l.integrand,
-                            values = negl2pid.2 -log(WsToAdd)*k/2 
-                            - lrdet - curr.maha2.2/WsToAdd,
-                            after = index.first.u)
+      U.W.lint <- rbind( U.W.lint[1:index.first.u,],
+                         cbind(additionalVals[order.additional.Us, 1, drop = FALSE],
+                               WsToAdd,
+                               negl2pid.2 -log(WsToAdd)*k/2 - lrdet - curr.maha2.2/WsToAdd),
+                         U.W.lint[(index.first.u+1):numObs,])
+      # U <- append(U, values = additionalVals[order.additional.Us, 1, drop = FALSE],
+      #             after = index.first.u)
+      # ## TODO 'drop = FALSE' not needed here (I think? => check)
+      # WsToAdd <- additionalVals[order.additional.Us, 2, drop = FALSE] # needed twice
+      # W <- append(W, values = WsToAdd, after = index.first.u)
+      # l.integrand <- append(l.integrand,
+      #                       values = negl2pid.2 -log(WsToAdd)*k/2 
+      #                       - lrdet - curr.maha2.2/WsToAdd,
+      #                       after = index.first.u)
       numObs <- numObs + numiter
     } else if(peekLeft && is.na(int.argmax.u)){
       int.argmax.u <- ZERO
@@ -139,14 +158,17 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
       int.argmax.u <- ONE
     }
     ## 2.2 Find stratum (u.left, u.right) over which RQMC is applied ###########
+    
     ## 2.2.1 Find "candidates" for bisection  ##################################
+    
     ## Need to distinguish multiple special cases:
-    greater.thshold <- (l.integrand > l.tol.int.lower)
+    greater.thshold <- (U.W.lint[,3] > l.tol.int.lower)
     if(any(greater.thshold)){
       ## In this case there is at least one obs exceeding the threshold
       ind.greater <- which(greater.thshold)
       ## Will use bisection to find 'u.left' and 'u.right'; starting values as follows:
-      candid.left  <- c(max(0, U[ind.greater[1] - 1]), min(int.argmax.u, U[ind.greater[1]]) )
+      candid.left  <- c(max(0, U.W.lint[ind.greater[1] - 1, 1]), 
+                        min(int.argmax.u, U.W.lint[ind.greater[1], 1]) )
       ## Note: ind.greater[1] = 1 => U[ind.greater[1] - 1] = numeric(0)
       ## => max(0, U[ind.greater[1] - 1]) = 0
       ## Need several cases for 'candid.right':
@@ -155,8 +177,8 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
         ## Case 1:
         ## There is u' with u`>=u^ and g(u') < threshold
         ## =>  'u.right' in (u^, u')
-        c(max(U[ind.greater[length(ind.greater)]], int.argmax.u),
-          U[ind.greater[length(ind.greater)] + 1] )
+        c(max(U.W.lint[ind.greater[length(ind.greater)], 1], int.argmax.u),
+          U.W.lint[ind.greater[length(ind.greater)] + 1, 1] )
       } else {
         ## Case 2: the last point in U is such that g(u) > threshold, in other words:
         ## g(ONE) > threshold
@@ -179,15 +201,15 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
     } else if(peekRight){
       ## In this case, none of the observations is > threshold and peek close to 1:
       ## Will use *all* obs to estimate in (0, ONE) and crude approximation in (ONE, 1)
-      ## where max is. NO stratificatioN!
-      candid.left  <- c(1, 1)
-      candid.right <- c(1, 1)
-      log(.Machine$double.neg.eps)+ l.int.theo.max-log(2) +log(.Machine$double.neg.eps)+ l.tol.int.lower-log(4)
-      ldens.stratum <- -Inf
+      ## where max is. NO stratification!
+      candid.left    <- c(1, 1)
+      candid.right   <- c(1, 1)
+      ldens.right    <- log(.Machine$double.neg.eps) + l.int.theo.max - log(2)
+      ldens.stratum  <- -Inf
     } else if(peekLeft){
-      candid.left  <- c(0, 0)
-      candid.right <- c(0, 0)
-      ldens.left <- log(.Machine$double.neg.eps) + l.int.theo.max - log(2)
+      candid.left    <- c(0, 0)
+      candid.right   <- c(0, 0)
+      ldens.left     <- log(.Machine$double.neg.eps) + l.int.theo.max - log(2)
       ldens.stratum <- -Inf
     } else {
       candid.left <- c(0, int.argmax.u)
@@ -217,17 +239,24 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
           if(diff > 0) curr.candid[2] <- u.next else curr.candid[1] <- u.next
           convd <- (abs(diff) < tol.bisec.lg)  || (diff(curr.candid) < tol.bisec.u)
         }
+        ## Update U.W.lint[]:
+        ## First, add additional values
+        U.W.lint <- rbind(U.W.lint, additionalVals[1:numiter,, drop = FALSE])
+        ## Destroyed the ordering => sort again
+        ordering.new <- order(U.W.lint[,1]) # all columns have the same ordering
+        U.W.lint <- U.W.lint[ordering.new, ]
+        
         ## Update the vectors 'U', 'W' and 'l.integrand' while *preserving the order*
         ## Order of first column = order of all columns
-        U <- append(U, values = additionalVals[1:numiter, 1, drop = FALSE],
-                    after = numObs)
-        ordering.U.new <- order(U)
-        U <- U[ordering.U.new] # now U is correctly ordered
-        W <- append(W, values = additionalVals[1:numiter, 2, drop = FALSE],
-                    after = numObs)[ordering.U.new]
-        l.integrand <- append(l.integrand,
-                              values = additionalVals[1:numiter, 3, drop = FALSE],
-                              after = numObs)[ordering.U.new]
+        # U <- append(U, values = additionalVals[1:numiter, 1, drop = FALSE],
+        #             after = numObs)
+        # ordering.U.new <- order(U)
+        # U <- U[ordering.U.new] # now U is correctly ordered
+        # W <- append(W, values = additionalVals[1:numiter, 2, drop = FALSE],
+        #             after = numObs)[ordering.U.new]
+        # l.integrand <- append(l.integrand,
+        #                       values = additionalVals[1:numiter, 3, drop = FALSE],
+        #                       after = numObs)[ordering.U.new]
         ## Update numObs (= length(U)) and return
         numObs <- numObs + numiter
         u.next
@@ -243,26 +272,27 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
       if(u.left == 0) -Inf else if(u.left == 1){
         ## => Special case where no obs > threshold
         ## => Use all obs and Riemann for this region
-        weights <- c(U[1], U[2:numObs] - U[1:(numObs-1)])
+        weights <- c(U.W.lint[1, 1], U.W.lint[2:numObs, 1] - U.W.lint[1:(numObs-1), 1])
         upper.sum <- nvmix:::logsumexp(
-          as.matrix(log(weights) + l.integrand[1:numObs], ncol = 1))
+          as.matrix(log(weights) + U.W.lint[1:numObs, 3], ncol = 1))
         lower.sum <- nvmix:::logsumexp(
-          as.matrix(log(weights) + c(-Inf, l.integrand[1:(numObs-1)]), ncol = 1))
+          as.matrix(log(weights) + c(-Inf, U.W.lint[1:(numObs-1), 3]), ncol = 1))
         (lower.sum + upper.sum) / 2
       } else {
         ## 0 < u.left < 1 => Find obs in (0, u.left)
         ## Should exist (o.w. ldens.left already set) ?!
         ## TODO CHECK THAT!
-        usUsed <- (U <= u.left)
+        usUsed <- (U.W.lint[,1] <= u.left)
         sumusUsed <- sum(usUsed)
         if(sumusUsed > 1){ #
           ## Case 1: We have do have >1 observations in (0, u.left)
           lastUsed <- which(usUsed)[sumusUsed]
-          weights <- c(U[1], U[2:lastUsed] - U[1:(lastUsed-1)])
-          upper.sum <- logsumexp(as.matrix(log(weights) + 
-                                             l.integrand[1:lastUsed], ncol = 1))
-          lower.sum <- logsumexp(as.matrix(log(weights) + 
-                                             c(-Inf, l.integrand[1:(lastUsed-1)]), 
+          weights <- c(U.W.lint[1, 1], 
+                       U.W.lint[2:lastUsed, 1] - U.W.lint[1:(lastUsed-1), 1])
+          upper.sum <- nvmix:::logsumexp(as.matrix(log(weights) + 
+                                              U.W.lint[1:lastUsed, 3], ncol = 1))
+          lower.sum <- nvmix:::logsumexp(as.matrix(log(weights) + 
+                                             c(-Inf, U.W.lint[1:(lastUsed-1), 3]), 
                                            ncol = 1))
           (lower.sum + upper.sum) / 2
         } else {
@@ -279,33 +309,34 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
       if(u.right == 1) -Inf else if(u.right == 0){
         ## => Special case where no obs > threshold
         ## => Use all obs and Riemann for this region
-        weights <- c(U[1], U[2:numObs] - U[1:(numObs-1)])
+        weights <- c(U.W.lint[1, 1], 
+                     U.W.lint[2:numObs, 1] - U.W.lint[1:(numObs-1), 1])
         upper.sum <- logsumexp(
-          as.matrix(log(weights) + l.integrand[1:numObs], ncol = 1))
+          as.matrix(log(weights) + U.W.lint[1:numObs, 3], ncol = 1))
         lower.sum <- logsumexp(
-          as.matrix(log(weights) + c(-Inf, l.integrand[1:(numObs-1)]), ncol = 1))
+          as.matrix(log(weights) + c(-Inf, U.W.lint[1:(numObs-1), 3]), ncol = 1))
         (lower.sum + upper.sum) / 2
       } else {
         ## 0 < u.right < 1 => Find obs in (u.right, 1)
         ## Should exist (o.w. ldens.right already set)
         ## TODO CHECK THAT!
-        usUsed <- (U >= u.right)
+        usUsed <- (U.W.lint[,1] >= u.right)
         if(any(usUsed)){ # maybe redundnat, see above
           ## Case 1: We have do have observations in (u.right, 1)
           firstUsed <- which(usUsed)[1]
           ## Case 1.1: We have only one obs in that region
           ## TODO can that actually happen? => CHECK
           ## Case 1.2: We have >1 obs in that region
-          weights <- c(U[ (firstUsed+1):numObs ] - U[firstUsed:(numObs-1)],
+          weights <- c(U.W.lint[ (firstUsed+1):numObs, 1] - U.W.lint[firstUsed:(numObs-1), 1],
                        .Machine$double.neg.eps)
-          upper.sum <- logsumexp(as.matrix(log(weights) + 
-                                             l.integrand[firstUsed:numObs], ncol = 1))
-          lower.sum <- logsumexp(as.matrix(log(weights) + 
-                                             c(l.integrand[(firstUsed+1):numObs], -Inf), ncol = 1))
+          upper.sum <- nvmix:::logsumexp(as.matrix(log(weights) + 
+                                              U.W.lint[firstUsed:numObs, 3], ncol = 1))
+          lower.sum <- nvmix:::logsumexp(as.matrix(log(weights) + 
+                                             c(U.W.lint[(firstUsed+1):numObs, 3], -Inf), ncol = 1))
           (lower.sum + upper.sum) / 2
         } else {
           ## Case 2: No observations in (u.right, 1) => u.right > ONE
-          log(1 - u.right) + log(tol.int.lower) - log(2)
+          log1p(-u.right) + log(tol.int.lower) - log(2)
         }
       }
     } else {
@@ -531,7 +562,7 @@ dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, k = d, control,
 ##'         $error n-vector of *absolute* error estimates for log-densities
 ##'         $numiter n-vector of number of iterations needed
 ##' @author Erik Hintz and Marius Hofert
-dnvmix.internal <- function(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, control,
+dnvmix.internal <- function(qW, maha2.2, lrdet = lrdet, d = d, control,
                             verbose = verbose)
 {
   ## Absolte/relative precision?
