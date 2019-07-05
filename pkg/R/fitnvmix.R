@@ -932,15 +932,15 @@ fitnvmix <- function(x, qmix,
          ## 2.2: Update 'nu.est', if desired/necessary: ########################
          if(control$ECMEstep.do.nu){
             ## New subsample used for this 'nu' update?
-            if(resample && size.subsample < n){
-               ## TODO: Is this sketchy? 
-               rm(".Random.seed") # destroy the reseted seed 
-               runif(1) # get a new seed
-               sampled.ind <- sample(n, size.subsample)
-               tx.sub      <- tx[,sampled.ind]
-            }
+            # if(resample && size.subsample < n){
+            #    ## TODO: Is this sketchy? 
+            #    if(exists(".Random.seed")) rm(".Random.seed") # destroy the reseted seed 
+            #    runif(1) # get a new seed
+            #    sampled.ind <- sample(n, size.subsample)
+            #    tx.sub      <- tx[,sampled.ind]
+            # }
             ## Optimize neg.log.likelihood over nu
-            est.obj <- nvmix:::estim.nu(tx.sub, qW = qW, init.nu = nu.est,
+            est.obj <- nvmix:::estim.nu(tx, qW = qW, init.nu = nu.est,
                                         loc = loc.est, scale = scale.est,
                                         control = control, control.optim = control.optim,
                                         mix.param.bounds = mix.param.bounds, inv.gam = inv.gam,
