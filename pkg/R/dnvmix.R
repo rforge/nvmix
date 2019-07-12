@@ -34,7 +34,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
   tol.stratlength   <- control$dnvmix.tol.stratlength
   max.iter.bisec.w  <- control$dnvmix.max.iter.bisec.w
   max.iter.bisec.lg <- max.iter.bisec.w
-  tol.bisec.u       <- 1e-16
+  tol.bisec.u       <- 1e-14
   tol.bisec.lg      <- 1
   negl2pid.2        <- -log(2*pi)*d/2
   ## For the result object
@@ -76,12 +76,14 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
     outofreach.w  <- peekLeft ||  peekRight
     ## Deal with the case that W has support on (W.min, W.max) where W.min>0, W.max<inf
     if(maxLeft <- ((int.argmax.w < W.min) && isWbounded)){
+       ## Maximum at the left endpoint (ie at u=0)
        uLuR[1]       <- 0 # u.left = 0
        int.argmax.u   <- 0
        int.argmax.w  <- W.min
        ldens.left    <- -Inf 
     }
     if(maxRight <- ((int.argmax.w > W.max) && isWbounded)){
+       ## Maximum at the right endpoint (ie at u=1)
        uLuR[2]       <- 1 # u.right = 1
        int.argmax.u   <- 1
        int.argmax.w  <- W.max
@@ -89,9 +91,11 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
     }
     
     ## Realizations of log-integrand
-    U.W.lint[,3]  <- negl2pid.2 - log(U.W.lint[,2])*k/2 - lrdet - curr.maha2.2/U.W.lint[,2] # sorted according to ordering(U)!
+    U.W.lint[,3]  <- negl2pid.2 - log(U.W.lint[,2])*k/2 - lrdet -
+       curr.maha2.2/U.W.lint[,2] # sorted according to ordering(U)!
     ## Value of the theoretical maximum of the log-integrand
-    l.int.theo.max <- negl2pid.2 -log(int.argmax.w)*k/2 - lrdet - curr.maha2.2/int.argmax.w
+    l.int.theo.max <- negl2pid.2 -log(int.argmax.w)*k/2 - lrdet -
+       curr.maha2.2/int.argmax.w
     ## Threshold: Will only use RQMC where l.integrand > l.tol.int.lower
     l.tol.int.lower <- min(max(l.tol.int.lower.m, l.int.theo.max - 10*log(10)), 0)
     
@@ -99,7 +103,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
     ## Only needed if int.argmax.u is NA (otherwise, we already have it)
     if(!outofreach.w && is.na(int.argmax.u)){
       ## Want fo find u* such that g(u*) ~= g_max where g is the original integrand
-      ## Equivalently: Find u* such that qW(U*) = m/d (approximately) via binary search
+      ## Equivalently: Find u* such that qW(U*) = m/k (approximately) via binary search
       ## The follwing finds starting values (u1, u2): qW(u1)<int.argmax.w & qW(u2) > int.argmax.w
       if( int.argmax.w < U.W.lint[1,2] ){
         ## "Peek" is close to u = 0
@@ -132,8 +136,8 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
         convd <- (abs(diff) < tol.bisec.w) || (diff(u1u2) < tol.bisec.u)
       }
       int.argmax.u <- u.next
-      ## Update the vectors 'U', 'W' and 'l.integrand' while *preserving the order*
-      ## TODO could omit sorting if we inserted somehow smarter above
+      ## Add additional values of 'U', 'W' and 'l.integrand' in 'U.W.lint'
+      ## while *preserving the order*.
       ## Order of first column = order of all columns
       order.additional.Us <- order(additionalVals[1:numiter, 1, drop = FALSE])
       WsToAdd <- additionalVals[order.additional.Us, 2, drop = FALSE] # needed twice
@@ -142,15 +146,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
                                WsToAdd,
                                negl2pid.2 -log(WsToAdd)*k/2 - lrdet - curr.maha2.2/WsToAdd),
                          U.W.lint[(index.first.u+1):numObs,])
-      # U <- append(U, values = additionalVals[order.additional.Us, 1, drop = FALSE],
-      #             after = index.first.u)
-      # ## TODO 'drop = FALSE' not needed here (I think? => check)
-      # WsToAdd <- additionalVals[order.additional.Us, 2, drop = FALSE] # needed twice
-      # W <- append(W, values = WsToAdd, after = index.first.u)
-      # l.integrand <- append(l.integrand,
-      #                       values = negl2pid.2 -log(WsToAdd)*k/2 
-      #                       - lrdet - curr.maha2.2/WsToAdd,
-      #                       after = index.first.u)
+      ## Update length (=nrow) of 'U.W.lint'
       numObs <- numObs + numiter
     } else if(peekLeft && is.na(int.argmax.u)){
       int.argmax.u <- ZERO
@@ -173,9 +169,9 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
       ## => max(0, U[ind.greater[1] - 1]) = 0
       ## Need several cases for 'candid.right':
       candid.right <- if(ind.greater[length(ind.greater)] < numObs){
-        ## Let u^ = largest u >= u* such that g(u^) > threshold (exists)
+        ## Let u^ be largest u >= u* such that g(u^) > threshold (exists)
         ## Case 1:
-        ## There is u' with u`>=u^ and g(u') < threshold
+        ## There is u' with u'>=u^ and g(u') < threshold
         ## =>  'u.right' in (u^, u')
         c(max(U.W.lint[ind.greater[length(ind.greater)], 1], int.argmax.u),
           U.W.lint[ind.greater[length(ind.greater)] + 1, 1] )
@@ -196,6 +192,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
           ## => do nothing in  (ONE, 1)
           ldens.right <- -Inf
         }
+         ## See above: u.right = 1   
         c(1, 1)
       }
     } else if(peekRight){
@@ -212,7 +209,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
       ldens.left     <- log(.Machine$double.neg.eps) + l.int.theo.max - log(2)
       ldens.stratum <- -Inf
     } else {
-      candid.left <- c(0, int.argmax.u)
+      candid.left  <- c(0, int.argmax.u)
       candid.right <- c(int.argmax.u, 1)
     }
     ## 2.2.2 Bisection to find 'u.left' and 'u.right'   ########################
@@ -235,7 +232,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
                        curr.maha2.2/w.next) - l.tol.int.lower)
           ## Store values generated
           additionalVals[numiter, ] <- c(u.next, w.next, l.int.next)
-          ## Update 'candid.left' depending on sign of 'diff' and check convergence:
+          ## Update 'curr.candid' depending on sign of 'diff' and check convergence:
           if(diff > 0) curr.candid[2] <- u.next else curr.candid[1] <- u.next
           convd <- (abs(diff) < tol.bisec.lg)  || (diff(curr.candid) < tol.bisec.u)
         }
@@ -245,19 +242,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
         ## Destroyed the ordering => sort again
         ordering.new <- order(U.W.lint[,1]) # all columns have the same ordering
         U.W.lint <- U.W.lint[ordering.new, ]
-        
-        ## Update the vectors 'U', 'W' and 'l.integrand' while *preserving the order*
-        ## Order of first column = order of all columns
-        # U <- append(U, values = additionalVals[1:numiter, 1, drop = FALSE],
-        #             after = numObs)
-        # ordering.U.new <- order(U)
-        # U <- U[ordering.U.new] # now U is correctly ordered
-        # W <- append(W, values = additionalVals[1:numiter, 2, drop = FALSE],
-        #             after = numObs)[ordering.U.new]
-        # l.integrand <- append(l.integrand,
-        #                       values = additionalVals[1:numiter, 3, drop = FALSE],
-        #                       after = numObs)[ordering.U.new]
-        ## Update numObs (= length(U)) and return
+        ## Update length (=nrow) of 'U.W.lint'
         numObs <- numObs + numiter
         u.next
       }
@@ -265,6 +250,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
     ## For readability
     u.left  <- if(uLuR[1] <= ZERO) 0 else uLuR[1]
     u.right <- if(uLuR[2] >= ONE) 1 else uLuR[2]
+    
     ## 2.3 Estimate integral in the three regions ##############################
     ## 2.3.1 Estimate log of integral over (0, u.left) #########################
     ldens.left <- if(is.na(ldens.left)){
@@ -601,7 +587,8 @@ dnvmix.internal <- function(qW, maha2.2, lrdet = lrdet, d = d, control,
       }
       whichNA <- which(is.na(error))
       if(any(error[setdiff(1:length(error), whichNA)] > tol)) # 'setdiff' needed if 'whichNA' is empty
-        warning("Tolerance not reached for all inputs; consider increasing 'max.iter.rqmc' in the 'control' argument.")
+        warning("Tolerance not reached for all inputs; 
+                consider increasing 'max.iter.rqmc' in the 'control' argument.")
     }
     ## Transform error back to *absolute* errors:
     if(do.reltol) error <- error * abs(ldens)
@@ -748,7 +735,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     ## ordering later:
     ordering.maha <- order(maha2)
     maha2.2 <- maha2[ordering.maha]/2
-    ## Call internal dnvmix (which itself calls C-Code)
+    ## Call internal dnvmix (which itself calls C-Code and handles warnings):
     ests <- dnvmix.internal(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d,
                             control = control, verbose = verbose)
     ## Grab results, correct 'error' and 'lres' if 'log = FALSE'
