@@ -28,7 +28,7 @@ pgammamix <- function(m, qmix, d, lower.tail = TRUE,
   n <- length(m) # length of input
   ## Deal with algorithm parameters, see also get.set.parameters():
   ## get.set.parameters() also does argument checking, so not needed here.
-  control <- nvmix:::get.set.parameters(control)
+  control <- get.set.parameters(control)
   ## 1 Define the quantile function of the mixing variable ###################
   qW <- if(is.character(qmix)) { # 'qmix' is a character vector
     qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
