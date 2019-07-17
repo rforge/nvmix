@@ -20,7 +20,8 @@ importFrom("Matrix",
 
 ### Exports ####################################################################
 
-export("dnvmix", "pnvmix", "rnvmix",
+export("dnvmix", "pnvmix", "rnvmix", "fitnvmix",
        "dStudent", "pStudent", "rStudent",
        "dNorm", "pNorm", "rNorm", "qnvmix",
-       "dnvmixcop", "pnvmixcop", "rnvmixcop")
+       "dnvmixcop", "pnvmixcop", "rnvmixcop",
+       "get.set.parameters")

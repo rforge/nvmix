@@ -25,19 +25,12 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
 {
   ## 1 Basics and initialization ###############################################
   numiter           <- 0 # counter for the number of iterations
+  negl2pid.2        <- -log(2*pi)*d/2
   ONE               <- 1-.Machine$double.neg.eps
   ZERO              <- .Machine$double.neg.eps
-  ## TODO! CHECK if that makes sense (shd be .xmin, but qW(.xmin) = 0 (often))
-  tol.int.lower     <- control$dnvmix.tol.int.lower
-  l.tol.int.lower.m <- log(tol.int.lower)# sample only where integrand>tol.int.lower
-  tol.bisec.w       <- control$dnvmix.tol.bisec.w
-  tol.stratlength   <- control$dnvmix.tol.stratlength
-  max.iter.bisec.w  <- control$dnvmix.max.iter.bisec.w
-  max.iter.bisec.lg <- max.iter.bisec.w
-  tol.bisec.u       <- 1e-14
-  tol.bisec.lg      <- 1
-  negl2pid.2        <- -log(2*pi)*d/2
-  ## For the result object
+  tol.bisec         <- control$dnvmix.tol.bisec # vector of length 3
+  ## [1]/[2]/[3] => tolerance on 'u' / 'W' / 'log-integrand' scale for bisections
+  ## For the result object:
   n          <- length(maha2.2)
   ldensities <- rep(NA, n)
   errors     <- rep(NA, n)
@@ -97,7 +90,8 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
     l.int.theo.max <- negl2pid.2 -log(int.argmax.w)*k/2 - lrdet -
        curr.maha2.2/int.argmax.w
     ## Threshold: Will only use RQMC where l.integrand > l.tol.int.lower
-    l.tol.int.lower <- min(max(l.tol.int.lower.m, l.int.theo.max - 10*log(10)), 0)
+    l.tol.int.lower <- min(max(log(control$dnvmix.tol.int.lower), l.int.theo.max - 
+                                  control$dnvmix.order.lower*log(10)), 0)
     
     ## 2.1 Find u* = argmax_u{integrand(u)} ####################################
     ## Only needed if int.argmax.u is NA (otherwise, we already have it)
@@ -122,9 +116,9 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
       convd <- FALSE
       numiter <- 0
       ## Matrix to store additional u's and W's generated:
-      additionalVals <- matrix(NA, ncol = 2, nrow = max.iter.bisec.w)
+      additionalVals <- matrix(NA, ncol = 2, nrow = control$dnvmix.max.iter.bisec)
       index.first.u <- which(U.W.lint[,1] >= u1u2[1])[1] # will insert after this index
-      while(!convd && numiter < max.iter.bisec.w){
+      while(!convd && numiter < control$dnvmix.max.iter.bisec){
         numiter <- numiter + 1
         ## Next point to check (midpoint of u1u2):
         u.next <- mean(u1u2)
@@ -133,7 +127,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
         additionalVals[numiter, ] <- c(u.next, w.next)
         ## Update u1u2 depending on sign of 'diff' and check convergence:
         if(diff > 0) u1u2[2] <- u.next else u1u2[1] <- u.next
-        convd <- (abs(diff) < tol.bisec.w) || (diff(u1u2) < tol.bisec.u)
+        convd <- (abs(diff) < tol.bisec[2]) || (diff(u1u2) < tol.bisec[1])
       }
       int.argmax.u <- u.next
       ## Add additional values of 'U', 'W' and 'l.integrand' in 'U.W.lint'
@@ -217,13 +211,13 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
     for(i in 1:2){
       curr.candid <- candids[i, ]
       if(!is.na(uLuR[i])) next # we already set u.left or u.right 
-      uLuR[i] <- if(diff(curr.candid) <= tol.bisec.u) curr.candid[1] else {
+      uLuR[i] <- if(diff(curr.candid) <= tol.bisec[1]) curr.candid[1] else {
         ## Use bisection similar to the one used to find u*
         convd <- FALSE
         numiter <- 0
         ## Matrix to store additional u's, W's, l.integrand's generated:
-        additionalVals <- matrix(NA, ncol = 3, nrow = max.iter.bisec.w)
-        while(!convd && numiter < max.iter.bisec.w){
+        additionalVals <- matrix(NA, ncol = 3, nrow = control$dnvmix.max.iter.bisec)
+        while(!convd && numiter < control$dnvmix.max.iter.bisec){
           numiter <- numiter + 1
           ## Next point to check:
           u.next <- mean(curr.candid)
@@ -234,7 +228,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
           additionalVals[numiter, ] <- c(u.next, w.next, l.int.next)
           ## Update 'curr.candid' depending on sign of 'diff' and check convergence:
           if(diff > 0) curr.candid[2] <- u.next else curr.candid[1] <- u.next
-          convd <- (abs(diff) < tol.bisec.lg)  || (diff(curr.candid) < tol.bisec.u)
+          convd <- (abs(diff) < tol.bisec[3])  || (diff(curr.candid) < tol.bisec[1])
         }
         ## Update U.W.lint[]:
         ## First, add additional values
@@ -283,7 +277,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
           (lower.sum + upper.sum) / 2
         } else {
           ## Case 2: No observations in (u.right, 1) => u.right > ONE
-          log(1 - u.left) + log(tol.int.lower) - log(2)
+          log(1 - u.left) + l.tol.int.lower - log(2)
         }
       }
     } else {
@@ -322,7 +316,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
           (lower.sum + upper.sum) / 2
         } else {
           ## Case 2: No observations in (u.right, 1) => u.right > ONE
-          log1p(-u.right) + log(tol.int.lower) - log(2)
+          log1p(-u.right) + l.tol.int.lower - log(2)
         }
       }
     } else {
@@ -333,7 +327,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
     stratlength <- u.right - u.left
     rqmc.numiter <- 0
     ldens.stratum <- if(is.na(ldens.stratum)){
-      if(stratlength > tol.stratlength){
+      if(stratlength > control$dnvmix.tol.stratlength){
         ldens.obj <- nvmix:::dnvmix.internal.RQMC(qW, maha2.2 = curr.maha2.2, lrdet = lrdet, 
                                           d = d, k = k, control = control, lower.q = u.left, 
                                           upper.q = u.right, return.all = FALSE, 
@@ -548,8 +542,7 @@ dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, k = d, control,
 ##'         $error n-vector of *absolute* error estimates for log-densities
 ##'         $numiter n-vector of number of iterations needed
 ##' @author Erik Hintz and Marius Hofert
-dnvmix.internal <- function(qW, maha2.2, lrdet = lrdet, d = d, control,
-                            verbose = verbose)
+dnvmix.internal <- function(qW, maha2.2, lrdet = lrdet, d = d, control, verbose)
 {
   ## Absolte/relative precision?
   if(is.na(control$dnvmix.reltol)){
@@ -580,7 +573,7 @@ dnvmix.internal <- function(qW, maha2.2, lrdet = lrdet, d = d, control,
     numiter[notRchd]  <- numiter[notRchd] + rqmc.obj$numiter
     error[notRchd]    <- rqmc.obj$error
     ## Handle warnings:
-    if(verbose){
+    if(as.logical(verbose)){ # verbose can be passed by 'fitnvmix' => between 0 and 3
       if(any(is.na(error))){
         ## At least one error is NA
         warning("Estimation unreliable, corresponding error estimate NA")
@@ -643,6 +636,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   d <- ncol(x) # dimension
   if(!is.matrix(scale)) scale <- as.matrix(scale)
   stopifnot(length(loc) == d, dim(scale) == c(d, d))
+  verbose <- as.logical(verbose) 
   ## Deal with algorithm parameters, see also get.set.parameters():
   ## get.set.parameters() also does argument checking, so not needed here.
   control <- nvmix:::get.set.parameters(control)

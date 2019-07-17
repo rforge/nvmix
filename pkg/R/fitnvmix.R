@@ -25,6 +25,7 @@
 weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.dist, control, 
                              verbose)
 {
+   verbose <- as.logical(verbose) # only logical needed here 
    if(is.character(special.dist)){
       ## In this case, dnvmix() uses analytical formula for density
       switch(special.dist,
@@ -46,9 +47,9 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.dist, control,
       }
       ## Call RQMC procedure without any stratification
       rqmc.obj <- weights.internal.RQMC(maha2.2, qW = qW, nu = nu, lrdet = lrdet, 
-                                        d = d, max.iter.rqmc = control$dnvmix.max.iter.rqmc.pilot,
-                                        control = control, verbose = TRUE, 
-                                        return.all = TRUE)
+                                        d = d, 
+                                        max.iter.rqmc = control$dnvmix.max.iter.rqmc.pilot,
+                                        control = control, return.all = TRUE)
       ## Extract results
       weights <- rqmc.obj$weights
       numiter <- rep(rqmc.obj$numiter, length(maha2.2))
@@ -105,7 +106,7 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.dist, control,
 #' @param lrdet log(sqrt(det(scale)))
 #' @param d dimension 
 #' @param control see ?fitnvmix()
-#' @param verbose see ?fitnvmix
+#' @param max.iter.rqmc maximum number of RQMC iterations
 #' @param return.all logical; if true, matrix (U, qW(U)) also returned.
 #' @return List of three:
 #'         $weights n-vector with computed log-density values
@@ -115,7 +116,7 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.dist, control,
 #'         $UsWs (B, n) matrix (U, qW(U)) where U are uniforms (only if return.all = TRUE)
 #' @author Erik Hintz
 weights.internal.RQMC <- function(maha2.2, qW, nu, lrdet, d, max.iter.rqmc,
-                                  control, verbose, return.all)
+                                  control, return.all)
 {
    ## 1 Basics #################################################################
    ## Define various quantites:
@@ -273,15 +274,13 @@ weights.internal.RQMC <- function(maha2.2, qW, nu, lrdet, d, max.iter.rqmc,
 #' @param control see ?fitnvmix()
 #' @param control.optim passed to optim; see ?optim
 #' @param verbose see ?fitnvmix
-#' @param console.output see ?fitnvmix
 #' @return list of two: $nu.est (scalar of vector of length 'init.nu'; MLE estimate of nu)
 #'                      $max.ll (negative log-likelihood at nu.est)
 #'                      $ll.counts (total number of calls to likelihood)
 #'                      $opt.obj (object returned by underlying 'optim' call)
 #' @author Erik Hintz, Marius Hofert, Christiane Lemieux
 estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds, 
-                     special.dist = NA, control, control.optim, verbose, 
-                     console.output = FALSE)
+                     special.dist = NA, control, control.optim, verbose)
 {
    ## Obtain 'factor' if not provided
    if(is.na(factor)) factor <- t(chol(scale))
@@ -293,7 +292,7 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
             neg.log.likelihood.nu <- function(nu){
                ll <- -sum(dnvmix(t(tx), qmix = "inverse.gamma", loc = loc, factor = factor,
                                  df = nu, log = TRUE, verbose = verbose))
-               if(console.output) cat(".") # print dot after each call to likelihood
+               if(verbose >= 3) cat(".") # print dot after each call to likelihood
                ll.counts <<- ll.counts + 1 # update 'll.counts' in the parent environment
                ll
             }
@@ -315,7 +314,7 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
          ## Call 'dnvmix.internal' which by default returns the log-density
          ldens.obj <- nvmix:::dnvmix.internal(qW = qmix., maha2.2 = maha2.2, lrdet = lrdet,
                                       d = d, control = control, verbose = verbose)
-         if(console.output) cat(".") # print dot after each call to likelihood
+         if(verbose >= 3) cat(".") # print dot after each call to likelihood
          ll.counts <<- ll.counts + 1 # update 'll.counts' in parent environment
          ## Return -log-density
          -sum(ldens.obj$ldensities)
@@ -339,8 +338,7 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
 ##'        (only Student-t right now)
 ##' @param x (n,d) data matrix
 ##' @param qmix character string ("constant", "inverse.gamma") or function. If
-##'        function, it *has* to be qmix(u, nu) and the length of nu has
-##'        to be provided in mix.param.length.
+##'        function, it *has* to be qmix(u, nu) 
 ##' @param mix.param.bounds either a vector of length two (in which case 'nu' is a scalar) or
 ##'         a matrix with two columns, where element in row i in 1st/2nd column corresponds 
 ##'         to lower/upper limits for component i of 'nu'.
@@ -355,8 +353,8 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
 ##' @param size.subsample numeric, <= nrow(x). Number of rows of 'x' used in EMCE iteration 
 ##'        to optimize the log-likelihood. Defaults to n (all datapoints are used)        
 ##' @param control list of algorithm specific parameters, see ?get.set.parameters and ?fitnvmix
-##' @param verbose logical if warnings should be printed
-##' @param console.output logical. If 'TRUE', tracing information is given on the console 
+##' @param verbose numeric or logical. 0: No warnings; 1: Warnings; 
+##'         2: Warnings + short tracing; 3: Warnings + complete tracing.
 ##' @return list of three (if qmix = "constant"), otherwise 5 or 7 
 ##'         $nu: estimate for nu (omitted if qmix = "constant")
 ##'         $loc: estimate for the location vector
@@ -372,7 +370,7 @@ fitnvmix <- function(x, qmix,
                      mix.param.bounds, nu.init = NA, 
                      init.size.subsample = min(n, 100),
                      size.subsample = n, control = list(),
-                     verbose = TRUE, console.output = TRUE)
+                     verbose = 2)
 {
    ## 0: Initialize various quantities: #######################################
    control <- nvmix:::get.set.parameters(control)
@@ -411,6 +409,10 @@ fitnvmix <- function(x, qmix,
       scale.est <- as.matrix(nearPD(cov(x))$mat) # sample covariance matrix
       return(list(loc = loc.est, scale = scale.est, iter = 0))
    }
+   
+   ## Check 'verbose' argument:
+   if(is.logical(verbose)) verbose <- as.integer(verbose) else if(!(verbose %in% c(0, 1, 2, 3)))
+      stop("'verbose' has to be either logical or an integer between 0 and 3")
    
    ## Check inputs, get dimensions
    ## TODO: More checking (INFs, ...)
@@ -468,12 +470,12 @@ fitnvmix <- function(x, qmix,
    ## Check if 'init.nu' was provided. If so, calculate 'scale' as (1/E(W))*SCov
    if(!is.na(nu.init)){
       stopifnot(length(nu.init) == mix.param.length)
-      if(console.output) cat("Step 1: Initial estimate for 'nu': Was provided")
+      if(verbose >= 2) cat("Step 1: Initial estimate for 'nu': Was provided")
       nu.est <- nu.init
       scale.est <- 1/mean(qW(runif(1e4), nu.est))* SCov
       scale.est <- SCov
    } else {
-      if(console.output) cat("Step 1: Initial estimate for 'nu' by optimizing log-likelihood")
+      if(verbose >= 2) cat("Step 1: Initial estimate for 'nu' by optimizing log-likelihood ")
       ## Optimize log-likelihood:
       ll.counts <- 0 # counts number of calls to 'neg.log.likelihood.init'
       ## Get and store current seed (=> same shifts in sobol)
@@ -488,7 +490,7 @@ fitnvmix <- function(x, qmix,
                               qmix = "inverse.gamma", 
                               loc = loc.est, scale = param[2] * SCov, 
                               df = param[1], log = TRUE))
-            if(console.output) cat(".") # print dot after each call to likelihood
+            if(verbose >= 3) cat(".") # print dot after each call to likelihood
             ll.counts <<- ll.counts + 1 # update ll.counts from parent environment
             ll
          } else {
@@ -499,7 +501,7 @@ fitnvmix <- function(x, qmix,
                               loc = loc.est, scale = param[mix.param.length + 1] * SCov,
                               control = control, verbose = verbose, log = TRUE, 
                               nu = param[1:mix.param.length]))
-            if(console.output) cat(".") # print dot after each call to likelihood
+            if(verbose >= 3) cat(".") # print dot after each call to likelihood
             ll.counts <<- ll.counts + 1 # update ll.counts from parent environment
             ll
          }
@@ -517,7 +519,7 @@ fitnvmix <- function(x, qmix,
       nu.est    <- opt.obj$par[1:mix.param.length]
       scale.est <- opt.obj$par[mix.param.length + 1] * SCov
       max.ll    <- opt.obj$value
-      if(console.output) cat(paste0(".DONE (", ll.counts, " calls to likelihood needed)", '\n'))
+      if(verbose >= 3) cat(paste0(" DONE (", ll.counts, " calls to likelihood needed)", '\n'))
    } 
    ## Store if needed
    if(control$addReturns){
@@ -532,13 +534,14 @@ fitnvmix <- function(x, qmix,
    ## 2: ECME step: ############################################################
    
    if(control$ECMEstep){
-      if(console.output) cat(paste0("Step 2: EMCE iteration.", '\n'))
+      if(verbose == 2) cat(paste0('\n')) # if 'verbose==3' linebreak already happened
+      if(verbose >= 2) cat(paste0("Step 2: EMCE iteration.", '\n'))
       ## Initialize various quantities
       iter.ECME            <- 0
       converged            <- FALSE
       ## Main loop:
       while(iter.ECME < control$ECME.maxiter && !converged){
-         if(console.output) cat(paste0("  Iteration ",iter.ECME + 1, '\n'))
+         if(verbose >= 2) cat(paste0("  Iteration ",iter.ECME + 1, '\n'))
          
          ## 2.1: 'loc.est' and 'scale.est' updates #############################
          
@@ -546,7 +549,7 @@ fitnvmix <- function(x, qmix,
          iter.locscaleupdate  <- 1
          ## Update 'scale.est' and 'loc.est' given current estimate of 'nu.est'
          ## until convergence. 
-         if(console.output) cat(paste0("    Estimating weights and updating 'loc' and 'scale'"))
+         if(verbose >= 3) cat(paste0("    Estimating weights and updating 'loc' and 'scale'"))
          
          ## Inner loop (iterating over 'loc' and 'scale' with 'nu.est' held fixed)
          while(!converged.locscale && 
@@ -570,7 +573,7 @@ fitnvmix <- function(x, qmix,
                weights.new <- weights[order(order.maha2.2.new)]
                maha2.2     <- maha2.2.new # need to store maha-distances for interpolation
                length.maha <- n # store length of 'maha2.2' and 'weights'
-               if(console.output) cat(".") # print dot after estimation of weights.
+               if(verbose >= 3) cat(".") # print dot after estimation of weights.
             } else {
                ## Linearly interpolate 'weights' to get new weights
                weights.new          <- rep(NA, n)
@@ -626,7 +629,7 @@ fitnvmix <- function(x, qmix,
                }
                ## Recover original ordering and set negative weights to zero.
                weights.new <- weights.new[order(order.maha2.2.new)] ## TODO: Omit?
-               if(console.output) cat(".") # print dot after estimation of weights.
+               if(verbose >= 3) cat(".") # print dot after estimation of weights.
             } # done estimating 'weights.new'
             
             ## Get new 'scale.est': 1/n * sum_{i=1}^n weights_i (x_i-mu)(x_i-mu)^T
@@ -646,7 +649,7 @@ fitnvmix <- function(x, qmix,
             loc.est     <- loc.est.new
             scale.est   <- scale.est.new
          } # done updating 'loc.est' and 'scale.est'
-         if(console.output) cat(paste0(".DONE (", iter.locscaleupdate, " iterations needed)", '\n')) 
+         if(verbose >= 3) cat(paste0(".DONE (", iter.locscaleupdate, " iterations needed)", '\n')) 
          
          ## 2.2: Update 'nu.est', if desired/necessary: ########################
          if(control$ECMEstep.do.nu){
@@ -659,18 +662,18 @@ fitnvmix <- function(x, qmix,
                seed        <- .Random.seed
             }
             ## Optimize neg.log.likelihood over 'nu'
-            if(console.output) cat(paste0("    Optimizing likelihood over 'nu' with new 'loc' and 'scale'"))
+            if(verbose >= 3) cat(paste0("    Optimizing likelihood over 'nu' with new 'loc' and 'scale'"))
             est.obj <- estim.nu(tx, qW = qW, init.nu = nu.est,
                                 loc = loc.est, scale = scale.est,
                                 mix.param.bounds = mix.param.bounds, 
                                 special.dist = special.dist, control = control, 
                                 control.optim = control$control.optim,
-                                verbose = verbose, console.output = console.output)
+                                verbose = verbose)
             nu.est.new        <- est.obj$nu.est
             nu.est.rel.diff   <- abs((nu.est.new - nu.est)/nu.est)
             nu.est            <- nu.est.new
             max.ll            <- est.obj$max.ll
-            if(console.output) cat(paste0("DONE (", est.obj$ll.counts, " calls to likelihood needed)", '\n'))
+            if(verbose >= 3) cat(paste0("DONE (", est.obj$ll.counts, " calls to likelihood needed)", '\n'))
          } else {
             nu.est.rel.diff <- 0
          }
@@ -696,15 +699,15 @@ fitnvmix <- function(x, qmix,
    
    ## 3: Another last 'nu.est' with *full* sample? #############################   
    if(control$laststep.do.nu){
-      if(console.output) cat(paste0("Step 3: One last 'nu' update", '\n'))
-      if(console.output) cat(paste0("  Optimizing likelihood over 'nu' with new 'loc' and 'scale'"))
+      if(verbose >= 2) cat(paste0("Step 3: One last 'nu' update", '\n'))
+      if(verbose >= 3) cat(paste0("  Optimizing likelihood over 'nu' with new 'loc' and 'scale'"))
       ## One last nu update with the *full* sample and 'control.optim.laststep' as control
       ## (as oppsed to 'control.optim')
       est.obj <- estim.nu(tx, qW = qW, init.nu = nu.est, loc = loc.est,
                           scale = scale.est, mix.param.bounds = mix.param.bounds, 
                           special.dist = special.dist, control = control, 
                           control.optim = control$control.optim.laststep,
-                          console.output = TRUE, verbose = verbose)
+                          verbose = verbose)
       nu.est <- est.obj$nu.est
       max.ll <- est.obj$max.ll
       if(control$addReturns){
@@ -712,9 +715,9 @@ fitnvmix <- function(x, qmix,
          nu.Ests[dim(nu.Ests)[1], ] <- c(nu.est, -max.ll)
          current.iter.total <- current.iter.total + 1
       }
-      if(console.output) cat(paste0("DONE (", est.obj$ll.counts, " calls to likelihood needed)", '\n'))
+      if(verbose >= 3) cat(paste0("DONE (", est.obj$ll.counts, " calls to likelihood needed)", '\n'))
    }
-   if(console.output) cat(paste0("RETRUN.", '\n'))
+   if(verbose >= 2) cat(paste0("RETURN.", '\n'))
    
    ## 4: Return ################################################################
    if(control$addReturns){
@@ -725,3 +728,4 @@ fitnvmix <- function(x, qmix,
                   max.ll = -max.ll))
    }
 }
+

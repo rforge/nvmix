@@ -16,12 +16,13 @@ get.set.parameters <- function(control = list()){
     pnvmix.abstol = 1e-3, 
     ## For dnvmix():
     dnvmix.abstol = 1e-3, 
-    dnvmix.reltol = 0.05, # If !NA, 'reltol' is used instead of 'abstol'
+    dnvmix.reltol = 1e-2, # If !NA, 'reltol' is used instead of 'abstol'
     dnvmix.max.iter.rqmc.pilot = 4,
     dnvmix.tol.int.lower = 1e-30,
-    dnvmix.tol.bisec.w = 0.1,
+    dnvmix.order.lower = 10,
+    dnvmix.tol.bisec = c(1e-16, 1e-1, 1e-1),
     dnvmix.tol.stratlength = 1e-20,
-    dnvmix.max.iter.bisec.w = 55,
+    dnvmix.max.iter.bisec = 55,
     ## For pgammamix:
     pgammamix.reltol = NA,
     pgammamix.abstol = 1e-3,
@@ -42,7 +43,6 @@ get.set.parameters <- function(control = list()){
     ECMEstep = TRUE,
     ECMEstep.do.nu = TRUE,
     laststep.do.nu = FALSE,
-    useCop = FALSE,
     resample = FALSE, 
     ### For the underlying 'optim':
     control.optim = list(maxit = 10),
@@ -94,7 +94,7 @@ get.set.parameters <- function(control = list()){
   }
   ## Define 'max.iter.rqmc': If it was not provided (=> NA), set defaults
   if(is.na(ctrl$max.iter.rqmc)){
-    ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 15 else 200
+    ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 15 else 100
   } else {
     ## If it was provided (=> not NA), check if it's reasonable 
     stopifnot(ctrl$max.iter.rqmc > 1)
