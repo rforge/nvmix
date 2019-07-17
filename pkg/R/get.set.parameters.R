@@ -32,18 +32,18 @@ get.set.parameters <- function(control = list()){
     newton.df.abstol = 1e-4,
     newton.logdens.abstol = 1e-2, 
     ## For fitnvmix():
-    ### Tolerances:
-    weights.abstol = 1e-1, # currently not used
-    weights.reltol = 5e-2,
-    weights.interpol.reltol = 0.01,
-    ECME.rel.conv.tol = c(5e-2, 5e-2, 1e-2), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
-    max.iter.locscaleupdate = 25,
-    ECME.maxiter = 25,
     ### Algorithm specifications:
     ECMEstep = TRUE,
     ECMEstep.do.nu = TRUE,
     laststep.do.nu = FALSE,
     resample = FALSE, 
+    ### Tolerances:
+    ECME.maxiter = 25,
+    max.iter.locscaleupdate = 25,
+    weights.abstol = 1e-1, # currently not used
+    weights.reltol = 5e-2,
+    weights.interpol.reltol = 1e-2,
+    ECME.rel.conv.tol = c(5e-2, 5e-2, 1e-2), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
     ### For the underlying 'optim':
     control.optim = list(maxit = 10),
     control.optim.laststep = list(), 

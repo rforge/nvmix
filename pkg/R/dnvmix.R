@@ -253,9 +253,9 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
         ## => Special case where no obs > threshold
         ## => Use all obs and Riemann for this region
         weights <- c(U.W.lint[1, 1], U.W.lint[2:numObs, 1] - U.W.lint[1:(numObs-1), 1])
-        upper.sum <- nvmix:::logsumexp(
+        upper.sum <- logsumexp(
           as.matrix(log(weights) + U.W.lint[1:numObs, 3], ncol = 1))
-        lower.sum <- nvmix:::logsumexp(
+        lower.sum <- logsumexp(
           as.matrix(log(weights) + c(-Inf, U.W.lint[1:(numObs-1), 3]), ncol = 1))
         (lower.sum + upper.sum) / 2
       } else {
@@ -269,9 +269,9 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
           lastUsed <- which(usUsed)[sumusUsed]
           weights <- c(U.W.lint[1, 1], 
                        U.W.lint[2:lastUsed, 1] - U.W.lint[1:(lastUsed-1), 1])
-          upper.sum <- nvmix:::logsumexp(as.matrix(log(weights) + 
+          upper.sum <- logsumexp(as.matrix(log(weights) + 
                                               U.W.lint[1:lastUsed, 3], ncol = 1))
-          lower.sum <- nvmix:::logsumexp(as.matrix(log(weights) + 
+          lower.sum <- logsumexp(as.matrix(log(weights) + 
                                              c(-Inf, U.W.lint[1:(lastUsed-1), 3]), 
                                            ncol = 1))
           (lower.sum + upper.sum) / 2
@@ -309,9 +309,9 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
           ## Case 1.2: We have >1 obs in that region
           weights <- c(U.W.lint[ (firstUsed+1):numObs, 1] - U.W.lint[firstUsed:(numObs-1), 1],
                        .Machine$double.neg.eps)
-          upper.sum <- nvmix:::logsumexp(as.matrix(log(weights) + 
+          upper.sum <- logsumexp(as.matrix(log(weights) + 
                                               U.W.lint[firstUsed:numObs, 3], ncol = 1))
-          lower.sum <- nvmix:::logsumexp(as.matrix(log(weights) + 
+          lower.sum <- logsumexp(as.matrix(log(weights) + 
                                              c(U.W.lint[(firstUsed+1):numObs, 3], -Inf), ncol = 1))
           (lower.sum + upper.sum) / 2
         } else {
@@ -328,7 +328,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
     rqmc.numiter <- 0
     ldens.stratum <- if(is.na(ldens.stratum)){
       if(stratlength > control$dnvmix.tol.stratlength){
-        ldens.obj <- nvmix:::dnvmix.internal.RQMC(qW, maha2.2 = curr.maha2.2, lrdet = lrdet, 
+        ldens.obj <- dnvmix.internal.RQMC(qW, maha2.2 = curr.maha2.2, lrdet = lrdet, 
                                           d = d, k = k, control = control, lower.q = u.left, 
                                           upper.q = u.right, return.all = FALSE, 
                                           max.iter.rqmc = control$max.iter.rqmc -
@@ -344,7 +344,7 @@ dnvmix.internal.adaptRQMC <- function(qW, maha2.2, lrdet, d, k = d, control, UsW
     }
     ## 3 Combine and return ####################################################
     ## Combine to one estimate:
-    ldensities[ind] <- nvmix:::logsumexp(rbind(ldens.left, ldens.right, ldens.stratum, 
+    ldensities[ind] <- logsumexp(rbind(ldens.left, ldens.right, ldens.stratum, 
                                        deparse.level = 0))
     errors[ind]     <- error
     numiters[ind]   <- rqmc.numiter
@@ -554,7 +554,7 @@ dnvmix.internal <- function(qW, maha2.2, lrdet = lrdet, d = d, control, verbose)
     do.reltol <- TRUE
   }
   ## Call RQMC procedure without any stratification
-  rqmc.obj <- nvmix:::dnvmix.internal.RQMC(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, 
+  rqmc.obj <- dnvmix.internal.RQMC(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, 
                                    control = control, lower.q = 0, upper.q = 1, 
                                    max.iter.rqmc = control$dnvmix.max.iter.rqmc.pilot,
                                    return.all = TRUE)
@@ -566,7 +566,7 @@ dnvmix.internal <- function(qW, maha2.2, lrdet = lrdet, d = d, control, verbose)
     ## Accuracy not reached for at least one 'maha2.2' value
     ## => Use adaptive approach for those
     notRchd <- which(error > tol)
-    rqmc.obj <- nvmix:::dnvmix.internal.adaptRQMC(qW, maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
+    rqmc.obj <- dnvmix.internal.adaptRQMC(qW, maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
                                                 d = d, UsWs = rqmc.obj$UsWs, 
                                                 control = control)
     ldens[notRchd]    <- rqmc.obj$ldensities
@@ -639,7 +639,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   verbose <- as.logical(verbose) 
   ## Deal with algorithm parameters, see also get.set.parameters():
   ## get.set.parameters() also does argument checking, so not needed here.
-  control <- nvmix:::get.set.parameters(control)
+  control <- get.set.parameters(control)
   ## If factor is not provided, determine it here as a *lower* triangular matrix
   if(is.null(factor)) factor <- t(chol(scale)) # lower triangular
   

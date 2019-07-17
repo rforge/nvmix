@@ -59,10 +59,10 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.dist, control,
          ## => Use adaptive approach for those
          notRchd <- which(error > tol)
          qW. <- function(u) qW(u, nu = nu)
-         ldens.obj <- nvmix:::dnvmix.internal.adaptRQMC(qW., maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
+         ldens.obj <- dnvmix.internal.adaptRQMC(qW., maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
                                                 d = d, UsWs = rqmc.obj$UsWs, 
                                                 control = control)
-         lcond.obj <- nvmix:::dnvmix.internal.adaptRQMC(qW., maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
+         lcond.obj <- dnvmix.internal.adaptRQMC(qW., maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
                                                 d = d, k = d + 2, UsWs = rqmc.obj$UsWs, 
                                                 control = control)
          weights[notRchd]   <- exp(lcond.obj$ldensities - ldens.obj$ldensities)
@@ -312,7 +312,7 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
          .Random.seed <<- seed # reset seed => monotonicity (not bc of sobol shifts!)
          qmix. <- function(u) qW(u, nu = nu) # function of u only
          ## Call 'dnvmix.internal' which by default returns the log-density
-         ldens.obj <- nvmix:::dnvmix.internal(qW = qmix., maha2.2 = maha2.2, lrdet = lrdet,
+         ldens.obj <- dnvmix.internal(qW = qmix., maha2.2 = maha2.2, lrdet = lrdet,
                                       d = d, control = control, verbose = verbose)
          if(verbose >= 3) cat(".") # print dot after each call to likelihood
          ll.counts <<- ll.counts + 1 # update 'll.counts' in parent environment
@@ -350,7 +350,7 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
 ##'        If provided and close to MLE, can speed up 'fitnvmix' significantly         
 ##' @param init.size.subsample if 'is.na(nu.init)', size of subsample of 'x' used to obtain 
 ##'        initial estimate of nu. 
-##' @param size.subsample numeric, <= nrow(x). Number of rows of 'x' used in EMCE iteration 
+##' @param size.subsample numeric, <= nrow(x). Number of rows of 'x' used in ECME iteration 
 ##'        to optimize the log-likelihood. Defaults to n (all datapoints are used)        
 ##' @param control list of algorithm specific parameters, see ?get.set.parameters and ?fitnvmix
 ##' @param verbose numeric or logical. 0: No warnings; 1: Warnings; 
@@ -373,7 +373,7 @@ fitnvmix <- function(x, qmix,
                      verbose = 2)
 {
    ## 0: Initialize various quantities: #######################################
-   control <- nvmix:::get.set.parameters(control)
+   control <- get.set.parameters(control)
    ## Get quantile function:
    special.dist <- NA  # to record if we have a special dist'n (normal, t,...)
    ## Set up qW as function(u, nu)
@@ -535,7 +535,7 @@ fitnvmix <- function(x, qmix,
    
    if(control$ECMEstep){
       if(verbose == 2) cat(paste0('\n')) # if 'verbose==3' linebreak already happened
-      if(verbose >= 2) cat(paste0("Step 2: EMCE iteration.", '\n'))
+      if(verbose >= 2) cat(paste0("Step 2: ECME iteration.", '\n'))
       ## Initialize various quantities
       iter.ECME            <- 0
       converged            <- FALSE
