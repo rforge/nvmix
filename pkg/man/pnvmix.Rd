@@ -8,8 +8,6 @@
   (including Student \emph{t} and normal distributions).
 }
 \usage{
-
-                   
 pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
       loc = rep(0, d), scale = diag(d), standardized = FALSE,
       control = list(), verbose = TRUE, ...)
@@ -54,7 +52,7 @@ pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
   \item{df}{positive degress of freedom; can also be \code{Inf} in which
     case the distribution is interpreted as the multivariate normal
     distribution with mean vector \code{loc} and covariance matrix
-    \code{scale}).}
+    \code{scale}.}
   \item{loc}{location vector of dimension \eqn{d}; this equals the mean
     vector of a random vector following the specified normal variance
     mixture distribution if and only if the latter exists.}
@@ -103,16 +101,19 @@ pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
 
   Internally, an iterative randomized Quasi-Monte Carlo (RQMC) approach is used
   to estimate the probabilities. It is an iterative algorithm that evaluates
-  the integrand at a point-set (with size as specified by \code{increment})
-  in each iteration until the pre-specified error tolerance \code{abstol}
-  is reached. The attribute \code{"numiter"} gives the number of such
-  iterations needed.
+  the integrand at a point-set (with size as specified by \code{control$increment}
+  in the \code{control} argument)
+  in each iteration until the pre-specified absolute error tolerance 
+  \code{control$pnvmix.abstol} (or relative error tolerance 
+  \code{control$pnvmix.reltol} which is used only when 
+  \code{control$pnvmix.reltol = NA}) is reached. 
+  The attribute \code{"numiter"} gives the number of such iterations needed.
   
   Algorithm specific parameters (such as the above mentioned \code{'increment'}
   or \code{'pnvmix.abstol'}) can be passed as a list via \code{control}, see
-  \code{\link{get.set.parameters}()}. 
+  \code{\link{get.set.parameters}()} for more details. 
   If specified error tolerances are not reached and \code{verbose = TRUE}, a 
-  warnign is thrown. If provided \code{scale} is singular, \code{pnvmix()} returns
+  warning is thrown. If provided \code{scale} is singular, \code{pnvmix()} estimates
   the correct probability but throws a warning if \code{verbose = TRUE}. 
 
   \code{pStudent()} and \code{pNorm()} are wrappers of
@@ -140,7 +141,8 @@ pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
   950--971.
 }
 \seealso{
-  \code{\link{dnvmix}()}, \code{\link{rnvmix}()}
+  \code{\link{dnvmix}()}, \code{\link{rnvmix}()}, \code{\link{fitnvmix}()},
+  \code{\link{get.set.parameters}()}
 }
 \examples{
 ### Examples for pnvmix() ######################################################

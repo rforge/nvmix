@@ -3,33 +3,34 @@
 
 ##' @title Cholesky factor for positive-semidefinite matrices (not exported)
 ##' @param mat (n,n) symmetric, positive-semidefinite matrix.
-##' @return list of length 3:
+##' @return list of length 2:
 ##'         - C: (n,n) lower triangular matrix such that C % * % t(C) = mat
-##'         - D: n-vector with diagonal elements of 'C"
+##'         - D: n-vector with diagonal elements of 'C'
 ##' @author Erik Hintz and Marius Hofert
-##' @note Internal function being called by pnvmix() if 'scale' is singular
+##' @note Internal function being called by pnvmix(). 
 cholesky_ <- function(mat, tol = 1e-9){
    n <- dim(mat)[1] # dimension
    stopifnot(dim(mat)[2]==n)
    C <- matrix(0, ncol = n, nrow = n) # initialize Cholesky factor
    diag.elements <- rep(NA, n)
    for(col in 1:n){
-      dsq <- mat[col, col] - sum(C[col, 1:(col-1)]^2)
+      dsq <- mat[col, col] - sum(C[col, 1:(col-1)]^2) # C(col,col)^2
       if(dsq < 0) stop("Matrix not positive semi-definite") 
-      d <- if(dsq < abs(mat[col, col] * tol)) 0 else sqrt(dsq) 
+      d <- if(dsq < abs(mat[col, col] * tol)) 0 else sqrt(dsq) # set 0 if too small
       C[col, col] <- d
-      diag.elements[col] <- d
+      diag.elements[col] <- d # store diagnonal element
       if(col < n && d > 0){ # calculate the remaining elements in column 'col' 
          for(row in (col+1):n){
             C[row, col] <- (mat[row, col] - sum(C[row, 1:(row-1)]*C[col, 1:(row-1)]))/d
          }
       }
    }
-   return(list(C = C, D = diag.elements))
+   ## Return
+   list(C = C, D = diag.elements)
 }
 
 
-##' @title Swap Variables i and j in a, b and R
+##' @title Swap Variables i and j in a, b and R (not exported)
 ##' @param i variable to be switched with j
 ##' @param j variable to be switched with i
 ##' @param lower d-vector of lower evaluation limits
@@ -61,8 +62,8 @@ swap <- function(i, j, lower, upper, scale)
   list(lower = lower, upper = upper, scale = scale)
 }
 
-##' Reorder limits and scale matrix according to a permutation (not exported)
-##'
+
+##' @title Reorder limits and scale matrix according to a permutation (not exported)
 ##' @param perm d-vector giving the desired permutation 
 ##' @param upper see ?pnvmix
 ##' @param lower see ?pnvmix
@@ -98,7 +99,8 @@ reorder.limits.scale <- function(perm, upper, lower = rep(-Inf, d), scale = diag
   list(lower = lower, upper = upper, scale = scale)
 }
 
-##' Variance of a normal rv over truncated interval (a, b)
+
+##' Variance of a normal rv over truncated interval (a, b) (not exported)
 ##' @param a l-vector
 ##' @param b l-vector
 ##' @return l-vector 
@@ -111,20 +113,20 @@ trunc.var <- function(a, b){
   adnorma[which(is.nan(adnorma))] <- 0
   bdnormb <- b*dnorm(b)
   bdnormb[which(is.nan(bdnormb))] <- 0
+  ## Return
   1 + (adnorma - bdnormb)/p.diff - ((dnorm(a)-dnorm(b))/p.diff)^2
 }
 
 
 ##' @title Preconditioning (Reordering Variables According to their Expected
-##'        Integration Limits)
-##' @param lower d-vector of lower evaluation limits
-##' @param upper d-vector of upper evaluation limits
-##' @param scale (d, d)-covariance matrix (scale matrix)
+##'        Integration Limits) (not exported)
+##' @param lower see ?pnvmix
+##' @param upper see ?pnvmix
+##' @param scale (d,d) positive definite 'scale' matrix.
 ##' @param factor Cholesky factor (lower triangular matrix) of 'scale'
-##' @param mean.sqrt.mix E(sqrt(W)) or NULL; the latter if not available
-##'        in which case it is estimated by QMC
-##' @return list with reordered integration limits, scale matrix and Cholesky factor
-##'          as well as a d-vector 'perm' giving the ordering obtained. 
+##' @param mean.sqrt.mix E(sqrt(W)) where W is the rv corresponding to 'qmix'
+##' @return list of length 4 with reordered integration limits, scale matrix and 
+##' Cholesky factor as well as a d-vector 'perm' giving the ordering obtained. 
 ##' @author Erik Hintz and Marius Hofert
 ##' @note See Genz and Bretz (2002, p. 957)
 precondition <- function(lower, upper, scale, factor, mean.sqrt.mix, 
@@ -198,18 +200,19 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
   list(lower = lower, upper = upper, scale = scale, factor = factor, perm = perm)
 }
 
+
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture
-##'        for a Single Observation (internal function)
+##'        for a Single Observation (not exported)
 ##' @param upper d vector
 ##' @param lower d vector (<= upper)
-##' @param qW quantile function of the mixture distribution; build inside pnvmix();
+##' @param qW quantile function of the mixture distribution; built inside pnvmix();
 ##'        note: different from (the more general) 'qmix'
 ##' @param is.const.mix logical, TRUE if qmix is constant (=> normal distutions)
 ##' @param mean.sqrt.mix see details in ?pnvmix
 ##' @param loc see details in ?pnvmix
 ##' @param scale see details in ?pnvmix
 ##' @param factor see details in ?pnvmix
-##' @param k.factor vector of length rank(scale) giving height of each step in 'factor'
+##' @param k.factor vector of length rank(scale) with heights of each step in 'factor'
 ##' @param method see details in ?pnvmix
 ##' @param precond see details in ?pnvmix
 ##' @param tol absolute/relative error tolerance depending on 'do.reltol'
@@ -259,7 +262,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
     factor <- temp$factor
   }
   
-  ## 1 Basics for while loop below ###########################################
+  ## 1 Basics for while loop below #############################################
   
   ## Error is calculated as CI.factor * sd( estimates) / sqrt(B)
   ## For performance:
@@ -268,11 +271,11 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
   current.n <- fun.eval[1] #
   ## Vector to store the B RQMC estimates
   rqmc.estimates <- rep(0, B)
-  ## Initialize error to something bigger than 'tol' so that we can enter the while loop below
+  ## Initialize error to > 'tol' so that we can enter the while loop below
   error <- tol + 42
   ## Initialize the total number of function evaluations
   total.fun.evals <- 0
-  ## Initialize a variable that counts the number of iterations in the while loop below
+  ## Initialize counter for the number of iterations in the while loop below
   numiter <- 0
   
   ## It may happen that qnorm(u) for u too close to 1 (or 0) is evaluated; in those
@@ -294,7 +297,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
     denom <- 1
   }
   
-  ## 2 Major while() loop ####################################################
+  ## 2 Major while() loop ######################################################
   
   ## while() runs until precision 'tol' is reached or the number of function
   ## evaluations exceed fun.eval[2] or until 'max.iter.rqmc' is exhausted.
@@ -307,9 +310,9 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
     ## Get B RQCM estimates
     for(b in 1:B)
     {
-      ## 2.1 Get the point set ###########################################
+      ## 2.1 Get the point set #################################################
       
-      ## If is.const.mix = TRUE, we only need (d - 1) (quasi) random numbers
+      ## If is.const.mix = TRUE, we only need (rank - 1) (quasi) random numbers
       ## (is.const.mix = TRUE and rank = 1 has already been dealt with)
       U <- if(is.const.mix) {
         U <- switch(method, # same 'U' to possibly avoid copying
@@ -331,7 +334,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
                     "PRNG" = {
                       matrix(runif( current.n * (rank - 1)), ncol = rank - 1)
                     })
-        ## First and last column contain 1s corresponding to "simulated" values from sqrt(mix)
+        ## First/last column contain 1s corresponding to "simulated" values from sqrt(mix)
         cbind(rep(1, current.n), U, rep(1, current.n))
       } else {
         U <- switch(method,
@@ -364,7 +367,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
         }
       }
       
-      ## 2.2 Evaluate the integrand at the (next) point set #############
+      ## 2.2 Evaluate the integrand at the (next) point set ####################
       
       next.estimate <-
         if(d == 1) {
@@ -387,7 +390,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
                 ONE      = as.double(ONE))
         }
       
-      ## 2.3 Update RQMC estimates #######################################
+      ## 2.3 Update RQMC estimates #############################################
       
       rqmc.estimates[b] <-
         if(increment == "doubling") {
@@ -431,6 +434,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
   ## Return
   list(value = value, error = error, numiter = numiter)
 }
+
 
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture
 ##' @param upper (n,d) matrix of upper evaluation limits
@@ -516,11 +520,13 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
              if(is.finite(df)) {
                inv.gam <- TRUE
                df2 <- df / 2
-               mean.sqrt.mix <- sqrt(df) * gamma(df2) / (sqrt(2) * gamma((df+1)/2)) # used for preconditioning
+               ## For preconditioning:
+               mean.sqrt.mix <- sqrt(df) * gamma(df2) / (sqrt(2) * gamma((df+1)/2)) 
                function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
              } else {
                is.const.mix <- TRUE
-               mean.sqrt.mix <- 1 # used for preconditioning
+               ## For preconditioning:
+               mean.sqrt.mix <- 1 
                function(u) 1
              }
            },
@@ -580,8 +586,8 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
   rank         <- d - sum(D.zero)
   ## In case of a singular matrix, need to reorder 'factor':
   if(rank < d){
-     if(verbose) warning("Provided 'scale' is singular")
-     ## In each row i, get minimal index j such that factor[i,k]=0 for all i>k
+     if(verbose) warning("Provided 'scale' is singular.")
+     ## In each row i, get minimal index j such that factor[i,k]=0 for all k>j
      length.rows <- apply(factor, 2, function(i) which.max( i != 0))
      order.length.rows <- order(length.rows) # needed later to sort 'low' and 'up'
      length.rows.sorted <- length.rows[order.length.rows]
@@ -598,8 +604,8 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
      ##    ...
      ##    ? ... ? * 0 ... 0 
      ## Need to standardize: Divide each row by its rightmost ' * ' (which is !=0)
-     row.scales <- factor[cbind(1:d, length.rows.sorted)] # vector of ' * ' elements
-     factor <- diag(1/row.scales) %*% factor
+     row.scales   <- factor[cbind(1:d, length.rows.sorted)] # vector of ' * ' elements
+     factor       <- diag(1/row.scales) %*% factor
      ## Standardize 'lower' and 'upper' accordingly (also works for +/- Inf)
      lower <- matrix(rep(1/row.scales, each = n), ncol = d, nrow = n, byrow = FALSE) * 
         lower
@@ -634,7 +640,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
      }
   }
   
-  ## Loop over observations ##################################################
+  ## Loop over observations ####################################################
   reached <- rep(TRUE, n) # indicating whether 'abstol' has been reached in the ith integration bounds (needs default TRUE)
   for(i in seq_len(n)) {
     if(NAs[i]) {
@@ -764,17 +770,16 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
     lower <- (lower - loc) / sqrt(scale)
   }
   ## Error is calculated as CI.factor * sd( estimates) / sqrt(B). 
-  ## For performance: 
   CI.factor.sqrt.B <- CI.factor / sqrt(B)
   ## Grab the number of sample points for the first iteration
   current.n <- fun.eval[1] #
   ## Matrix to store the B * length(upper) RQMC estimates
   rqmc.estimates <- matrix(0, ncol = n, nrow = B)
-  ## Initialize error to something bigger than 'tol' so that we can enter the while loop below
+  ## Initialize error to > 'tol' so that we can enter the while loop below
   error <- tol + 42
   ## Initialize the total number of function evaluations
   total.fun.evals <- 0
-  ## Initialize a variable that counts the number of iterations in the while loop below
+  ## Initialize counter of the number of iterations in the while loop below
   numiter <- 0
   ## It may happen that qnorm(u) for u too close to 1 (or 0) is evaluated; in those
   ## cases, u will be replaced by ONE and ZERO which is the largest (smallest) number
@@ -792,8 +797,8 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
     if(method == "sobol") useskip <- 0
     denom <- 1
   }
-  ## 2 Major while() loop ####################################################
-  ## while() runs until precision tol is reached or the number of function
+  ## 2 Major while() loop ######################################################
+  ## while() runs until precision 'tol' is reached or the number of function
   ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
   ## the desired probability are calculated.
   while(max(error) > tol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
@@ -803,7 +808,7 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
     ## Get B RQCM estimates
     for(b in 1:B)
     {
-      ## 2.1 Get the point set ###########################################
+      ## 2.1 Get the point set #################################################
       U <- switch(method,
                   "sobol" = {
                     if(increment == "doubling") {
@@ -825,13 +830,13 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
                   })
       ## U will contain realizations of 1 / sqrt(W): 
       U <- 1 / cbind( sqrt(qW(U)), sqrt(qW(1-U)))
-      ## 2.2 Evaluate the integrand at the (next) point set #############
+      ## 2.2 Evaluate the integrand at the (next) point set ####################
       
       next.estimate <- colMeans( (pnorm(outer( U[,1], upper)) - 
                                     pnorm(outer(U[,1], lower)) +
                                     pnorm(outer(U[,2], upper)) - 
                                     pnorm(outer(U[,2], lower)))/2)
-      ## 2.3 Update RQMC estimates #######################################
+      ## 2.3 Update RQMC estimates #############################################
       rqmc.estimates[b, ] <-
         if(increment == "doubling") {
           ## In this case both, rqmc.estimates[b] and
