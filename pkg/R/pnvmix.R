@@ -1,5 +1,34 @@
 ### pnvmix() ###################################################################
 
+
+##' @title Cholesky factor for positive-semidefinite matrices (not exported)
+##' @param mat (n,n) symmetric, positive-semidefinite matrix.
+##' @return list of length 3:
+##'         - C: (n,n) lower triangular matrix such that C % * % t(C) = mat
+##'         - D: n-vector with diagonal elements of 'C"
+##' @author Erik Hintz and Marius Hofert
+##' @note Internal function being called by pnvmix() if 'scale' is singular
+cholesky_ <- function(mat, tol = 1e-9){
+   n <- dim(mat)[1] # dimension
+   stopifnot(dim(mat)[2]==n)
+   C <- matrix(0, ncol = n, nrow = n) # initialize Cholesky factor
+   diag.elements <- rep(NA, n)
+   for(col in 1:n){
+      dsq <- mat[col, col] - sum(C[col, 1:(col-1)]^2)
+      if(dsq < 0) stop("Matrix not positive semi-definite") 
+      d <- if(dsq < abs(mat[col, col] * tol)) 0 else sqrt(dsq) 
+      C[col, col] <- d
+      diag.elements[col] <- d
+      if(col < n && d > 0){ # calculate the remaining elements in column 'col' 
+         for(row in (col+1):n){
+            C[row, col] <- (mat[row, col] - sum(C[row, 1:(row-1)]*C[col, 1:(row-1)]))/d
+         }
+      }
+   }
+   return(list(C = C, D = diag.elements))
+}
+
+
 ##' @title Swap Variables i and j in a, b and R
 ##' @param i variable to be switched with j
 ##' @param j variable to be switched with i
@@ -180,6 +209,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
 ##' @param loc see details in ?pnvmix
 ##' @param scale see details in ?pnvmix
 ##' @param factor see details in ?pnvmix
+##' @param k.factor vector of length rank(scale) giving height of each step in 'factor'
 ##' @param method see details in ?pnvmix
 ##' @param precond see details in ?pnvmix
 ##' @param abstol see details in ?pnvmix
@@ -197,14 +227,14 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
 pnvmix1 <- function(upper, lower = rep(-Inf, d),
                     qW = NULL, is.const.mix = FALSE, mean.sqrt.mix,
                     loc = rep(0, d), scale = diag(d), factor = NULL,
+                    k.factor = rep(1, d), 
                     method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
                     abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
                     max.iter.rqmc = 15, increment = c("doubling", "num.init"), 
                     B = 12, ...)
 {
-  
-  ## (Only) basic check; most checking and building was done in pnvmix()
-  d <- length(upper)
+  rank <- length(k.factor)
+  d    <- sum(k.factor)
   stopifnot(length(lower) == d, lower <= upper, is.function(qW))
   if(any(lower == upper))
     return(list(value = 0, error = 0, numiter = 0))
@@ -212,10 +242,13 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
   ## Get (lower triangular) Cholesky factor if not provided
   ## This is only needed if the internal function pnvmix1() is called directly,
   ## if pnvmix() is used, it was determined there.
+  ## Note: This will only work if 'scale' is full rank. In the singular case,
+  ## pnvmix() needs to be called and handles the singularity issues
+  ##  (more efficient, as done only once)
   if(is.null(factor)) factor <- t(chol(scale)) # lower triangular Cholesky factor
   
-  ## Preconditioning (resorting the limits; only for d > 2)
-  if(precond && d > 2) {
+  ## Preconditioning (resorting the limits; only for d > 2 and non-singular case)
+  if(precond && d > 2 && rank == d) {
     ## Note that mean.sqrt.mix has already been calculated in pnvmix()
     temp <- precondition(lower = lower, upper = upper, scale = scale,
                     factor = factor, mean.sqrt.mix = mean.sqrt.mix)
@@ -229,13 +262,10 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
   ## Error is calculated as CI.factor * sd( estimates) / sqrt(B); replace
   ## CI.factor by CI.factor / sqrt(B) to avoid repeated calculating of sqrt(B)
   CI.factor <- CI.factor / sqrt(B)
-  
   ## Grab the number of sample points for the first iteration
   current.n <- fun.eval[1] #
-  
   ## Vector to store the B RQMC estimates
   rqmc.estimates <- rep(0, B)
-  
   ## Initialize error to something bigger than abstol so that we can enter the while loop below
   error <- abstol + 42
   ## Initialize the total number of function evaluations
@@ -253,7 +283,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
   ## this is accomplished by reseting to the "original" seed
   if(method == "sobol") {
     if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
-    seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used.
+    seed <- .Random.seed 
   }
   
   ## Additional variables needed if the increment chosen is "doubling"
@@ -278,26 +308,26 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
       ## 2.1 Get the point set ###########################################
       
       ## If is.const.mix = TRUE, we only need (d - 1) (quasi) random numbers
-      ## (is.const.mix = TRUE and d = 1 has already been dealt with)
+      ## (is.const.mix = TRUE and rank = 1 has already been dealt with)
       U <- if(is.const.mix) {
         U <- switch(method, # same 'U' to possibly avoid copying
                     "sobol" = {
                       if(increment == "doubling") {
-                        qrng::sobol(n = current.n, d = d - 1,
+                        qrng::sobol(n = current.n, d = rank - 1,
                                     randomize = TRUE,
                                     skip = (useskip * current.n))
                       } else {
-                        qrng::sobol(n = current.n, d = d - 1,
+                        qrng::sobol(n = current.n, d = rank - 1,
                                     randomize = TRUE,
                                     skip = (numiter * current.n))
                       }
                     },
                     "ghalton" = {
-                      qrng::ghalton(n = current.n, d = d - 1,
+                      qrng::ghalton(n = current.n, d = rank - 1,
                                     method = "generalized")
                     },
                     "PRNG" = {
-                      matrix(runif( current.n * (d - 1)), ncol = d - 1)
+                      matrix(runif( current.n * (rank - 1)), ncol = rank - 1)
                     })
         ## First and last column contain 1s corresponding to "simulated" values from sqrt(mix)
         cbind(rep(1, current.n), U, rep(1, current.n))
@@ -305,30 +335,30 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
         U <- switch(method,
                     "sobol" = {
                       if(increment == "doubling") {
-                        qrng::sobol(n = current.n, d = d,
+                        qrng::sobol(n = current.n, d = rank,
                                     randomize = TRUE,
                                     skip = (useskip * current.n))
                       } else {
-                        qrng::sobol(n = current.n, d = d,
+                        qrng::sobol(n = current.n, d = rank,
                                     randomize = TRUE,
                                     skip = (numiter * current.n))
                       }
                     },
                     "ghalton" = {
-                      qrng::ghalton(n = current.n, d = d,
+                      qrng::ghalton(n = current.n, d = rank,
                                     method = "generalized")
                     },
                     "PRNG" = {
-                      matrix(runif( current.n * d), ncol = d)
+                      matrix(runif( current.n * rank), ncol = rank)
                     })
         
         ## Case d = 1 somewhat special again:
         if(d == 1){
           cbind( sqrt(qW(U)), sqrt(qW(1 - U)) )
         } else {
-          ## Column 1:sqrt(mix), Columns 2--d: unchanged (still uniforms),
-          ## Column d + 1: antithetic realization of sqrt(mix)
-          cbind(sqrt(qW(U[, 1])), U[, 2:d], sqrt(qW(1 - U[, 1])))
+          ## Column 1:sqrt(mix), Columns 2--r: unchanged (still uniforms),
+          ## Column r + 1: antithetic realization of sqrt(mix)
+          cbind(sqrt(qW(U[, 1])), U[, 2:rank], sqrt(qW(1 - U[, 1])))
         }
       }
       
@@ -343,14 +373,16 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
                   pnorm(upper/U[,d+1]) - pnorm(lower/U[,d+1])) / 2)
         } else {
           .Call("eval_nvmix_integral",
-                lower  = as.double(lower),
-                upper  = as.double(upper),
-                U      = as.double(U),
-                n      = as.integer(current.n),
-                d      = as.integer(d),
-                factor = as.double(factor),
-                ZERO   = as.double(ZERO),
-                ONE    = as.double(ONE))
+                lower    = as.double(lower),
+                upper    = as.double(upper),
+                U        = as.double(U),
+                n        = as.integer(current.n),
+                d        = as.integer(d),
+                r        = as.integer(rank),
+                kfactor  = as.integer(k.factor), 
+                factor   = as.double(factor),
+                ZERO     = as.double(ZERO),
+                ONE      = as.double(ONE))
         }
       
       ## 2.3 Update RQMC estimates #######################################
@@ -516,13 +548,74 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
   res1 <- vector("list", length = n) # results from calls of pnvmix1()
   ## Deal with NA
   NAs <- apply(is.na(lower) | is.na(upper), 1, any) # at least one NA => use NA => nothing left to do
-  ## Standardize 'scale' if necessary; limits will be standardized later
-  if(!standardized){
-    Dinv <- diag(1/sqrt(diag(scale)))
-    scale <- Dinv %*% scale %*% Dinv
+  ## Remove 'loc':
+  if(any(loc != 0)) {
+     lower <- lower - matrix(rep(loc, n), ncol = d, byrow = TRUE)
+     upper <- upper - matrix(rep(loc, n), ncol = d, byrow = TRUE)
   }
-  ## Get (lower triangular) Cholesky factor of 'scale';
-  factor <- t(chol(scale))
+  ## Get (lower triangular) Cholesky factor of 'scale'
+  factor.obj   <- cholesky_(scale)
+  factor       <- factor.obj$C
+  factor.diag  <- factor.obj$D
+  ## Obtain rank
+  D.zero       <- (factor.diag==0)
+  rank         <- d - sum(D.zero)
+  ## In case of a singular matrix, need to reorder 'factor':
+  if(rank < d){
+     if(verbose) warning("Provided 'scale' is singular")
+     ## In each row i, get minimal index j such that factor[i,k]=0 for all i>k
+     length.rows <- apply(factor, 2, function(i) which.max( i != 0))
+     order.length.rows <- order(length.rows) # needed later to sort 'low' and 'up'
+     length.rows.sorted <- length.rows[order.length.rows]
+     factor <- factor[order.length.rows, ] # sort factor
+     lower <- lower[, order.length.rows, drop = FALSE]
+     upper <- upper[, order.length.rows, drop = FALSE]
+     ## Now factor has the form ( * non-zero element, ? any element)
+     ##    * 0 0 ......... 0
+     ##    ...
+     ##    * 0 0 ......... 0 
+     ##    ? * 0 ......... 0
+     ##    ...
+     ##    ? * 0 ......... 0
+     ##    ...
+     ##    ? ... ? * 0 ... 0 
+     ## Need to standardize: Divide each row by its rightmost ' * ' (which is !=0)
+     row.scales <- factor[cbind(1:d, length.rows.sorted)] # vector of ' * ' elements
+     factor <- diag(1/row.scales) %*% factor
+     ## Standardize 'lower' and 'upper' accordingly (also works for +/- Inf)
+     lower <- matrix(rep(1/row.scales, each = n), ncol = d, nrow = n, byrow = FALSE) * 
+        lower
+     upper <- matrix(rep(1/row.scales, each = n), ncol = d, nrow = n, byrow = FALSE) * 
+        upper
+     ## Need to swap columns in 'lower'/'upper' multiplied by negative 'row.scales':
+     if(any(row.scales < 0)){
+        which.row.scales.neg <- which(row.scales < 0)
+        temp.lower <- lower[, which.row.scales.neg]
+        lower[, which.row.scales.neg] <- upper[, which.row.scales.neg]
+        upper[, which.row.scales.neg] <- temp.lower
+     }
+     ## Now we have the form as above, with '*' replaced by '1'. Remove 0 columns:
+     factor <- factor[, -which(D.zero)]
+     ## Get 'height' of each step:
+     k.factor <- sapply(unique(length.rows.sorted), function(i) sum(length.rows == i))
+     ## no update of'scale' as in singular case, no preconditioning is performed!
+  } else {
+     ## In case of non-singular 'scale', each of the d steps in factor has height 1:
+     k.factor <- rep(1, d) 
+     ## Standardize 'scale', 'lower', 'upper', 'factor' ('loc' was already taken care of)
+     if(!standardized){
+        row.scales <- diag(factor) # diagonal of cholesky factor
+        diag.row.scales.inv <- diag(1/row.scales)
+        factor <- diag.row.scales.inv %*% factor # standardized cholesky
+        scale  <- diag.row.scales.inv %*% scale %*% diag.row.scales.inv
+        ## Now standardize scale as above: Also works for +/- Inf
+        lower <- matrix(rep(1/row.scales, each = n), ncol = d, nrow = n, byrow = FALSE) * 
+           lower
+        upper <- matrix(rep(1/row.scales, each = n), ncol = d, nrow = n, byrow = FALSE) * 
+           upper
+     }
+  }
+  
   ## Loop over observations ##################################################
   reached <- rep(TRUE, n) # indicating whether 'abstol' has been reached in the ith integration bounds (needs default TRUE)
   for(i in seq_len(n)) {
@@ -542,37 +635,28 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     lowFin <- is.finite(low)
     upFin  <- is.finite(up)
     lowupFin <- lowFin | upFin # at least one finite limit
-    if(any(!lowupFin)) {
+    ## Only for full rank case for efficiency as ow rank, k.factor etc change 
+    ## completely and would need to be recalculated 
+    if(any(!lowupFin) && rank == d) { 
       ## Update low, up
       low <- low[lowupFin]
       up  <- up [lowupFin]
       ## Grab (new) dimension. If 0, then all upper are +Inf, all lower are -Inf
       ## => Return 0
-      d <- length(low) # Update dimension
+      d <- length(low) # Update dimension and 'k.factor' 
+      k.factor <- rep(1, d) 
       if(d == 0){
         res1[[i]] <- list(value = 1, error = 0, numiter = 0)
         next
       }
-      ## Update scale, Dinv etc
-      scale <- scale[lowupFin, lowupFin, drop = FALSE] # update scale
-      Dinv <- Dinv[lowupFin, lowupFin, drop = FALSE]  # update Dinv
+      ## Update scale (for precond)
+      scale <- scale[lowupFin, lowupFin, drop = FALSE] 
       factorFin <- t(chol(scale)) # Cholesky factor changes
     } else {
       ## If no such component exists, set Choleksy factor correctly
       factorFin <- factor
     }
-    ## Standardize the ith row of lower and upper if necessary
-    ## Shift
-    if(any(loc != 0)) {
-      low <- low - loc
-      up  <- up  - loc
-    }
-    ## Scale
-    ## Note that 'scale' has already been standardized
-    if(!standardized) {
-      low[lowFin] <- as.vector(Dinv[lowFin, lowFin] %*% low[lowFin]) # only works for !(+/- Inf)
-      up [upFin]  <- as.vector(Dinv[upFin,   upFin] %*% up [upFin])
-    }
+
     ## If d = 1, deal with multivariate normal or t via pnorm() and pt()
     ## Note that everything has been standardized.  
     if(d == 1){
@@ -593,6 +677,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     res1[[i]] <- pnvmix1(up, lower = low, qW = qW, is.const.mix = is.const.mix,
                          mean.sqrt.mix = mean.sqrt.mix,
                          loc = loc, scale = scale, factor = factorFin,
+                         k.factor = k.factor, 
                          method = method, precond = control$precond,
                          abstol = abstol, CI.factor = control$CI.factor, 
                          fun.eval = control$fun.eval, 
