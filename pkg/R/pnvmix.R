@@ -212,7 +212,8 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
 ##' @param k.factor vector of length rank(scale) giving height of each step in 'factor'
 ##' @param method see details in ?pnvmix
 ##' @param precond see details in ?pnvmix
-##' @param abstol see details in ?pnvmix
+##' @param tol absolute/relative error tolerance depending on 'do.reltol'
+##' @param do.reltol logical if relative precision is required
 ##' @param CI.factor see details in ?pnvmix
 ##' @param fun.eval see details in ?pnvmix
 ##' @param increment see details in ?pnvmix
@@ -229,7 +230,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
                     loc = rep(0, d), scale = diag(d), factor = NULL,
                     k.factor = rep(1, d), 
                     method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
-                    abstol = 1e-3, CI.factor = 3.3, fun.eval = c(2^6, 1e8),
+                    tol = 1e-3, do.reltol = FALSE, CI.factor = 3.3, 
+                    fun.eval = c(2^6, 1e8),
                     max.iter.rqmc = 15, increment = c("doubling", "num.init"), 
                     B = 12, ...)
 {
@@ -259,15 +261,15 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
   
   ## 1 Basics for while loop below ###########################################
   
-  ## Error is calculated as CI.factor * sd( estimates) / sqrt(B); replace
-  ## CI.factor by CI.factor / sqrt(B) to avoid repeated calculating of sqrt(B)
-  CI.factor <- CI.factor / sqrt(B)
+  ## Error is calculated as CI.factor * sd( estimates) / sqrt(B)
+  ## For performance:
+  CI.factor.sqrt.B <- CI.factor / sqrt(B)
   ## Grab the number of sample points for the first iteration
   current.n <- fun.eval[1] #
   ## Vector to store the B RQMC estimates
   rqmc.estimates <- rep(0, B)
-  ## Initialize error to something bigger than abstol so that we can enter the while loop below
-  error <- abstol + 42
+  ## Initialize error to something bigger than 'tol' so that we can enter the while loop below
+  error <- tol + 42
   ## Initialize the total number of function evaluations
   total.fun.evals <- 0
   ## Initialize a variable that counts the number of iterations in the while loop below
@@ -294,10 +296,10 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
   
   ## 2 Major while() loop ####################################################
   
-  ## while() runs until precision abstol is reached or the number of function
-  ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
-  ## the desired probability are calculated.
-  while(error > abstol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
+  ## while() runs until precision 'tol' is reached or the number of function
+  ## evaluations exceed fun.eval[2] or until 'max.iter.rqmc' is exhausted.
+  ## In each iteration, B RQMC estimates of the desired probability are calculated.
+  while(error > tol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
   {
     if(method == "sobol" && numiter > 0)
       .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
@@ -416,8 +418,12 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
         current.n <- 2 * current.n
       }
     }
-    ## Update error; note that this CI.factor is actually CI.factor/sqrt(B) (see above)
-    error <- CI.factor * sd(rqmc.estimates)
+    ## Update error depending on 'do.reltol' 
+    error <- if(!do.reltol){
+       CI.factor.sqrt.B * sd(rqmc.estimates)
+    } else {
+       CI.factor.sqrt.B * sd(rqmc.estimates)/mean(rqmc.estimates)
+    }
     numiter <- numiter + 1 # update counter
   } # while()
   ## Finalize
@@ -447,7 +453,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
 ##' @param control list() of algorithm parameters; see details in ?pnvmix
 ##' @param verbose logical (or integer: 0 = FALSE, 1 = TRUE, 2 = more output)
 ##'        indicating whether a warning is given if the required precision
-##'        'abstol' has not been reached.
+##'        'control$pnvmix.abstol'/'control$pnvmix.reltol' has not been reached.
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return numeric vector with the computed probabilities and attributes "error"
 ##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
@@ -475,9 +481,19 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
   increment     <- control$increment
   mean.sqrt.mix <- control$mean.sqrt.mix
   
-  ## Setting abstol to a negative value will ensure that the algorithm runs
-  ## until fun.eval[2] function evaluations are done.
-  abstol <- if(is.null(control$pnvmix.abstol)) -42 else control$pnvmix.abstol
+  ## Absolute or relative precision required?
+  tol <- if(is.null(control$pnvmix.abstol)){
+     ## Set tol to <0 so that algorithm runs until 'fun.eval[2]' function evaluations
+     ## or 'max.iter.rqmc' iterations are exhausted
+     do.reltol <- FALSE
+     -42
+  } else if(is.na(control$pnvmix.abstol)){ # if 'abstol = NA' use relative precision
+     do.reltol <- TRUE
+     control$pnvmix.reltol
+  } else { # otherwise use absolute precision (default)
+     do.reltol <- FALSE
+     control$pnvmix.abstol
+  }
   
   ## Define the quantile function of the mixing variable.
   is.const.mix <- FALSE # logical indicating whether we have a multivariate normal
@@ -528,7 +544,9 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     return(pnvmix1d(upper = as.vector(upper), lower = as.vector(lower), 
                     qW = qW, loc = loc, scale = as.numeric(scale), 
                     standardized = standardized, 
-                    method = method, abstol = abstol, CI.factor = control$CI.factor,
+                    method = method,
+                    tol = tol, do.reltol = do.reltol, 
+                    CI.factor = control$CI.factor,
                     fun.eval = control$fun.eval, 
                     max.iter.rqmc = control$max.iter.rqmc, 
                     increment = increment, B = control$B, 
@@ -554,7 +572,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
      upper <- upper - matrix(rep(loc, n), ncol = d, byrow = TRUE)
   }
   ## Get (lower triangular) Cholesky factor of 'scale'
-  factor.obj   <- cholesky_(scale)
+  factor.obj   <- cholesky_(scale, tol = control$cholesky.tol)
   factor       <- factor.obj$C
   factor.diag  <- factor.obj$D
   ## Obtain rank
@@ -679,16 +697,17 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
                          loc = loc, scale = scale, factor = factorFin,
                          k.factor = k.factor, 
                          method = method, precond = control$precond,
-                         abstol = abstol, CI.factor = control$CI.factor, 
+                         tol = tol, do.reltol = do.reltol, 
+                         CI.factor = control$CI.factor, 
                          fun.eval = control$fun.eval, 
                          max.iter.rqmc = control$max.iter.rqmc, 
                          increment = increment, 
                          B = control$B, inv.gam = inv.gam, ...)
     
     ## Check if desired precision was reached
-    reached[i] <- res1[[i]]$error <= abstol
+    reached[i] <- res1[[i]]$error <= tol
     if(verbose >= 2 && !reached[i])
-      warning(sprintf("'abstol' not reached for pair %d of integration bounds; consider increasing 'fun.eval[2]' and 'max.iter.rqmc'", i))
+      warning(sprintf("Tolerance not reached for pair %d of integration bounds; consider increasing 'fun.eval[2]' and 'max.iter.rqmc'", i))
   } # for()
   if(verbose == 1 && any(!reached)) { # <=> verbose == 1
     ii <- which(!reached) # (beginning of) indices
@@ -697,7 +716,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     } else {
       paste(ii, collapse = ", ")
     }
-    warning("'abstol' not reached for pair(s) ",strng," of integration bounds; consider increasing 'fun.eval[2]' and 'max.iter.rqmc'")
+    warning("Tolerance not reached for pair(s) ",strng," of integration bounds; consider increasing 'fun.eval[2]' and 'max.iter.rqmc'")
   }
   ## Return
   res <- vapply(res1, function(r) r$value, NA_real_)
@@ -717,7 +736,8 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
 ##'        correlation matrix; if FALSE (default), 'upper', 'lower' and 'scale'
 ##'        will be normalized.
 ##' @param method see details in ?pnvmix
-##' @param abstol see details in ?pnvmix
+##' @param tol absolute/relative error tolerance
+##' @param do.reltol logical if relative precision is required 
 ##' @param CI.factor see details in ?pnvmix
 ##' @param fun.eval see details in ?pnvmix
 ##' @param max.iter.rqmc see details in ?pnvmix
@@ -730,7 +750,8 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
 ##'               
 ##' @author Erik Hintz and Marius Hofert
 pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
-                     standardized = FALSE, method = "sobol", abstol = 1e-3, 
+                     standardized = FALSE, method = "sobol", 
+                     tol = 1e-3, do.reltol = FALSE,
                      CI.factor = 3.3, fun.eval = c(2^6, 1e8), max.iter.rqmc = 15, 
                      increment = "doubling", B = 12, verbose = FALSE)
 { 
@@ -742,15 +763,15 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
     upper <- (upper - loc) / sqrt(scale)
     lower <- (lower - loc) / sqrt(scale)
   }
-  ## Error is calculated as CI.factor * sd( estimates) / sqrt(B); replace
-  ## CI.factor by CI.factor / sqrt(B) to avoid repeated calculating of sqrt(B)
-  CI.factor <- CI.factor / sqrt(B)
+  ## Error is calculated as CI.factor * sd( estimates) / sqrt(B). 
+  ## For performance: 
+  CI.factor.sqrt.B <- CI.factor / sqrt(B)
   ## Grab the number of sample points for the first iteration
   current.n <- fun.eval[1] #
   ## Matrix to store the B * length(upper) RQMC estimates
   rqmc.estimates <- matrix(0, ncol = n, nrow = B)
-  ## Initialize error to something bigger than abstol so that we can enter the while loop below
-  error <- abstol + 42
+  ## Initialize error to something bigger than 'tol' so that we can enter the while loop below
+  error <- tol + 42
   ## Initialize the total number of function evaluations
   total.fun.evals <- 0
   ## Initialize a variable that counts the number of iterations in the while loop below
@@ -772,10 +793,10 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
     denom <- 1
   }
   ## 2 Major while() loop ####################################################
-  ## while() runs until precision abstol is reached or the number of function
+  ## while() runs until precision tol is reached or the number of function
   ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
   ## the desired probability are calculated.
-  while(max(error) > abstol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
+  while(max(error) > tol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
   {
     if(method == "sobol" && numiter > 0)
       .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
@@ -839,13 +860,17 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
         current.n <- 2 * current.n
       }
     }
-    ## Update error; note that this CI.factor is actually CI.factor/sqrt(B) (see above)
-    error <- CI.factor * apply(rqmc.estimates, 2, sd) 
+    ## Update error depending on 'do.reltol' 
+    error <- if(!do.reltol){ # absolute error
+       CI.factor.sqrt.B * apply(rqmc.estimates, 2, sd)
+    } else { # relative error
+       CI.factor.sqrt.B * apply(rqmc.estimates, 2, sd)/colMeans(rqmc.estimates) 
+    }
     numiter <- numiter + 1 # update counter
   } # while()
   ## 3 Finalize: ###############################################################
   ## Check if error tolerance reached and print warnings accordingly
-  reached <- (error <= abstol)
+  reached <- (error <= tol)
   if(any(!reached) && verbose > 0){
     ii <- which(!reached) 
     if(verbose == 1){
@@ -854,10 +879,10 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
       } else {
         paste(ii, collapse = ", ")
       }
-      warning("'abstol' not reached for pair(s) ",strng," of integration bounds; consider increasing 'fun.eval[2]' and 'max.iter.rqmc'")
+      warning("Tolerance not reached for pair(s) ",strng," of integration bounds; consider increasing 'fun.eval[2]' and 'max.iter.rqmc' in the 'control' argument.")
     } else {
       for(i in 1:length(ii)){
-        warning(sprintf("'abstol' not reached for pair %d of integration bounds; consider increasing 'fun.eval[2]' and 'max.iter.rqmc'", ii[i]))
+        warning(sprintf("Tolerance not reached for pair %d of integration bounds; consider increasing 'fun.eval[2]' and 'max.iter.rqmc' in the 'control' argument", ii[i]))
       }
     }
   }

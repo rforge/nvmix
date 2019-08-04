@@ -509,9 +509,9 @@ dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, k = d, control,
     ldensities <- logsumexp(rqmc.estimates) - log(B) # performs better than .colMeans
     vars <- .colMeans((rqmc.estimates - rep(ldensities, each = B))^2, B, n, 0)
     #vars <- apply(rqmc.estimates, 2, var) 
-    errors <- if(!do.reltol){
+    errors <- if(!do.reltol){ # absolute error
       sqrt(vars)*CI.factor.sqrt.B
-    } else {
+    } else { # relative error
       sqrt(vars)/abs(ldensities)*CI.factor.sqrt.B
     }
     max.error <- max(errors)
@@ -545,14 +545,14 @@ dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, k = d, control,
 dnvmix.internal <- function(qW, maha2.2, lrdet = lrdet, d = d, control, verbose)
 {
   ## Absolte/relative precision?
-  if(is.na(control$dnvmix.reltol)){
-    tol <- control$dnvmix.abstol
-    do.reltol <- FALSE
-  } else {
-    ## Use relative error
-    tol <- control$dnvmix.reltol
-    do.reltol <- TRUE
+  tol <- if(is.na(control$dnvmix.reltol)){ # if 'reltol = NA' use absolute precision
+     do.reltol <- FALSE
+     control$dnvmix.abstol
+  } else { # otherwise use relative precision (default)
+     do.reltol <- TRUE
+     control$dnvmix.reltol
   }
+   
   ## Call RQMC procedure without any stratification
   rqmc.obj <- dnvmix.internal.RQMC(qW, maha2.2 = maha2.2, lrdet = lrdet, d = d, 
                                    control = control, lower.q = 0, upper.q = 1, 

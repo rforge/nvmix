@@ -14,6 +14,8 @@ get.set.parameters <- function(control = list()){
     mean.sqrt.mix = NULL, 
     precond = TRUE, 
     pnvmix.abstol = 1e-3, 
+    pnvmix.reltol = NA,
+    cholesky.tol = 1e-9, 
     ## For dnvmix():
     dnvmix.abstol = 1e-3, 
     dnvmix.reltol = 1e-2, # If !NA, 'reltol' is used instead of 'abstol'
@@ -71,9 +73,6 @@ get.set.parameters <- function(control = list()){
                                  choices = c("doubling", "num.init"))
     ## Now some more checkings: ('max.iter.rqmc' checked at the end)
     stopifnot(is.logical(ctrl$precond),
-              ctrl$pnvmix.abstol >= 0,
-              ctrl$dnvmix.abstol >= 0,
-              ctrl$dnvmix.reltol >= 0,
               ctrl$dnvmix.max.iter.rqmc.pilot >= 1,
               ctrl$dnvmix.tol.int.lower > 0,
               ctrl$dnvmix.tol.bisec.w >0,

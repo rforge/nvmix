@@ -63,15 +63,18 @@ pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
     this equals the covariance matrix of a random vector following
     the specified normal variance mixture distribution divided by
     the expecation of the mixing variable \eqn{W} if and only if the
-    former exists.}
+    former exists. \code{scale} is allowed to be singular in which case
+    the distribution function of the singular normal variance mixture
+    is returned.}
   \item{standardized}{\code{logical} indicating whether \code{scale} is
     assumed to be a correlation matrix.}
   \item{control}{\code{\link{list}} specifying algorithm specific
-    parameters; see details below.}   
+    parameters such as error tolerances; see details below.}   
   \item{verbose}{% *not* the same as in ?dnvmix()
     \code{\link{logical}}
     indicating whether a warning is given if the required precision
-    \code{abstol} has not been reached; can also be an \code{\link{integer}}
+    \code{pnvmix.abstol} or \code{pnvmix.reltol} as specified in the \code{control}
+    argument has not been reached; can also be an \code{\link{integer}}
     in which case 0 is \code{FALSE}, 1 is \code{TRUE} and 2 stands
     for producing a more verbose warning (for each set of provided
     integration bounds).}
@@ -106,70 +109,11 @@ pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
   iterations needed.
   
   Algorithm specific parameters (such as the above mentioned \code{'increment'}
-  or \code{'abstol'}) can be passed as a list via \code{control}. 
-  It can contain any of the following:
-  
-  \describe{
-  \item{\code{method}}{\code{\link{character}} string indicating the method
-    to be used to compute the integral. Available are:
-    \describe{
-      \item{\code{"sobol"}:}{Sobol' sequence (default).}
-      \item{\code{"ghalton"}:}{generalized Halton sequence.}
-      \item{\code{"PRNG"}:}{plain Monte Carlo based on a pseudo-random
-         number generator.}
-    }
-  }
-  \item{\code{mean.sqrt.mix}}{expectation of the square root \eqn{\sqrt(W)} of
-    the mixing variable \eqn{W}. If \code{NULL}, it will be
-    estimated via QMC; this is only needed for determining the reordering
-    of the integration bounds, so a rather crude approximation
-    is fine.}
-  \item{\code{abstol}}{non-negative \code{\link{numeric}} providing the
-    absolute precision required, defaults to \code{1e-3}. If \code{abstol = 0},
-    the algorithm will typically run until the total number of function
-    evaluations exceeds \code{fun.eval[2]}. If \eqn{n > 1} (so
-    \code{x} has more than one row), the algorithm
-    runs until the precision requirement is reached for all
-    \eqn{n} density estimates.}
-  \item{\code{precond}}{\code{\link{logical}} indicating whether preconditioning
-    is applied, that is, reordering of the integration variables. If \code{TRUE},
-    integration limits as well as \code{scale} are internally re-ordered in
-    a way such that the overall variance of the integrand is usually smaller than
-    with the original ordering; this usually leads smaller run-times.}
-  \item{\code{increment}}{\code{\link{character}} string indicating how the
-    sample size should be increased in each iteration. Available are:
-    \describe{
-      \item{\code{"doubling"}:}{next iteration has as many sample points
-	as all the previous iterations combined.}
-      \item{\code{"num.init"}:}{all iterations use an additional
-	\code{fun.eval[1]}-many points.}
-    }
-  }  
-  \item{\code{CI.factor}}{multiplier of the Monte Carlo confidence interval
-    bounds.  The algorithm runs until \code{CI.factor} times the estimated
-    standard error is less than \code{abstol}. If \code{CI.factor = 3.3}
-    (the default), one can expect the actual absolute error to be less
-    than \code{abstol} in 99.9\% of the cases.}
-  \item{\code{fun.eval}}{\code{\link{numeric}(2)} providing the size of the
-    first point set to be used to estimate the densities
-    (typically a power of 2) and the maximal number of function
-    evaluations. \code{fun.eval} defaults to \code{c(2^7, 1e8)}.}  
-  \item{\code{max.iter.rqmc}}{\code{\link{numeric}}, providing the maximum number of 
-    iterations allowed in the RQMC approach; the default is 15.}  
-  \item{\code{B}}{number of randomizations for obtaining an error estimate in the
-    randomized quasi-Monte Carlo (RQMC) approach; the default is 12.}
-  }  
-  
-  
-  Care should be taken when changing the algorithm-specific parameters,
-  notably \code{method}, \code{precond}, \code{fun.eval[2]} and \code{B}.
-  Error estimates will not be reliable for too small \code{B} and the
-  performance of the algorithm depends heavily on the (quasi-)Monte
-  Carlo point-set used.
-
-  If the absolute error tolerance \code{abstol} cannot be achieved with
-  \code{fun.eval[2]} function evaluations, an additional warning is
-  thrown.
+  or \code{'pnvmix.abstol'}) can be passed as a list via \code{control}, see
+  \code{\link{get.set.parameters}()}. 
+  If specified error tolerances are not reached and \code{verbose = TRUE}, a 
+  warnign is thrown. If provided \code{scale} is singular, \code{pnvmix()} returns
+  the correct probability but throws a warning if \code{verbose = TRUE}. 
 
   \code{pStudent()} and \code{pNorm()} are wrappers of
   \code{pnvmix(, qmix = "inverse.gamma", df = df)} and
@@ -241,6 +185,20 @@ stopifnot(is.na(pt) == c(FALSE, TRUE, TRUE, FALSE))
 ## Case where upper = (Inf,..,Inf) and lower = (-Inf,...,-Inf)
 stopifnot(all.equal(pnvmix(upper = rep(Inf, d), qmix = "constant"), 1,
  check.attributes = FALSE))
+ 
+## An example with singular scale:
+A <- matrix( c(1, 0, 0, 0, 
+               2, 1, 0, 0, 
+               3, 0, 0, 0,
+               4, 1, 0, 1), ncol = 4, nrow = 4, byrow = TRUE)
+scale <- A\%*\%t(A)
+upper <- 2:5
+
+pn <- pnvmix(upper, qmix = "constant", scale = scale) # multivariate normal
+pt <- pnvmix(upper, qmix = "inverse.gamma", scale = scale, df = df) # multivariate t
+
+stopifnot(all.equal(pn, 0.8581, tol = 1e-3, check.attributes = FALSE))
+stopifnot(all.equal(pt, 0.6649, tol = 1e-3, check.attributes = FALSE))
 
 ### Examples for pStudent() and pNorm() ########################################
 
@@ -260,5 +218,6 @@ p.St.dfInf <- pStudent(b, df = Inf, scale = P)
 set.seed(1)
 p.Norm <- pNorm(b, scale = P)
 stopifnot(all.equal(p.St.dfInf, p.Norm, check.attributes = FALSE))
+
 }
 \keyword{distribution}
