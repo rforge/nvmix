@@ -1,6 +1,127 @@
 ### pnvmix() ###################################################################
 
 
+##' Evaluate integrand of pnvmix()  (corresponds to 'g' in the paper) 
+##' @param U (n, d) matrix of uniforms (evaluation points)
+##' @param qmix see ?pnvmix
+##' @param lower see ?pnvmix
+##' @param upper see ?pnvmix
+##' @param scale see ?pnvmix. Has to be full rank here though! 
+##' @param df degrees of freedom parameter (>0)
+##' @param precond see ?pnvmix
+##' @param mean.sqrt.mix see ?pnvmix 
+##' @param ... additional parameters passed to qmix()
+##' @return n-vector of function evaluations
+##' @author Erik Hintz
+##' @note this function is *only* needed for numerical experiments.  
+pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), 
+                                  scale, precond, mean.sqrt.mix = NULL, ...)
+{
+   ## Define the quantile function of the mixing variable.
+   is.const.mix   <- FALSE # logical indicating whether we have a multivariate normal
+   inv.gam        <- FALSE # logical indicating whether we have a multivariate t
+   qW <- if(is.character(qmix)) { # 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
+      qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
+      switch(qmix,
+             "constant" = {
+                is.const.mix <- TRUE
+                function(u) 1
+             },
+             "inverse.gamma" = {
+                if(hasArg(df)) {
+                   df <- list(...)$df
+                } else {
+                   stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
+                }
+                ## Still allow df = Inf (normal distribution)
+                stopifnot(is.numeric(df), length(df) == 1, df > 0)
+                if(is.finite(df)) {
+                   inv.gam <- TRUE
+                   df2 <- df / 2
+                   ## For preconditioning:
+                   mean.sqrt.mix <- sqrt(df) * gamma(df2) / (sqrt(2) * gamma((df+1)/2)) 
+                   function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
+                } else {
+                   is.const.mix <- TRUE
+                   ## For preconditioning:
+                   mean.sqrt.mix <- 1 
+                   function(u) 1
+                }
+             },
+             stop("Currently unsupported 'qmix'"))
+   } else if(is.list(qmix)) { # 'qmix' is a list of the form (<character string>, <parameters>)
+      stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
+      qmix. <- paste0("q", distr)
+      if(!existsFunction(qmix.))
+         stop("No function named '", qmix., "'.")
+      function(u)
+         do.call(qmix., append(list(u), qmix[-1]))
+   } else if(is.function(qmix)) { # 'mix' is the quantile function F_W^- of F_W
+      function(u)
+         qmix(u, ...)
+   } else stop("'qmix' must be a character string, list or quantile function.")
+   
+   ## Dimension of the problem:
+   d <- dim(scale)[1]
+   ## Number of evals:
+   n <- dim(U)[1]
+   ## Factor (lower triangular)
+   C <- t(chol(scale))
+   
+   ## Precondition?
+   if(precond && d > 2){
+      if(is.null(mean.sqrt.mix))
+         mean.sqrt.mix <- mean(sqrt(qW(qrng::sobol(n = 2^12, d = 1, randomize = TRUE))))
+      ## Check if provided/approximated mean.sqrt.mix is strictly positive
+      if(mean.sqrt.mix <= 0)
+         stop("'mean.sqrt.mix' has to be positive (possibly after being generated in pnvmix())")
+      tmp <- precondition(lower, upper = upper, scale = scale, factor = C, 
+                          mean.sqrt.mix = mean.sqrt.mix) 
+      a <- tmp$lower
+      b <- tmp$upper
+      R <- tmp$scale
+      C <- tmp$factor
+   } else {
+      a <- lower
+      b <- upper
+      R <- scale # C did not change 
+   }
+   ## Matrix to store results (y_i from paper)
+   Yorg <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
+   Yant <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
+   ## For evaluating qnorm() close to 0 and 1:
+   ONE <- 1-.Machine$double.neg.eps
+   ZERO <- .Machine$double.eps
+   ## Transform inputs to realizations of the mixing variable
+   ## U will be a matrix with *d+1* columns: Column 1: Realizations of sqrt(mix),
+   ## Columns 2 to d: uniforms, Column d+1: Antithetic realization of Column 1
+   if(!is.matrix(U)) U <- as.matrix(U)
+   U <- cbind(sqrt(qW(U[, 1])), U[, 2:d], sqrt(qW(1 - U[, 1])))
+   ## First 'iteration' (d1, e1 in the paper)
+   dorg <- pnorm(a[1] / (U[, 1] * C[1, 1]))
+   dant <- pnorm(a[1] / (U[, d+1] * C[1, 1]))
+   eorg <- pnorm(b[1] / (U[, 1] * C[1, 1]))
+   eant <- pnorm(b[1] / (U[, d+1] * C[1, 1]))
+   forg <- eorg - dorg
+   fant <- eant - dant
+   ## Recursively calculate (e_i - d_i) 
+   for(i in 2:d){
+      ## Store realization:
+      Yorg[,(i-1)] <- qnorm( pmax( pmin(dorg + U[, i]*(eorg-dorg), ONE), ZERO))
+      Yant[,(i-1)] <- qnorm( pmax( pmin(dant + (1-U[, i])*(eant-dant), ONE), ZERO))
+      ## Update d__, e__, f___:
+      dorg <- pnorm( (a[i]/U[,1]   - Yorg[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+      dant <- pnorm( (a[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+      eorg <- pnorm( (b[i]/U[,1]   - Yorg[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+      eant <- pnorm( (b[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+      forg <- forg*(eorg-dorg)
+      fant <- fant*(eant-dant)
+   }
+   ## Return:
+   (forg+fant)/2
+}
+
+
 ##' @title Cholesky factor for positive-semidefinite matrices (not exported)
 ##' @param mat (n,n) symmetric, positive-semidefinite matrix.
 ##' @return list of length 2:

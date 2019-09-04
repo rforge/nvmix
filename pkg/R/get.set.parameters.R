@@ -20,6 +20,7 @@ get.set.parameters <- function(control = list()){
     dnvmix.abstol = 1e-3, 
     dnvmix.reltol = 1e-2, # If !NA, 'reltol' is used instead of 'abstol'
     dnvmix.max.iter.rqmc.pilot = 4,
+    dnvmix.doAdapt = TRUE, 
     dnvmix.tol.int.lower = 1e-30,
     dnvmix.order.lower = 10,
     dnvmix.tol.bisec = c(1e-16, 1e-1, 1e-1),
@@ -40,12 +41,12 @@ get.set.parameters <- function(control = list()){
     laststep.do.nu = FALSE,
     resample = FALSE, 
     ### Tolerances:
-    ECME.maxiter = 25,
+    ECME.maxiter = 15,
     max.iter.locscaleupdate = 25,
     weights.abstol = 1e-1, # currently not used
     weights.reltol = 5e-2,
     weights.interpol.reltol = 1e-2,
-    ECME.rel.conv.tol = c(5e-2, 5e-2, 1e-2), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
+    ECME.rel.conv.tol = c(1e-2, 1e-2, 5e-3), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
     ### For the underlying 'optim':
     control.optim = list(maxit = 10),
     control.optim.laststep = list(), 

@@ -565,13 +565,15 @@ dnvmix.internal <- function(qW, maha2.2, lrdet = lrdet, d = d, control, verbose)
   if(any(error > tol)){
     ## Accuracy not reached for at least one 'maha2.2' value
     ## => Use adaptive approach for those
-    notRchd <- which(error > tol)
-    rqmc.obj <- dnvmix.internal.adaptRQMC(qW, maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
-                                                d = d, UsWs = rqmc.obj$UsWs, 
-                                                control = control)
-    ldens[notRchd]    <- rqmc.obj$ldensities
-    numiter[notRchd]  <- numiter[notRchd] + rqmc.obj$numiter
-    error[notRchd]    <- rqmc.obj$error
+    if(control$dnvmix.doAdapt){
+       notRchd <- which(error > tol)
+       rqmc.obj <- dnvmix.internal.adaptRQMC(qW, maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
+                                             d = d, UsWs = rqmc.obj$UsWs, 
+                                             control = control)
+       ldens[notRchd]    <- rqmc.obj$ldensities
+       numiter[notRchd]  <- numiter[notRchd] + rqmc.obj$numiter
+       error[notRchd]    <- rqmc.obj$error
+    }
     ## Handle warnings:
     if(as.logical(verbose)){ # verbose can be passed by 'fitnvmix' => between 0 and 3
       if(any(is.na(error))){
