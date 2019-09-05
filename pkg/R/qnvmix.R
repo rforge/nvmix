@@ -252,7 +252,7 @@ qnvmix <- function(u, qmix, control = list(),
   } else {
     ## Some very basic checking if stored.values was provided
     stopifnot(is.matrix(stored.values), dim(stored.values)[2] == 3,
-              !any(stored.values[,2] > 1 || stored.values[,2] < 0))
+              !any(stored.values[,2] > 1 | stored.values[,2] < 0))
   }
   
   ## Main loop for Newton's method:
