@@ -10,7 +10,9 @@
  * @param d dimension of the nvmix distribution
  * @param k see formula below; usually d = k
  * @param lrdet log(sqrt(det(scale)); 'scale' is the scale matrix of the dist'n
- * @return ldensities n-vector of estimated log-densities
+ * @param ldensities n-vector to store ldensity values
+ * @param c current_n vector to store calculated values
+ * (@return ldensities n-vector of estimated log-densities)
  * @note This function performs the equvivalent of the following R-Code
  *
  *       b <- - (d/2) * log(2 * pi) - k/2 * log(W) - lrdet - outer(1/W, maha2_2)
@@ -123,7 +125,7 @@ SEXP eval_dnvmix_integrand(SEXP W, SEXP maha2_2, SEXP current_n, SEXP n, SEXP d,
     int current_n_ = asInteger(current_n); /* for allocation */
     
     SEXP ldensities = PROTECT(allocVector(REALSXP, n_)); /* allocate memory*/
-    double *ldensities_ = REAL(ldensities); /* pointer to values of res */
+    double *ldensities_ = REAL(ldensities); /* pointer to values of ldensities */
     
     SEXP c = PROTECT(allocVector(REALSXP, current_n_));
     double *c_ = REAL(c);
@@ -134,5 +136,6 @@ SEXP eval_dnvmix_integrand(SEXP W, SEXP maha2_2, SEXP current_n, SEXP n, SEXP d,
 				       INTEGER(k)[0], REAL(lrdet)[0], ldensities_, c_);
     
     UNPROTECT(2);
+    /* Return */
     return ldensities;
 }

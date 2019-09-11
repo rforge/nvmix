@@ -18,14 +18,15 @@
  * @param factor lower triangular Cholesky factor as vector
  * @param ZERO smallest number x > 0 such that x != 0
  * @param ONE   largest number x < 1 such that x != 1
- * @return mean estimate mean(f(U)) of E(f(U)) using antithetic variates
+ * @param res 2-vector to store results (mean + estimated variance)
+ * @return 2-vector consisting of mean(f(U)) and var(f(U)) using antithetic variates
  * @note lower and upper can have -/+Inf entries. While pnorm() would give the
  correct result, it safes time to check each time if the argument is -/+Inf
  *       and setting the value to 0/1 rather than calling pnorm().
  * @author Erik Hintz and Marius Hofert
  */
-double eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int d, int r,
-                             int *kfactor, double *factor, double ZERO, double ONE)
+void eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int d, int r,
+                             int *kfactor, double *factor, double ZERO, double ONE, double *res)
 {
     double yorg[r-1], sqrtmixorg, dorg, difforg, forg, scprodorg;
     double yant[r-1], sqrtmixant, dant, diffant, fant, scprodant;
@@ -40,7 +41,10 @@ double eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int
     double tmp; /* to store temporary values */
     double lowermaxorg, upperminorg, lowermaxant, upperminant; /* needed in singular case */
     double scprodorgnew, scprodantnew;
-    double mean = 0; /* to store the result */
+    double sum = 0; /* to store sum_{i=1}^n (y_i + yant_i)/2 */
+    double sumsq = 0; /* to store sum_{i=1}^n (y_i + yant_i)^2/4 (for variance calculation) */
+    double mean = 0; /* return value 1/n*sum */
+    double var = 0; /* estimated variance 1/(n-1) * (sumsq - n*mean^2) */
     int current_limit; /* index of current element in 'lower'/'upper' */
     int i, j, l, m; /* counters for loops */
 
@@ -201,10 +205,11 @@ double eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int
             /* Update i in the singular case (as some rows may need to be skipped) */
             current_limit += kfactor[i+1];
         }
-        mean += (forg+fant)/2;
+        sum += (forg+fant)/2;
+        sumsq += (forg+fant)*(forg+fant)/4;
     }
-    mean = mean / n;
-    return(mean);
+    res[0] = sum/n;
+    res[1] = (sumsq - n * res[0] * res[0])/(n-1);
 }
 
 /**
@@ -213,12 +218,17 @@ double eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int
  * @return mean(f(U)) where f is the integrand and U specifies the point-set
  * @author Erik Hintz, Marius Hofert (polishing)
  */
-SEXP eval_nvmix_integral(SEXP lower, SEXP upper, SEXP U, SEXP n, SEXP d, SEXP r, SEXP kfactor,
-			 SEXP factor, SEXP ZERO, SEXP ONE)
+SEXP eval_nvmix_integral(SEXP lower, SEXP upper, SEXP U, SEXP n, SEXP d,
+                         SEXP r, SEXP kfactor, SEXP factor, SEXP ZERO, SEXP ONE)
 {
-    double res = eval_nvmix_integral_c(REAL(lower), REAL(upper), REAL(U),
-				       INTEGER(n)[0], INTEGER(d)[0], INTEGER(r)[0], INTEGER(kfactor),
-				       REAL(factor), REAL(ZERO)[0],
-                                       REAL(ONE)[0]);
-    return ScalarReal(res);
+    SEXP res = PROTECT(allocVector(REALSXP, 2)); /* allocate memory */
+    double *res_ = REAL(res); /* pointer to values of res */
+    
+    /* Main */
+    eval_nvmix_integral_c(REAL(lower), REAL(upper), REAL(U), INTEGER(n)[0],
+                          INTEGER(d)[0], INTEGER(r)[0], INTEGER(kfactor),
+                          REAL(factor), REAL(ZERO)[0], REAL(ONE)[0], res_);
+    UNPROTECT(1);
+    /* Return */
+    return res;
 }

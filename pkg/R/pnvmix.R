@@ -10,12 +10,16 @@
 ##' @param df degrees of freedom parameter (>0)
 ##' @param precond see ?pnvmix
 ##' @param mean.sqrt.mix see ?pnvmix 
+##' @param return.all logical if all function evaluations should be returned.
 ##' @param ... additional parameters passed to qmix()
-##' @return n-vector of function evaluations
+##' @return if return.all = TRUE a n-vector with g(U) values, otherwise a 2-vector
+##' with estimated mean(g(U)) and estimated var(g(U)) 
+##' @note if return.all = TRUE, all computations are done in R, so can be slow.
+##'       if return.all = FALSE, this function calls underlying C code. 
 ##' @author Erik Hintz
 ##' @note this function is *only* needed for numerical experiments.  
-pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), 
-                                  scale, precond, mean.sqrt.mix = NULL, ...)
+pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond, 
+                     mean.sqrt.mix = NULL, return.all = FALSE, ...)
 {
    ## Define the quantile function of the mixing variable.
    is.const.mix   <- FALSE # logical indicating whether we have a multivariate normal
@@ -66,7 +70,9 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d),
    ## Number of evals:
    n <- dim(U)[1]
    ## Factor (lower triangular)
-   C <- t(chol(scale))
+   C        <- t(chol(scale))
+   rank     <- d # only consider full rank case here
+   k.factor <- rep(1, d)
    
    ## Precondition?
    if(precond && d > 2){
@@ -86,39 +92,54 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d),
       b <- upper
       R <- scale # C did not change 
    }
-   ## Matrix to store results (y_i from paper)
-   Yorg <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
-   Yant <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
-   ## For evaluating qnorm() close to 0 and 1:
-   ONE <- 1-.Machine$double.neg.eps
-   ZERO <- .Machine$double.eps
-   ## Transform inputs to realizations of the mixing variable
-   ## U will be a matrix with *d+1* columns: Column 1: Realizations of sqrt(mix),
-   ## Columns 2 to d: uniforms, Column d+1: Antithetic realization of Column 1
-   if(!is.matrix(U)) U <- as.matrix(U)
-   U <- cbind(sqrt(qW(U[, 1])), U[, 2:d], sqrt(qW(1 - U[, 1])))
-   ## First 'iteration' (d1, e1 in the paper)
-   dorg <- pnorm(a[1] / (U[, 1] * C[1, 1]))
-   dant <- pnorm(a[1] / (U[, d+1] * C[1, 1]))
-   eorg <- pnorm(b[1] / (U[, 1] * C[1, 1]))
-   eant <- pnorm(b[1] / (U[, d+1] * C[1, 1]))
-   forg <- eorg - dorg
-   fant <- eant - dant
-   ## Recursively calculate (e_i - d_i) 
-   for(i in 2:d){
-      ## Store realization:
-      Yorg[,(i-1)] <- qnorm( pmax( pmin(dorg + U[, i]*(eorg-dorg), ONE), ZERO))
-      Yant[,(i-1)] <- qnorm( pmax( pmin(dant + (1-U[, i])*(eant-dant), ONE), ZERO))
-      ## Update d__, e__, f___:
-      dorg <- pnorm( (a[i]/U[,1]   - Yorg[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
-      dant <- pnorm( (a[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
-      eorg <- pnorm( (b[i]/U[,1]   - Yorg[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
-      eant <- pnorm( (b[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
-      forg <- forg*(eorg-dorg)
-      fant <- fant*(eant-dant)
+   if(return.all){
+      ## Matrix to store results (y_i from paper)
+      Yorg <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
+      Yant <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
+      ## For evaluating qnorm() close to 0 and 1:
+      ONE <- 1-.Machine$double.neg.eps
+      ZERO <- .Machine$double.eps
+      ## Transform inputs to realizations of the mixing variable
+      ## U will be a matrix with *d+1* columns: Column 1: Realizations of sqrt(mix),
+      ## Columns 2 to d: uniforms, Column d+1: Antithetic realization of Column 1
+      if(!is.matrix(U)) U <- as.matrix(U)
+      U <- cbind(sqrt(qW(U[, 1])), U[, 2:d], sqrt(qW(1 - U[, 1])))
+      ## First 'iteration' (d1, e1 in the paper)
+      dorg <- pnorm(a[1] / (U[, 1] * C[1, 1]))
+      dant <- pnorm(a[1] / (U[, d+1] * C[1, 1]))
+      eorg <- pnorm(b[1] / (U[, 1] * C[1, 1]))
+      eant <- pnorm(b[1] / (U[, d+1] * C[1, 1]))
+      forg <- eorg - dorg
+      fant <- eant - dant
+      ## Recursively calculate (e_i - d_i) 
+      for(i in 2:d){
+         ## Store realization:
+         Yorg[,(i-1)] <- qnorm( pmax( pmin(dorg + U[, i]*(eorg-dorg), ONE), ZERO))
+         Yant[,(i-1)] <- qnorm( pmax( pmin(dant + (1-U[, i])*(eant-dant), ONE), ZERO))
+         ## Update d__, e__, f___:
+         dorg <- pnorm( (a[i]/U[,1]   - Yorg[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+         dant <- pnorm( (a[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+         eorg <- pnorm( (b[i]/U[,1]   - Yorg[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+         eant <- pnorm( (b[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+         forg <- forg*(eorg-dorg)
+         fant <- fant*(eant-dant)
+      }
+      ## Return:
+      return( (forg+fant)/2 )
+   } else {
+      res <- .Call("eval_nvmix_integral",
+            lower    = as.double(lower),
+            upper    = as.double(upper),
+            U        = as.double(U),
+            n        = as.integer(n),
+            d        = as.integer(d),
+            r        = as.integer(rank),
+            kfactor  = as.integer(k.factor), 
+            factor   = as.double(factor),
+            ZERO     = as.double(ZERO),
+            ONE      = as.double(ONE))
+      return(res)
    }
-   ## Return:
-   (forg+fant)/2
 }
 
 
@@ -508,7 +529,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
                 kfactor  = as.integer(k.factor), 
                 factor   = as.double(factor),
                 ZERO     = as.double(ZERO),
-                ONE      = as.double(ONE))
+                ONE      = as.double(ONE))[1]
         }
       
       ## 2.3 Update RQMC estimates #############################################
