@@ -43,8 +43,6 @@ void eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int d
     double scprodorgnew, scprodantnew;
     double sum = 0; /* to store sum_{i=1}^n (y_i + yant_i)/2 */
     double sumsq = 0; /* to store sum_{i=1}^n (y_i + yant_i)^2/4 (for variance calculation) */
-    double mean = 0; /* return value 1/n*sum */
-    double var = 0; /* estimated variance 1/(n-1) * (sumsq - n*mean^2) */
     int current_limit; /* index of current element in 'lower'/'upper' */
     int i, j, l, m; /* counters for loops */
 
