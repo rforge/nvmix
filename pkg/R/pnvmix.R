@@ -92,18 +92,19 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
       b <- upper
       R <- scale # C did not change 
    }
+   ## For evaluating qnorm() close to 0 and 1:
+   ONE <- 1-.Machine$double.neg.eps
+   ZERO <- .Machine$double.eps
+   ## Transform inputs to realizations of the mixing variable
+   ## U will be a matrix with *d+1* columns: Column 1: Realizations of sqrt(mix),
+   ## Columns 2 to d: uniforms, Column d+1: Antithetic realization of Column 1
+   if(!is.matrix(U)) U <- as.matrix(U)
+   U <- cbind(sqrt(qW(U[, 1])), U[, 2:d], sqrt(qW(1 - U[, 1])))
+   
    if(return.all){
       ## Matrix to store results (y_i from paper)
       Yorg <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
       Yant <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
-      ## For evaluating qnorm() close to 0 and 1:
-      ONE <- 1-.Machine$double.neg.eps
-      ZERO <- .Machine$double.eps
-      ## Transform inputs to realizations of the mixing variable
-      ## U will be a matrix with *d+1* columns: Column 1: Realizations of sqrt(mix),
-      ## Columns 2 to d: uniforms, Column d+1: Antithetic realization of Column 1
-      if(!is.matrix(U)) U <- as.matrix(U)
-      U <- cbind(sqrt(qW(U[, 1])), U[, 2:d], sqrt(qW(1 - U[, 1])))
       ## First 'iteration' (d1, e1 in the paper)
       dorg <- pnorm(a[1] / (U[, 1] * C[1, 1]))
       dant <- pnorm(a[1] / (U[, d+1] * C[1, 1]))
@@ -128,14 +129,14 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
       return( (forg+fant)/2 )
    } else {
       res <- .Call("eval_nvmix_integral",
-            lower    = as.double(lower),
-            upper    = as.double(upper),
+            lower    = as.double(a),
+            upper    = as.double(b),
             U        = as.double(U),
             n        = as.integer(n),
             d        = as.integer(d),
             r        = as.integer(rank),
             kfactor  = as.integer(k.factor), 
-            factor   = as.double(factor),
+            factor   = as.double(C),
             ZERO     = as.double(ZERO),
             ONE      = as.double(ONE))
       return(res)
