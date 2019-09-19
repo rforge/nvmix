@@ -30,38 +30,51 @@ pgammamix <- function(m, qmix, d, lower.tail = TRUE,
   ## get.set.parameters() also does argument checking, so not needed here.
   control <- get.set.parameters(control)
   ## 1 Define the quantile function of the mixing variable ###################
+  special.mix <- NA 
   qW <- if(is.character(qmix)) { # 'qmix' is a character vector
-    qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
-    switch(qmix,
-           "constant" = {
-             function(u) 1
-           },
-           "inverse.gamma" = {
-             if(hasArg(df)) {
-               df <- list(...)$df
-             } else {
-               stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
-             }
-             ## Still allow df = Inf (normal distribution)
-             stopifnot(is.numeric(df), length(df) == 1, df > 0)
-             if(is.finite(df)) {
-               df2 <- df / 2
-               function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
-             } else {
+     qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma", "pareto"))
+     switch(qmix,
+            "constant" = {
+               special.mix <- "constant"
                function(u) 1
-             }
-           },
-           stop("Currently unsupported 'qmix'"))
+            },
+            "inverse.gamma" = {
+               if(hasArg(df)) {
+                  df <- list(...)$df
+               } else {
+                  stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
+               }
+               ## Still allow df = Inf (normal distribution)
+               stopifnot(is.numeric(df), length(df) == 1, df > 0)
+               if(is.finite(df)) {
+                  special.mix <- "inverse.gamma"
+                  df2 <- df / 2
+                  function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
+               } else {
+                  special.mix <- "constant"
+                  function(u) 1
+               }
+            },
+            "pareto"= {
+               if(hasArg(alpha)){
+                  alpha <- list(...)$alpha
+               } else {
+                  stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
+               }
+               special.mix <- "pareto"
+               function(u) (1-u)^(-1/alpha)
+            },
+            stop("Currently unsupported 'qmix'"))
   } else if(is.list(qmix)) { # 'mix' is a list of the form (<character string>, <parameters>)
-    stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
-    qmix. <- paste0("q", distr)
-    if(!existsFunction(qmix.))
-      stop("No function named '", qmix., "'.")
-    function(u)
-      do.call(qmix., append(list(u), qmix[-1]))
+     stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
+     qmix. <- paste0("q", distr)
+     if(!existsFunction(qmix.))
+        stop("No function named '", qmix., "'.")
+     function(u)
+        do.call(qmix., append(list(u), qmix[-1]))
   } else if(is.function(qmix)) { # 'mix' is the quantile function F_W^- of F_W
-    function(u)
-      qmix(u, ...)
+     function(u)
+        qmix(u, ...)
   } else stop("'qmix' must be a character string, list or quantile function.")
   ## Build result object 
   pres <- rep(0, n) # n-vector of results

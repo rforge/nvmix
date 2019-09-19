@@ -30,12 +30,15 @@ pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
 	specifying a supported distribution; currently available are
         \code{"constant"} (in which case \eqn{W = 1} and thus
 	the multivariate normal distribution with mean vector
-	\code{loc} and covariance matrix \code{scale} results) and
+	\code{loc} and covariance matrix \code{scale} results),
 	\code{"inverse.gamma"} (in which case \eqn{W} is
 	inverse gamma distributed with shape and rate parameters
 	\code{df}/2 and thus the multivariate
 	Student \emph{t} distribution with \code{df} degrees of freedom
-	(required to be provided via the ellipsis argument) results).}
+	(required to be provided via the ellipsis argument) results) and 
+	\code{"pareto"} (in which case \eqn{W} is
+	Pareto distributed with scale equal to unity and shape equal to
+	\code{alpha}, which needs to be provided via the ellipsis argument).}
       \item{\code{\link{list}}:}{\code{\link{list}} of length at least
 	one, where the first component is a \code{\link{character}}
 	string specifying the base name of a distribution whose
@@ -161,10 +164,10 @@ set.seed(1)
 pt1 <- pnvmix(b, lower = a, qmix = "inverse.gamma", df = df, scale = P)
 
 ## Here is a version providing the quantile function of the mixing distribution
-qW <- function(u, df) 1 / qgamma(1-u, shape = df/2, rate = df/2)
+qmix <- function(u, df) 1 / qgamma(1-u, shape = df/2, rate = df/2)
 mean.sqrt.mix <- sqrt(df) * gamma(df/2) / (sqrt(2) * gamma((df+1) / 2))
 set.seed(1)
-pt2 <- pnvmix(b, lower = a, qmix = qW, df  = df, scale = P,
+pt2 <- pnvmix(b, lower = a, qmix = qmix, df  = df, scale = P,
               control = list(mean.sqrt.mix = mean.sqrt.mix))
 
 ## Compare
@@ -173,7 +176,7 @@ stopifnot(all.equal(pt1, pt2, tol = 7e-4, check.attributes = FALSE))
 ## mean.sqrt.mix will be approximated by QMC internally if not provided,
 ## so the results will differ slightly.
 set.seed(1)
-pt3 <- pnvmix(b, lower = a, qmix = qW, df = df, scale = P)
+pt3 <- pnvmix(b, lower = a, qmix = qmix, df = df, scale = P)
 stopifnot(all.equal(pt3, pt1, tol = 7e-4, check.attributes = FALSE))
 
 ## Case with missing data and a matrix of lower and upper bounds
@@ -202,6 +205,23 @@ pt <- pnvmix(upper, qmix = "inverse.gamma", scale = scale, df = df) # multivaria
 stopifnot(all.equal(pn, 0.8581, tol = 1e-3, check.attributes = FALSE))
 stopifnot(all.equal(pt, 0.6649, tol = 1e-3, check.attributes = FALSE))
 
+## Evaluate a Exp(1)-mixture
+## Specify the mixture distribution parameter
+rate <- 1.9 # exponential rate parameter
+
+## Method 1: Use R's qexp() function and provide a list as 'mix'
+set.seed(42)
+(p1 <- pnvmix(b, lower = a, qmix = list("exp", rate = rate), scale = P))
+
+## Method 2: Define the quantile function manually (note that
+##           we do not specify rate in the quantile function here,
+##           but conveniently pass it via the ellipsis argument)
+set.seed(42)
+(p2 <- pnvmix(b, lower = a, qmix = function(u, lambda) -log(1-u)/lambda,
+              scale = P, lambda = rate))
+
+stopifnot(all.equal(p1, p2))              
+              
 ### Examples for pStudent() and pNorm() ########################################
 
 ## Evaluate a t_{3.5} distribution function

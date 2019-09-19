@@ -11,31 +11,8 @@ qnvmix(u, qmix, control = list(),
 }
 \arguments{
   \item{u}{vector of probabilities .}
-  \item{qmix}{specification of the mixing variable \eqn{W}; see McNeil et
-    al. (2015). Supported are the following types of specification (see
-    also the examples below):
-    \describe{
-      \item{\code{\link{character}}:}{a \code{\link{character}} string
-	specifying a supported distribution; currently available are
-        \code{"constant"} (in which case \eqn{W = 1} and thus \code{qnorm} is
-        called) and \code{"inverse.gamma"} (in which case \eqn{W} is an inverse 
-        gamma distribution with shape and rate parameters \code{df}/2 and 
-        \code{qt(..., df = df)} is called; note that \code{df} needs to be provided via
-	 the ellipsis argument then; see the examples below).}
-      \item{\code{\link{list}}:}{a \code{\link{list}} of length at least
-	one, where the first component is a \code{\link{character}}
-	string specifying the base name of a distribution which has a quantile function
-	accessible via prefix \code{"q"}; an example is \code{"exp"}
-        for which \code{"qexp"} exists. If the list is
-        of length larger than one, the remaining elements contain
-        additional parameters of the distribution; for \code{"exp"},
-        this can be the parameter \code{rate}.}
-      \item{\code{\link{function}}:}{a \code{\link{function}}
-	interpreted as the quantile function of the mixing
-	variable \eqn{W}; internally, sampling is then done with the
-	inversion method by applying this function to U(0,1) random variates.}
-    }
-  }
+  \item{qmix}{specification of the mixing variable \eqn{W}; see
+  \code{\link{pnvmix}()} for details and examples.}
   \item{control}{\code{\link{list}} specifying algorithm specific
     parameters; see details below.} 
   \item{verbose}{\link{logical}, if \code{TRUE} a warning is printed if one of the 'abstol' is

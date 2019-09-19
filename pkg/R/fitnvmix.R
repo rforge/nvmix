@@ -11,7 +11,7 @@
 #' @param nu parameter (vector) nu of W
 #' @param lrdet log(sqrt(det(scale)))
 #' @param d dimension 
-#' @param special.dist either NA or string. Currently supported is only 'inv.gam'
+#' @param special.mix either NA or string. Currently supported is only 'inv.gam'
 #'         in which case analytical weights are calculated (t-case!)
 #' @param control see ?fitnvmix()
 #' @param verbose see ?fitnvmix
@@ -22,19 +22,15 @@
 #'         error or absolte error depending on is.na(control$dnvmix.reltol)
 #'         $UsWs (B, n) matrix (U, qW(U)) where U are uniforms (only if return.all = TRUE)
 #' @author Erik Hintz, Marius Hofert, Christiane Lemieux
-weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.dist, control, 
+weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.mix, control, 
                              verbose)
 {
    verbose <- as.logical(verbose) # only logical needed here 
-   if(is.character(special.dist)){
-      ## In this case, dnvmix() uses analytical formula for density
-      switch(special.dist,
-         "inv.gam" = {
-            weights <- (nu + d) / (nu + maha2.2*2)
-            numiter <- 0
-            error <- rep(0, length(maha2.2))
-         }
-      )
+   if(!is.na(special.mix) && special.mix == "inverse.gamma"){
+      ## In this case, weights are known analytically
+      weights <- (nu + d) / (nu + maha2.2*2)
+      numiter <- 0
+      error <- rep(0, length(maha2.2))
    } else {
       ## Absolte/relative precision?
       if(is.na(control$weights.reltol)){
@@ -269,7 +265,7 @@ weights.internal.RQMC <- function(maha2.2, qW, nu, lrdet, d, max.iter.rqmc,
 #' @param scale current estimate of 'scale'
 #' @param factor cholesky factor of the 'scale'; if not provided, it's calculated
 #' @param mix.param.bounds see ?fitnvmix()
-#' @param special.dist string specifying if W has a special dist'n for which 
+#' @param special.mix string specifying if W has a special dist'n for which 
 #'        weights are known; currently, only 'inv.gam' (=> multivariate t) allowed
 #' @param control see ?fitnvmix()
 #' @param control.optim passed to optim; see ?optim
@@ -280,24 +276,33 @@ weights.internal.RQMC <- function(maha2.2, qW, nu, lrdet, d, max.iter.rqmc,
 #'                      $opt.obj (object returned by underlying 'optim' call)
 #' @author Erik Hintz, Marius Hofert, Christiane Lemieux
 estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds, 
-                     special.dist = NA, control, control.optim, verbose)
+                     special.mix = NA, control, control.optim, verbose)
 {
    ## Obtain 'factor' if not provided
    if(is.na(factor)) factor <- t(chol(scale))
    ll.counts <- 0 # counts number of calls to 'neg.log.likelihood.nu'
-   if(is.character(special.dist)){
-      ## In this case, dnvmix() uses analytical formula for density
-      switch(special.dist,
-         "inv.gam" = {
-            neg.log.likelihood.nu <- function(nu){
-               ll <- -sum(dnvmix(t(tx), qmix = "inverse.gamma", loc = loc, factor = factor,
-                                 df = nu, log = TRUE, verbose = verbose))
-               if(verbose >= 3) cat(".") # print dot after each call to likelihood
-               ll.counts <<- ll.counts + 1 # update 'll.counts' in the parent environment
-               ll
-            }
-         }
-      )
+   if(is.character(special.mix)){
+      ## In this case, dnvmix() uses analytical formula for the density
+      neg.log.likelihood.nu <- 
+         switch(special.mix,
+                "inv.gam" = {
+                   function(nu){
+                      ll <- -sum(dnvmix(t(tx), qmix = "inverse.gamma", loc = loc, 
+                                        factor = factor, df = nu, log = TRUE, verbose = verbose))
+                      if(verbose >= 3) cat(".") # print dot after each call to likelihood
+                      ll.counts <<- ll.counts + 1 # update 'll.counts' in the parent environment
+                      ll # return
+                   }
+                },
+                "pareto" = {
+                   function(nu){
+                      ll <- -sum(dnvmix(t(tx), qmix = "pareto", loc = loc, factor = factor,
+                                        alpha = nu, log = TRUE, verbose = verbose))
+                      if(verbose >= 3) cat(".") # print dot after each call to likelihood
+                      ll.counts <<- ll.counts + 1 # update 'll.counts' in the parent environment
+                      ll # return
+                   }
+                })
    } else {
       ## Get various quantitites passed to 'dnvmix.internal'
       z        <- forwardsolve(factor, tx - loc, transpose = FALSE)
@@ -375,35 +380,34 @@ fitnvmix <- function(x, qmix,
    ## 0: Initialize various quantities: #######################################
    control <- get.set.parameters(control)
    ## Get quantile function:
-   special.dist <- NA  # to record if we have a special dist'n (normal, t,...)
+   special.mix <- NA  # to record if we have a special dist'n (normal, t,...)
    ## Set up qW as function(u, nu)
    qW <- if(is.character(qmix)) {# 'qmix' is a character vector
-      qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
+      qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma", "pareto"))
       switch(qmix,
              "constant" = {
-                special.dist <- "constant"
+                special.mix <- "constant"
                 function(u) 1
              },
              "inverse.gamma" = {
-                special.dist <- "inv.gam"
+                special.mix <- "inv.gam"
                 function(u, nu) 1 / qgamma(1 - u, shape = nu/2, rate = nu/2)
+             },
+             "pareto" = {
+                special.mix <- "pareto"
+                function(u, nu) (1-u)^(-1/nu)
              },
              stop("Currently unsupported 'qmix'"))
    } else if(is.list(qmix)) { # 'mix' is a list of the form (<character string>, <parameters>)
-      #TODO: Do this!
-      #stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
-      #qmix. <- paste0("q", distr)
-      #if(!existsFunction(qmix.))
-      #  stop("No function named '", qmix., "'.")
-      #function(u)
-      # do.call(qmix., append(list(u), qmix[-1]))
+      ## Not supported yet 
+      stop("'qmix' cannot be a list when passed to 'fitnvmix'")
    } else if(is.function(qmix)) { # 'mix' is the quantile function F_W^- of F_W
       function(u, nu)
          qmix(u, nu)
    } else stop("'qmix' must be a character string, list or quantile function.")
    
    ## Case of MVN: MLEs are sample mean and sample cov matrix
-   if(is.character(special.dist) && special.dist == "constant"){
+   if(is.character(special.mix) && special.mix == "constant"){
       loc.est <- colMeans(x)
       ## TODO: Do this better (as.matrix to remove attributes, can be done better)
       scale.est <- as.matrix(nearPD(cov(x))$mat) # sample covariance matrix
@@ -482,30 +486,46 @@ fitnvmix <- function(x, qmix,
       if(!exists(".Random.seed")) runif(1)
       seed <- .Random.seed
       ## -loglikelihood as function of param=(nu, c) of length mix.param.length + 1
-      neg.log.likelihood.init <- function(param){
-         ## Only use subsample of size 'init.size.subsample' 
-         if(is.character(special.dist) && special.dist == "inv.gam"){
-            ## In case of 'inv.gam', a closed formula for the density exists:
-            ll <- -sum(dnvmix(x[sample(n, init.size.subsample),], 
-                              qmix = "inverse.gamma", 
-                              loc = loc.est, scale = param[2] * SCov, 
-                              df = param[1], log = TRUE))
-            if(verbose >= 3) cat(".") # print dot after each call to likelihood
-            ll.counts <<- ll.counts + 1 # update ll.counts from parent environment
-            ll
+      
+      neg.log.likelihood.init <- 
+         if(is.character(special.mix)){
+            switch(special.mix,
+                   "inv.gam" = {
+                      function(param){
+                         ll <- -sum(dnvmix(x[sample(n, init.size.subsample),], 
+                                           qmix = "inverse.gamma", loc = loc.est, 
+                                           scale = param[2] * SCov, df = param[1],
+                                           log = TRUE))
+                         if(verbose >= 3) cat(".") # print dot after each call to likelihood
+                         ll.counts <<- ll.counts + 1 # update 'll.counts' in the parent environment
+                         ll # return
+                      }
+                   },
+                   "pareto" = {
+                      function(param){
+                         ll <- -sum(dnvmix(x[sample(n, init.size.subsample),], 
+                                           qmix = "pareto", loc = loc.est, 
+                                           scale = param[2] * SCov, alpha = param[1],
+                                           log = TRUE))
+                         if(verbose >= 3) cat(".") # print dot after each call to likelihood
+                         ll.counts <<- ll.counts + 1 # update 'll.counts' in the parent environment
+                         ll # return
+                      }
+                   })
          } else {
-            ## Define a 'qmix.' function of u only that can be passed to dnvmix():
-            .Random.seed <<- seed # for monotonicity
-            ## Return - loglikelihood
-            ll <- -sum(dnvmix(x[sample(n, init.size.subsample),], qmix = qW, 
-                              loc = loc.est, scale = param[mix.param.length + 1] * SCov,
-                              control = control, verbose = verbose, log = TRUE, 
-                              nu = param[1:mix.param.length]))
-            if(verbose >= 3) cat(".") # print dot after each call to likelihood
-            ll.counts <<- ll.counts + 1 # update ll.counts from parent environment
-            ll
+            function(param){
+               ## Define a 'qmix.' function of u only that can be passed to dnvmix():
+               .Random.seed <<- seed # for monotonicity
+               ## Return - loglikelihood
+               ll <- -sum(dnvmix(x[sample(n, init.size.subsample),], qmix = qW, 
+                                 loc = loc.est, scale = param[mix.param.length + 1] * SCov,
+                                 control = control, verbose = verbose, log = TRUE, 
+                                 nu = param[1:mix.param.length]))
+               if(verbose >= 3) cat(".") # print dot after each call to likelihood
+               ll.counts <<- ll.counts + 1 # update ll.counts from parent environment
+               ll
+            }
          }
-      }
       ## Optimize -log.likelihood over (nu = nu, scale = c*SCov), 'c' scalar
       ## Initial parameter: For 'nu', midpoint of feasible parameter set;
       ##  for 'c', 1/E(W) where E(W) estimated via RQMC taking 'nu = nu.init'
@@ -568,7 +588,7 @@ fitnvmix <- function(x, qmix,
                ## Get weights: 
                weights <- weights.internal(maha2.2.new, qW = qW, nu = nu.est, 
                                            lrdet = lrdet, d = d, 
-                                           special.dist = special.dist, 
+                                           special.mix = special.mix, 
                                            control = control, verbose = verbose)$weights
                weights.new <- weights[order(order.maha2.2.new)]
                maha2.2     <- maha2.2.new # need to store maha-distances for interpolation
@@ -616,7 +636,7 @@ fitnvmix <- function(x, qmix,
                   weights.new[notInterpol] <- weights.internal(maha2.2.new[notInterpol], 
                                                                qW = qW, nu = nu.est,
                                                                lrdet = lrdet, d = d, 
-                                                               special.dist = special.dist,
+                                                               special.mix = special.mix,
                                                                control = control,
                                                                verbose = verbose)$weights
                   ## Add estimated weights to 'weights' and corresponding 
@@ -666,7 +686,7 @@ fitnvmix <- function(x, qmix,
             est.obj <- estim.nu(tx, qW = qW, init.nu = nu.est,
                                 loc = loc.est, scale = scale.est,
                                 mix.param.bounds = mix.param.bounds, 
-                                special.dist = special.dist, control = control, 
+                                special.mix = special.mix, control = control, 
                                 control.optim = control$control.optim,
                                 verbose = verbose)
             nu.est.new        <- est.obj$nu.est
@@ -705,7 +725,7 @@ fitnvmix <- function(x, qmix,
       ## (as oppsed to 'control.optim')
       est.obj <- estim.nu(tx, qW = qW, init.nu = nu.est, loc = loc.est,
                           scale = scale.est, mix.param.bounds = mix.param.bounds, 
-                          special.dist = special.dist, control = control, 
+                          special.mix = special.mix, control = control, 
                           control.optim = control$control.optim.laststep,
                           verbose = verbose)
       nu.est <- est.obj$nu.est

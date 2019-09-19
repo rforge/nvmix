@@ -21,36 +21,8 @@ rnvmixcop(n, qmix, scale = diag(2), factor = NULL,
   \item{u}{\eqn{(n, d)}-\code{\link{matrix}} of evaluation points. 
     Have to be in (0,1)}
   \item{n}{sample size \eqn{n} (positive integer).}
-  \item{qmix}{specification of the mixing variable \eqn{W} via a quantile
-    function; see McNeil et al. (2015, Chapter 6). This argument is required for
-    \code{method = "sobol"} and \code{method = "ghalton"}. Supported are the
-    following types of specification (see also the examples below):
-    \describe{
-      \item{\code{\link{character}}:}{\code{\link{character}} string
-	        specifying a supported distribution; currently available are
-        \code{"constant"} (in which case \eqn{W = 1} and thus a sample
-	      from the multivariate normal distribution with mean vector
-	\code{loc} and covariance matrix \code{scale} results) and
-	\code{"inverse.gamma"} (in which case \eqn{W} is
-	inverse gamma distributed with shape and rate parameters
-	\code{df}/2 and thus the multivariate
-	Student \emph{t} distribution with \code{df} degrees of freedom
-	(required to be provided via the ellipsis argument) results).}
-      \item{\code{\link{list}}:}{\code{\link{list}} of length at least
-	one, where the first component is a \code{\link{character}}
-	string specifying the base name of a distribution which can be
-	sampled via prefix \code{"q"}; an example is \code{"exp"}
-        for which \code{"qexp"} exists for sampling. If the list is
-        of length larger than one, the remaining elements contain
-        additional parameters of the distribution; for \code{"exp"},
-	for example, this can be the parameter \code{rate}.}
-      \item{\code{\link{function}}:}{\code{\link{function}}
-	interpreted as the quantile function of the mixing
-	variable \eqn{W}; internally, sampling is then done with the
-	inversion method by applying the provided function to U(0,1)
-	random variates.}
-    }
-  }
+  \item{qmix}{specification of the mixing variable \eqn{W}; see
+  \code{\link{pnvmix}()} for details and examples.}
   \item{scale}{scale matrix (a covariance matrix entering the
     distribution as a parameter) of dimension \eqn{(d, d)} (defaults to
     \eqn{d = 2});
@@ -100,10 +72,21 @@ rnvmixcop(n, qmix, scale = diag(2), factor = NULL,
     \code{\link{character}} string or \code{\link{function}}.}
 }
 \value{
-  ... to come ...
+  The values returned by \code{dnvmixcop()}, \code{rnvmixcop()} and \code{pnvmixcop()}
+  are similar to the ones returned by their non-copula alternatives
+  \code{\link{dnvmix}()}, \code{\link{rnvmix}()} and \code{\link{pnvmix}()}. 
 }
 \details{
-  ... to come ...
+  Functionalities for normal variance mixture copulas provided here essentially
+  call \code{\link{pnvmix}()}, \code{\link{dnvmix}()} and \code{\link{rnvmix}()}
+  as well as \code{\link{qnvmix}()}, see their documentations for more details. 
+  
+  We remark that computing normal variance mixtures is a challenging task; 
+  evaluating normal variance mixture copulas additionally requires the approximation
+  of a univariate quantile function so that for large dimensions and sample sizes,
+  these procedures can be fairly slow. As there are approximations on many levels,
+  reported error estimates for the copula versions of \code{pnvmix}() and
+  \code{dnvmix}() can be flawed. 
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
@@ -112,7 +95,8 @@ rnvmixcop(n, qmix, scale = diag(2), factor = NULL,
   Princeton University Press.
 }
 \seealso{
-  \code{\link{dnvmix}()}, \code{\link{pnvmix}()}, \code{\link{qnvmix}()}
+  \code{\link{dnvmix}()}, \code{\link{pnvmix}()}, \code{\link{qnvmix}()},
+  \code{\link{rnvmix}()}
 }
 \examples{
 set.seed(42) # for reproducibility 

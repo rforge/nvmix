@@ -18,33 +18,8 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
 }
 \arguments{
   \item{x}{\eqn{(n, d)}-\code{\link{matrix}} of evaluation points.}
-  \item{qmix}{specification of the mixing variable \eqn{W}; see McNeil et
-    al. (2015, Chapter 6). Supported are the following types of
-    specification (see also the examples below):
-    \describe{
-      \item{\code{\link{character}}:}{\code{\link{character}} string
-	specifying a supported mixing distribution; currently available are
-        \code{"constant"} (in which case \eqn{W = 1} and thus
-	the multivariate normal distribution with mean vector
-	\code{loc} and covariance matrix \code{scale} results) and
-	\code{"inverse.gamma"} (in which case \eqn{W} is
-	inverse gamma distributed with shape and rate parameters
-	\code{df}/2 and thus the multivariate
-	Student \emph{t} distribution with \code{df} degrees of freedom
-	(required to be provided via the ellipsis argument) results).}
-      \item{\code{\link{list}}:}{\code{\link{list}} of length at least
-	one, where the first component is a \code{\link{character}}
-	string specifying the base name of a distribution whose
-	quantile function can be accessed via the prefix \code{"q"};
-	an example is \code{"exp"} for which \code{"qexp"} exists.
-	If the list is of length larger than one, the remaining elements
-	contain additional parameters of the distribution; for \code{"exp"},
-        for example, this can be the parameter \code{rate}.}
-      \item{\code{\link{function}}:}{\code{\link{function}}
-	interpreted as the quantile function of the mixing
-	variable \eqn{W}.}
-    }
-  }
+  \item{qmix}{specification of the mixing variable \eqn{W}; see
+  \code{\link{pnvmix}()} for details and examples.}
   \item{df}{positive degress of freedom; can also be \code{Inf} in which
     case the distribution is interpreted as the multivariate normal
     distribution with mean vector \code{loc} and covariance matrix
@@ -57,7 +32,7 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
     this equals the covariance matrix of a random vector following
     the specified normal variance mixture distribution divided by
     the expecation of the mixing variable \eqn{W} if and only if the
-    former exists.}
+    former exists. Needs to be full rank for the density to exist.}
   \item{factor}{\eqn{(d, d)} lower triangular \code{\link{matrix}}
     such that \code{factor \%*\% t(factor)} equals \code{scale};
     note that for performance reasons, this property is not tested.

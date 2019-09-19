@@ -4,7 +4,7 @@ useDynLib(nvmix, .registration = TRUE)
 ### Imports ####################################################################
 
 importFrom("stats",
-           "runif", "rnorm", "pt", "qt", "dt", "rgamma", "pnorm",
+           "runif", "rnorm", "pt", "qt", "dt", "pgamma", "rgamma", "pnorm",
            "sd", qchisq, "qnorm", "dnorm", "qgamma", "uniroot", "cov2cor",
            "cor", "cov", "cov.wt", "optim", "var", "pchisq")
 importFrom("methods",
@@ -13,8 +13,6 @@ importFrom("qrng",
            "sobol", "ghalton")
 importFrom("utils",
            "head")
-importFrom("copula",
-	   "pobs")
 importFrom("Matrix",
 	   "nearPD")
 
@@ -22,6 +20,5 @@ importFrom("Matrix",
 
 export("dnvmix", "pnvmix", "rnvmix", "fitnvmix",
        "dStudent", "pStudent", "rStudent",
-       "dNorm", "pNorm", "rNorm", "qnvmix",
-       "dnvmixcop", "pnvmixcop", "rnvmixcop",
-       "get.set.parameters")
+       "dNorm", "pNorm", "rNorm", "get.set.parameters",
+       "dnvmixcop", "pnvmixcop", "rnvmixcop", "qnvmix")

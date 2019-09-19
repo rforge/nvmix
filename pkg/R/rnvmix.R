@@ -95,7 +95,7 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
     
     ## get quasi realizations using qmix
     W <- if(is.character(qmix)) { # 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
-      qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
+      qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma", "pareto"))
       switch(qmix,
              "constant" = {
                rep(1, n)
@@ -115,6 +115,14 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
                  rep(1, n)
                }
              },
+             "pareto" = {
+                if(hasArg(alpha)){
+                   alpha <- list(...)$alpha
+                } else {
+                   stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
+                }
+                (1 - U[,1])^(-1/alpha)
+             },
              stop("Currently unsupported 'qmix'"))
     } else if(is.list(qmix)) { # 'qmix' is a list of the form (<character string>, <parameters>)
       stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
@@ -132,7 +140,7 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
     ## Get realizations from rmix:
     if(is.null(rmix)) stop("'rmix() needs to be provided.")
     W <- if(is.character(rmix)) { # 'rmix' is a character vector specifying supported mixture distributions (utilizing '...')
-      rmix <- match.arg(rmix, choices = c("constant", "inverse.gamma"))
+      rmix <- match.arg(rmix, choices = c("constant", "inverse.gamma", "pareto"))
       switch(rmix,
              "constant" = {
                rep(1, n)
@@ -151,6 +159,14 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
                } else {
                  rep(1, n)
                }
+             },
+             "pareto" = {
+                if(hasArg(alpha)){
+                   alpha <- list(...)$alpha
+                } else {
+                   stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
+                }
+                (1 - runif(n))^(-1/alpha)
              },
              stop("Currently unsupported 'rmix'"))
     } else if(is.list(rmix)) { # 'rmix' is a list of the form (<character string>, <parameters>)

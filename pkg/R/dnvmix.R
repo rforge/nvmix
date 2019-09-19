@@ -522,7 +522,7 @@ dnvmix.internal.RQMC <- function(qW, maha2.2, lrdet, d, k = d, control,
   ## 4 Return ##################################################################
   ret.obj <- if(return.all){
     list(ldensities = ldensities, numiter = numiter, error = errors,
-         UsWs = UsWs)
+         UsWs = UsWs[1:curr.lastrow,])
   } else {
     list(ldensities = ldensities, numiter = numiter, error = errors)
   }
@@ -646,14 +646,13 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   if(is.null(factor)) factor <- t(chol(scale)) # lower triangular
   
   ## 1 Define the quantile function of the mixing variable ###################
-  ## If 'mix' is "constant" or "inverse.gamma", we use the analytical formulas
-  is.const.mix <- FALSE # logical indicating whether we have a multivariate normal
-  inv.gam <- FALSE # logical indicating whether we have a multivariate t
+  ## If 'mix' is "constant", "inverse.gamma" or "pareto", we use the analytical formulas
+  special.mix <- NA 
   qW <- if(is.character(qmix)) { # 'qmix' is a character vector
-    qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
+    qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma", "pareto"))
     switch(qmix,
            "constant" = {
-             is.const.mix <- TRUE
+             special.mix <- "constant"
              function(u) 1
            },
            "inverse.gamma" = {
@@ -665,15 +664,25 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
              ## Still allow df = Inf (normal distribution)
              stopifnot(is.numeric(df), length(df) == 1, df > 0)
              if(is.finite(df)) {
-               inv.gam <- TRUE
+               special.mix <- "inverse.gamma"
                df2 <- df / 2
                mean.sqrt.mix <- sqrt(df) * gamma(df2) / (sqrt(2) * gamma((df+1)/2)) # used for preconditioning
                function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
              } else {
-               is.const.mix <- TRUE
+               special.mix <- "constant"
                mean.sqrt.mix <- 1 # used for preconditioning
                function(u) 1
              }
+           },
+           "pareto"= {
+              if(hasArg(alpha)){
+                 alpha <- list(...)$alpha
+              } else {
+                 stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
+              }
+              special.mix <- "pareto"
+              mean.sqrt.mix <- if(alpha > 0.5) alpha/(alpha-0.5) else NULL
+              function(u) (1-u)^(-1/alpha)
            },
            stop("Currently unsupported 'qmix'"))
   } else if(is.list(qmix)) { # 'mix' is a list of the form (<character string>, <parameters>)
@@ -714,16 +723,22 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
   ## Counter
   numiter <- 0 # initialize counter (0 for 'inv.gam' and 'is.const.mix')
   ## Deal with the different distributions
-  if(inv.gam) { # multivariate t
-    df.d.2 <- (df + d) / 2
-    lres[notNA] <- lgamma(df.d.2) - lgamma(df/2) - (d/2) * log(df * pi) -
-      lrdet - df.d.2 * log1p(maha2 / df)
-    if(!log) lres <- exp(lres) # already exponentiate
-    error <- rep(0, length(maha2))
-  } else if(is.const.mix) { # multivariate normal
-    lres[notNA] <- -(d/2) * log(2 * pi) - lrdet - maha2/2
-    if(!log) lres <- exp(lres) # already exponentiate
-    error <- rep(0, length(maha2))
+  if(!is.na(special.mix)){
+     lres[notNA] <- switch(special.mix,
+                           "inverse.gamma" = {
+                              lgamma((df + d) / 2) - lgamma(df/2) - (d/2) * log(df * pi) -
+                                 lrdet - (df + d) / 2 * log1p(maha2 / df)
+                           },
+                           "constant" = {
+                              -(d/2) * log(2 * pi) - lrdet - maha2/2
+                           },
+                           "pareto" = {
+                              log(alpha)-d/2*log(2*pi)-lrdet-(alpha+d/2)*log(maha2/2) +
+                                 pgamma(maha2/2, scale = 1, shape = alpha+d/2, log.p = TRUE) + 
+                                 lgamma(alpha+d/2)
+                           })
+     if(!log) lres <- exp(lres) # already exponentiate
+     error <- rep(0, length(maha2))
   } else {
     ## General case of a multivariate normal variance mixture (RQMC)
     ## Prepare inputs for dnvmix.internal.RQMC

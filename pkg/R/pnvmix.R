@@ -22,13 +22,12 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
                      mean.sqrt.mix = NULL, return.all = FALSE, ...)
 {
    ## Define the quantile function of the mixing variable.
-   is.const.mix   <- FALSE # logical indicating whether we have a multivariate normal
-   inv.gam        <- FALSE # logical indicating whether we have a multivariate t
-   qW <- if(is.character(qmix)) { # 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
-      qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
+   special.mix <- NA 
+   qW <- if(is.character(qmix)) { # 'qmix' is a character vector
+      qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma", "pareto"))
       switch(qmix,
              "constant" = {
-                is.const.mix <- TRUE
+                special.mix <- "constant"
                 function(u) 1
              },
              "inverse.gamma" = {
@@ -40,20 +39,28 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
                 ## Still allow df = Inf (normal distribution)
                 stopifnot(is.numeric(df), length(df) == 1, df > 0)
                 if(is.finite(df)) {
-                   inv.gam <- TRUE
+                   special.mix <- "inverse.gamma"
                    df2 <- df / 2
-                   ## For preconditioning:
-                   mean.sqrt.mix <- sqrt(df) * gamma(df2) / (sqrt(2) * gamma((df+1)/2)) 
+                   mean.sqrt.mix <- sqrt(df) * gamma(df2) / (sqrt(2) * gamma((df+1)/2)) # used for preconditioning
                    function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
                 } else {
-                   is.const.mix <- TRUE
-                   ## For preconditioning:
-                   mean.sqrt.mix <- 1 
+                   special.mix <- "constant"
+                   mean.sqrt.mix <- 1 # used for preconditioning
                    function(u) 1
                 }
              },
+             "pareto"= {
+                if(hasArg(alpha)){
+                   alpha <- list(...)$alpha
+                } else {
+                   stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
+                }
+                special.mix <- "pareto"
+                mean.sqrt.mix <- if(alpha > 0.5) alpha/(alpha-0.5) else NULL
+                function(u) (1-u)^(-1/alpha)
+             },
              stop("Currently unsupported 'qmix'"))
-   } else if(is.list(qmix)) { # 'qmix' is a list of the form (<character string>, <parameters>)
+   } else if(is.list(qmix)) { # 'mix' is a list of the form (<character string>, <parameters>)
       stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
       qmix. <- paste0("q", distr)
       if(!existsFunction(qmix.))
@@ -64,7 +71,6 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
       function(u)
          qmix(u, ...)
    } else stop("'qmix' must be a character string, list or quantile function.")
-   
    ## Dimension of the problem:
    d <- dim(scale)[1]
    ## Number of evals:
@@ -642,54 +648,61 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
      control$pnvmix.abstol
   }
   
-  ## Define the quantile function of the mixing variable.
-  is.const.mix <- FALSE # logical indicating whether we have a multivariate normal
-  inv.gam <- FALSE # logical indicating whether we have a multivariate t
-  qW <- if(is.character(qmix)) { # 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
-    qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma"))
-    switch(qmix,
-           "constant" = {
-             is.const.mix <- TRUE
-             function(u) 1
-           },
-           "inverse.gamma" = {
-             if(hasArg(df)) {
-               df <- list(...)$df
-             } else {
-               stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
-             }
-             ## Still allow df = Inf (normal distribution)
-             stopifnot(is.numeric(df), length(df) == 1, df > 0)
-             if(is.finite(df)) {
-               inv.gam <- TRUE
-               df2 <- df / 2
-               ## For preconditioning:
-               mean.sqrt.mix <- sqrt(df) * gamma(df2) / (sqrt(2) * gamma((df+1)/2)) 
-               function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
-             } else {
-               is.const.mix <- TRUE
-               ## For preconditioning:
-               mean.sqrt.mix <- 1 
+  ## Define the quantile function of the mixing variable #######################
+  special.mix <- NA 
+  qW <- if(is.character(qmix)) { # 'qmix' is a character vector
+     qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma", "pareto"))
+     switch(qmix,
+            "constant" = {
+               special.mix <- "constant"
                function(u) 1
-             }
-           },
-           stop("Currently unsupported 'qmix'"))
-  } else if(is.list(qmix)) { # 'qmix' is a list of the form (<character string>, <parameters>)
-    stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
-    qmix. <- paste0("q", distr)
-    if(!existsFunction(qmix.))
-      stop("No function named '", qmix., "'.")
-    function(u)
-      do.call(qmix., append(list(u), qmix[-1]))
+            },
+            "inverse.gamma" = {
+               if(hasArg(df)) {
+                  df <- list(...)$df
+               } else {
+                  stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
+               }
+               ## Still allow df = Inf (normal distribution)
+               stopifnot(is.numeric(df), length(df) == 1, df > 0)
+               if(is.finite(df)) {
+                  special.mix <- "inverse.gamma"
+                  df2 <- df / 2
+                  mean.sqrt.mix <- sqrt(df) * gamma(df2) / (sqrt(2) * gamma((df+1)/2)) # used for preconditioning
+                  function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
+               } else {
+                  special.mix <- "constant"
+                  mean.sqrt.mix <- 1 # used for preconditioning
+                  function(u) 1
+               }
+            },
+            "pareto"= {
+               if(hasArg(alpha)){
+                  alpha <- list(...)$alpha
+               } else {
+                  stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
+               }
+               special.mix <- "pareto"
+               mean.sqrt.mix <- if(alpha > 0.5) alpha/(alpha-0.5) else NULL
+               function(u) (1-u)^(-1/alpha)
+            },
+            stop("Currently unsupported 'qmix'"))
+  } else if(is.list(qmix)) { # 'mix' is a list of the form (<character string>, <parameters>)
+     stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
+     qmix. <- paste0("q", distr)
+     if(!existsFunction(qmix.))
+        stop("No function named '", qmix., "'.")
+     function(u)
+        do.call(qmix., append(list(u), qmix[-1]))
   } else if(is.function(qmix)) { # 'mix' is the quantile function F_W^- of F_W
-    function(u)
-      qmix(u, ...)
+     function(u)
+        qmix(u, ...)
   } else stop("'qmix' must be a character string, list or quantile function.")
   
   ## In the special case d = 1 we call pnvmix1d which is truly *vectorized* 
   ## as there is no conditioning to be done. The case of a normal / t dist'n
   ## will be handled correctly below (using pnorm() and pt())
-  if(d == 1 && !is.const.mix && !inv.gam){
+  if(d == 1 && (is.na(special.mix) || special.mix == "pareto")){
     return(pnvmix1d(upper = as.vector(upper), lower = as.vector(lower), 
                     qW = qW, loc = loc, scale = as.numeric(scale), 
                     standardized = standardized, 
@@ -824,24 +837,25 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
       factorFin <- factor
     }
 
-    ## If d = 1, deal with multivariate normal or t via pnorm() and pt()
+    ## If d = 1, deal with multivariate normal, and t via pnorm() and pt()
     ## Note that everything has been standardized.  
-    if(d == 1){
-      if(is.const.mix){
+    if(d == 1 && !is.na(special.mix)){
+      if(special.mix == "constant"){
         value <- pnorm(up) - pnorm(low)
         res1[[i]] <- list(value = value, error = 0, numiter = 0)
         next
-      }
-      if(inv.gam){
+      } else if(special.mix == "inverse.gamma"){
         value <- pt(up, df = df) - pt(low, df = df)
         res1[[i]] <- list(value = value, error = 0, numiter = 0)
         next
-      }
+      } 
     }
     ## Compute result for ith row of lower and upper (in essence,
     ## because of the preconditioning, one has to treat each such
     ## row separately)
-    res1[[i]] <- pnvmix1(up, lower = low, qW = qW, is.const.mix = is.const.mix,
+    res1[[i]] <- pnvmix1(up, lower = low, qW = qW, 
+                         is.const.mix = (!is.na(special.mix) && 
+                                            special.mix == "constant"),
                          mean.sqrt.mix = mean.sqrt.mix,
                          loc = loc, scale = scale, factor = factorFin,
                          k.factor = k.factor, 
@@ -851,7 +865,9 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
                          fun.eval = control$fun.eval, 
                          max.iter.rqmc = control$max.iter.rqmc, 
                          increment = increment, 
-                         B = control$B, inv.gam = inv.gam, ...)
+                         B = control$B, 
+                         inv.gam = (!is.na(special.mix) && special.mix == "inverse.gamma"),
+                         ...)
     
     ## Check if desired precision was reached
     reached[i] <- res1[[i]]$error <= tol
