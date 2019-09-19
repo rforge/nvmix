@@ -11,8 +11,8 @@
 #' @param nu parameter (vector) nu of W
 #' @param lrdet log(sqrt(det(scale)))
 #' @param d dimension 
-#' @param special.mix either NA or string. Currently supported is only 'inv.gam'
-#'         in which case analytical weights are calculated (t-case!)
+#' @param special.mix either NA or string. Currently supported are 'inverse.gamma'
+#'         and 'pareto' in which case analytical weights are calculated 
 #' @param control see ?fitnvmix()
 #' @param verbose see ?fitnvmix
 #' @return List of three:
@@ -26,12 +26,19 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.mix, control,
                              verbose)
 {
    verbose <- as.logical(verbose) # only logical needed here 
-   if(!is.na(special.mix) && special.mix == "inverse.gamma"){
-      ## In this case, weights are known analytically
-      weights <- (nu + d) / (nu + maha2.2*2)
+   if(!is.na(special.mix)){ # weights are known analytically
+      weights <- switch(special.mix,
+                        "inverse.gamma" = {
+                           (nu + d) / (nu + maha2.2*2)
+                        },
+                        "pareto" = {
+                           pgamma(1, shape = nu+d/2+1, scale = 1/maha2.2)/
+                              pgamma(1, shape = nu+d/2, scale = 1/maha2.2)*
+                              (nu + d/2)/maha2.2
+                        })
       numiter <- 0
       error <- rep(0, length(maha2.2))
-   } else {
+   } else { # weights need to be estimated
       ## Absolte/relative precision?
       if(is.na(control$weights.reltol)){
          tol <- control$weights.abstol
@@ -266,7 +273,7 @@ weights.internal.RQMC <- function(maha2.2, qW, nu, lrdet, d, max.iter.rqmc,
 #' @param factor cholesky factor of the 'scale'; if not provided, it's calculated
 #' @param mix.param.bounds see ?fitnvmix()
 #' @param special.mix string specifying if W has a special dist'n for which 
-#'        weights are known; currently, only 'inv.gam' (=> multivariate t) allowed
+#'        weights are known; currently, only 'inverse.gamma' and 'pareto' supported
 #' @param control see ?fitnvmix()
 #' @param control.optim passed to optim; see ?optim
 #' @param verbose see ?fitnvmix
@@ -285,7 +292,7 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
       ## In this case, dnvmix() uses analytical formula for the density
       neg.log.likelihood.nu <- 
          switch(special.mix,
-                "inv.gam" = {
+                "inverse.gamma" = {
                    function(nu){
                       ll <- -sum(dnvmix(t(tx), qmix = "inverse.gamma", loc = loc, 
                                         factor = factor, df = nu, log = TRUE, verbose = verbose))
@@ -390,7 +397,7 @@ fitnvmix <- function(x, qmix,
                 function(u) 1
              },
              "inverse.gamma" = {
-                special.mix <- "inv.gam"
+                special.mix <- "inverse.gamma"
                 function(u, nu) 1 / qgamma(1 - u, shape = nu/2, rate = nu/2)
              },
              "pareto" = {
@@ -490,7 +497,7 @@ fitnvmix <- function(x, qmix,
       neg.log.likelihood.init <- 
          if(is.character(special.mix)){
             switch(special.mix,
-                   "inv.gam" = {
+                   "inverse.gamma" = {
                       function(param){
                          ll <- -sum(dnvmix(x[sample(n, init.size.subsample),], 
                                            qmix = "inverse.gamma", loc = loc.est, 
