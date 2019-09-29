@@ -158,19 +158,30 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
 ##' @author Erik Hintz and Marius Hofert
 ##' @note Internal function being called by pnvmix(). 
 cholesky_ <- function(mat, tol = 1e-12){
+
    n <- dim(mat)[1] # dimension
-   stopifnot(dim(mat)[2]==n)
-   C <- matrix(0, ncol = n, nrow = n) # initialize Cholesky factor
-   diag.elements <- rep(NA, n)
-   for(col in 1:n){
-      dsq <- mat[col, col] - sum(C[col, 1:(col-1)]^2) # C(col,col)^2
-      if(dsq < 0) stop("Matrix not positive semi-definite") 
-      d <- if(dsq < abs(mat[col, col] * tol)) 0 else sqrt(dsq) # set 0 if too small
-      C[col, col] <- d
-      diag.elements[col] <- d # store diagnonal element
-      if(col < n && d > 0){ # calculate the remaining elements in column 'col' 
-         for(row in (col+1):n){
-            C[row, col] <- (mat[row, col] - sum(C[row, 1:(row-1)]*C[col, 1:(row-1)]))/d
+   stopifnot(dim(mat)[2] == n)
+   ## First try 'chol()' (=>fast)
+   C <- tryCatch(t(chol(mat)), error = function(e) e)
+   if(is.matrix(C) && all.equal(dim(C), rep(n, 2))){
+      ## C is the desired cholesky factor
+      ## Grab diagonal
+      diag.elements <- diag(C)
+   } else {
+      ## In this case, 't(chol(scale))' returned an error so that we manually
+      ## compute the cholesky factor of the *singular* matrix 'mat'
+      C <- matrix(0, ncol = n, nrow = n) # initialize Cholesky factor
+      diag.elements <- rep(NA, n)
+      for(col in 1:n){
+         dsq <- mat[col, col] - sum(C[col, 1:(col-1)]^2) # C(col,col)^2
+         if(dsq < 0) stop("Matrix not positive semi-definite") 
+         d <- if(dsq < abs(mat[col, col] * tol)) 0 else sqrt(dsq) # set 0 if too small
+         C[col, col] <- d
+         diag.elements[col] <- d # store diagnonal element
+         if(col < n && d > 0){ # calculate the remaining elements in column 'col' 
+            for(row in (col+1):n){
+               C[row, col] <- (mat[row, col] - sum(C[row, 1:(row-1)]*C[col, 1:(row-1)]))/d
+            }
          }
       }
    }
@@ -292,7 +303,8 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
       denom <- sqrt(diag(scale))
       c <- 0
     } else {
-      denom <- sqrt(diag(scale)[j:d] - rowSums(factor[j:d, 1:(j-1), drop = FALSE]^2))
+      denom <- sqrt(diag(scale)[j:d] - .rowSums(factor[j:d, 1:(j-1), drop = FALSE]^2, 
+                                                m = d-j+1, n = j-1))
       c <- factor[j:d, 1:(j-1), drop = FALSE] %*% y[1:(j-1)]
     }
  
@@ -339,8 +351,9 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
              factor[j, 1:(j-1)]) / factor[j, j]
         }
       ## Get yj
-      low.j.up.j <- c(lower[j] / mean.sqrt.mix - factor[j, 1:(j-1)] %*% y[1:(j-1)],
-                      upper[j] / mean.sqrt.mix - factor[j, 1:(j-1)] %*% y[1:(j-1)]) / factor[j, j]
+      scprod     <- sum(factor[j, 1:(j-1)] * y[1:(j-1)]) # needed twice 
+      low.j.up.j <- c(lower[j] / mean.sqrt.mix - scprod,
+                      upper[j] / mean.sqrt.mix - scprod) / factor[j, j]
       y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) / (pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]))
     }
   } # for()
@@ -784,14 +797,18 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
      k.factor <- rep(1, d) 
      ## Standardize 'scale', 'lower', 'upper', 'factor' ('loc' was already taken care of)
      if(!standardized){
-        row.scales <- diag(factor) # diagonal of cholesky factor
-        diag.row.scales.inv <- diag(1/row.scales)
-        factor <- diag.row.scales.inv %*% factor # standardized cholesky
-        scale  <- diag.row.scales.inv %*% scale %*% diag.row.scales.inv
+        row.scales     <- diag(factor) # diagonal of cholesky factor
+        row.scales.inv <- 1/row.scales # d-vector 
+        ## The following is equivalent but faster than 
+        ## 'scale <- diag(row.scales.inv) %*% scale %*% diag(row.scales.inv)'
+        ## [http://comisef.wikidot.com/tip:diagonalmatrixmultiplication]
+        scale  <- outer(row.scales.inv, row.scales.inv) * scale # standardize scale
+        factor <- matrix(rep(row.scales.inv, each = d), 
+                         ncol = d, byrow = TRUE) * factor # standardized cholesky
         ## Now standardize scale as above: Also works for +/- Inf
-        lower <- matrix(rep(1/row.scales, each = n), ncol = d, nrow = n, byrow = FALSE) * 
+        lower <- matrix(rep(row.scales.inv, each = n), ncol = d, nrow = n, byrow = FALSE) * 
            lower
-        upper <- matrix(rep(1/row.scales, each = n), ncol = d, nrow = n, byrow = FALSE) * 
+        upper <- matrix(rep(row.scales.inv, each = n), ncol = d, nrow = n, byrow = FALSE) * 
            upper
      }
   }
