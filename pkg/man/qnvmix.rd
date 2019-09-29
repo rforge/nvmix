@@ -7,7 +7,7 @@
 }
 \usage{
 qnvmix(u, qmix, control = list(),
-       verbose = TRUE, q.only = FALSE, stored.values = NULL, ...)
+       verbose = TRUE, q.only = TRUE, stored.values = NULL, ...)
 }
 \arguments{
   \item{u}{vector of probabilities .}
@@ -119,18 +119,18 @@ set.seed(271) # for reproducibility
 
 ## Evaluate the t_{1.4} quantile function
 df = 1.4
-qmix. <- function(u) 1/qgamma(u, shape = df/2, rate = df/2)
+qmix. <- function(u) 1/qgamma(1-u, shape = df/2, rate = df/2)
 ## If qmix = "inverse.gamma", qt() is being called 
 qt1  <- qnvmix(u, qmix = "inverse.gamma", df = df)
 ## Estimate quantiles (without using qt())
-qt1. <- qnvmix(u, qmix = qmix.)
-stopifnot(all.equal(qt1$q, qt1.$q, tolerance = 5e-4))
+qt1. <- qnvmix(u, qmix = qmix., q.only = FALSE)
+stopifnot(all.equal(qt1, qt1.$q, tolerance = 1e-3))
 ## Look at absolute error:
-abs.error <- abs(qt1$q - qt1.$q)
+abs.error <- abs(qt1 - qt1.$q)
 plot(u, abs.error, type = "l", xlab = "u", ylab = "qt(u)")
 ## Now do this again but provide qt1.$stored.values, in which case at most
 ## one Newton iteration will be needed:
-qt2 <- qnvmix(u, qmix = qmix., stored.values = qt1.$computed.values)
+qt2 <- qnvmix(u, qmix = qmix., stored.values = qt1.$computed.values, q.only = FALSE)
 stopifnot(max(qt2$newton.iterations) <= 1)
 
 
@@ -138,7 +138,7 @@ stopifnot(max(qt2$newton.iterations) <= 1)
 rate = 2
 qexp <- qnvmix(u, qmix = list("exp", rate = rate))
 ## Check: F( F^{-1}(u)) = u 
-stopifnot(all.equal(pnvmix(as.matrix(qexp$q), qmix = list("exp", rate = rate)), u, 
+stopifnot(all.equal(pnvmix(as.matrix(qexp), qmix = list("exp", rate = rate)), u, 
                     tolerance = 5e-4, check.attributes = FALSE))
 }
 \keyword{distribution}

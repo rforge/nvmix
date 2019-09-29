@@ -157,7 +157,7 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
 ##'         - D: n-vector with diagonal elements of 'C'
 ##' @author Erik Hintz and Marius Hofert
 ##' @note Internal function being called by pnvmix(). 
-cholesky_ <- function(mat, tol = 1e-9){
+cholesky_ <- function(mat, tol = 1e-12){
    n <- dim(mat)[1] # dimension
    stopifnot(dim(mat)[2]==n)
    C <- matrix(0, ncol = n, nrow = n) # initialize Cholesky factor

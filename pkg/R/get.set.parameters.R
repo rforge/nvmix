@@ -2,9 +2,6 @@
 
 ##' @title  Retrieve algorithm specific default parameters and overwrite them
 ##' @return list with default values for all functions in the 'nvmix' package
-##' @note newton.logdens.abstol not very small as it is only needed to get the
-##' the next iteration in the Newton procedure *unless* it is being called 
-##' from dnvmixcop() in which case this tolerance is changed there. 
 ##' @author Erik Hintz and Marius Hofert
 
 get.set.parameters <- function(control = list()){
@@ -30,9 +27,9 @@ get.set.parameters <- function(control = list()){
     pgammamix.reltol = NA,
     pgammamix.abstol = 1e-3,
     ## For qnvmix():
-    max.iter.newton = 40, 
-    newton.conv.abstol = 1e-4,
-    newton.df.abstol = 1e-4,
+    max.iter.newton = 45, 
+    newton.conv.abstol = 5e-4,
+    newton.df.reltol = 5e-3,
     newton.logdens.abstol = 1e-2, 
     ## For fitnvmix():
     ### Algorithm specifications:

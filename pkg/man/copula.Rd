@@ -125,7 +125,7 @@ stopifnot(all.equal(d1, d2, tol = 5e-4, check.attributes = FALSE))
 ## Same logic as above:
 p1 <- pnvmixcop(u, qmix = "inverse.gamma", scale = P, df = df)
 p2 <- pnvmixcop(u, qmix = qmix., scale = P)
-stopifnot(all.equal(p1, p2, tol = 5e-4, check.attributes = FALSE))
+stopifnot(all.equal(p1, p2, tol = 1e-3, check.attributes = FALSE))
 
 ### Examples for rnvmixcop() ###################################################
 ## Draw random variates and compare

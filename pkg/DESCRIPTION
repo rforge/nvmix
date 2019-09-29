@@ -14,8 +14,8 @@ Authors@R: c(person(given = "Marius", family = "Hofert", role = c("aut", "cre"),
 Author: Marius Hofert [aut, cre], Erik Hintz [aut], Christiane Lemieux [aut]
 Maintainer: Marius Hofert <marius.hofert@uwaterloo.ca>
 Depends: R (>= 3.2.0)
-Imports: stats, methods, qrng, copula, Matrix 
-Suggests: knitr, RColorBrewer, lattice
+Imports: stats, methods, qrng, Matrix 
+Suggests: knitr, RColorBrewer, lattice, qrmdata, QRM, xts
 Enhances:
 License: GPL (>= 3) | file LICENCE
 NeedsCompilation: yes

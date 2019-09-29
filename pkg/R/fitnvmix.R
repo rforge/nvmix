@@ -48,9 +48,11 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.mix, control,
          tol <- control$weights.reltol
          do.reltol <- TRUE
       }
+      ## lconst for the integrand
+      lconst <- rep(-lrdet - d/2*log(2*pi), length(maha2.2))
       ## Call RQMC procedure without any stratification
-      rqmc.obj <- weights.internal.RQMC(maha2.2, qW = qW, nu = nu, lrdet = lrdet, 
-                                        d = d, 
+      rqmc.obj <- weights.internal.RQMC(maha2.2, qW = qW, nu = nu, 
+                                        lconst = lconst, d = d, 
                                         max.iter.rqmc = control$dnvmix.max.iter.rqmc.pilot,
                                         control = control, return.all = TRUE)
       ## Extract results
@@ -62,10 +64,12 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.mix, control,
          ## => Use adaptive approach for those
          notRchd <- which(error > tol)
          qW. <- function(u) qW(u, nu = nu)
-         ldens.obj <- dnvmix.internal.adaptRQMC(qW., maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
+         ldens.obj <- densmix.internal.adaptRQMC(qW., maha2.2 = maha2.2[notRchd], 
+                                                lconst = lconst[notRchd], 
                                                 d = d, UsWs = rqmc.obj$UsWs, 
                                                 control = control)
-         lcond.obj <- dnvmix.internal.adaptRQMC(qW., maha2.2 = maha2.2[notRchd], lrdet = lrdet, 
+         lcond.obj <- densmix.internal.adaptRQMC(qW., maha2.2 = maha2.2[notRchd],
+                                                lconst = lconst[notRchd],
                                                 d = d, k = d + 2, UsWs = rqmc.obj$UsWs, 
                                                 control = control)
          weights[notRchd]   <- exp(lcond.obj$ldensities - ldens.obj$ldensities)
@@ -106,7 +110,7 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.mix, control,
 #' @param maha2.2 squared maha distances divided by 2 (length n)
 #' @param qW see ?fitnvmix() ('qmix' there)
 #' @param nu parameter (vector) nu of W
-#' @param lrdet log(sqrt(det(scale)))
+#' @param lconst see ?densmix.internal
 #' @param d dimension 
 #' @param control see ?fitnvmix()
 #' @param max.iter.rqmc maximum number of RQMC iterations
@@ -118,7 +122,7 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.mix, control,
 #'         error or absolte error depending on is.na(control$dnvmix.reltol)
 #'         $UsWs (B, n) matrix (U, qW(U)) where U are uniforms (only if return.all = TRUE)
 #' @author Erik Hintz
-weights.internal.RQMC <- function(maha2.2, qW, nu, lrdet, d, max.iter.rqmc,
+weights.internal.RQMC <- function(maha2.2, qW, nu, lconst, d, max.iter.rqmc,
                                   control, return.all)
 {
    ## 1 Basics #################################################################
@@ -159,6 +163,7 @@ weights.internal.RQMC <- function(maha2.2, qW, nu, lrdet, d, max.iter.rqmc,
       UsWs <- matrix(NA, ncol = 2, nrow = max.nrow)
       curr.lastrow <- 0 # will count row-index additional points are being inserted after
    }
+
    ## 2 Main loop ##############################################################
    ## while() runs until precision abstol is reached or the number of function
    ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
@@ -200,22 +205,22 @@ weights.internal.RQMC <- function(maha2.2, qW, nu, lrdet, d, max.iter.rqmc,
             UsWs[(curr.lastrow + 1) : (curr.lastrow + current.n), ] <- cbind(U, W)
             curr.lastrow <- curr.lastrow + current.n
          }
-         next.est.condexp <- .Call("eval_dnvmix_integrand",
+         next.est.condexp <- .Call("eval_densmix_integrand",
                                    W          = as.double(W),
                                    maha2_2    = as.double(maha2.2),
                                    current_n  = as.integer(current.n),
                                    n          = as.integer(n),
                                    d          = as.integer(d),
                                    k          = as.integer(d + 2), # k=d+2 here!
-                                   lrdet      = as.double(lrdet))
-         next.est.ldens <- .Call("eval_dnvmix_integrand",
+                                   lconst     = as.double(lconst))
+         next.est.ldens <- .Call("eval_densmix_integrand",
                                  W          = as.double(W),
                                  maha2_2    = as.double(maha2.2),
                                  current_n  = as.integer(current.n),
                                  n          = as.integer(n),
                                  d          = as.integer(d),
                                  k          = as.integer(d), # k=d+2 here!
-                                 lrdet      = as.double(lrdet))
+                                 lconst     = as.double(lconst))
          
          ## 2.3 Update RQMC estimates ##########################################
          rqmc.estimates.lweights[b, ] <-
@@ -311,7 +316,7 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
                    }
                 })
    } else {
-      ## Get various quantitites passed to 'dnvmix.internal'
+      ## Get various quantitites passed to 'densmix.internal'
       z        <- forwardsolve(factor, tx - loc, transpose = FALSE)
       maha2.2  <- sort(colSums(z^2)/2)
       lrdet    <- sum(log(diag(factor)))
@@ -320,11 +325,12 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
       if(!exists(".Random.seed")) runif(1)
       seed <- .Random.seed
       ## Set up -loglikelihood as a function of 'nu'
+      lconst <- rep(-lrdet - d/2*log(2*pi), length(maha2.2))
       neg.log.likelihood.nu <- function(nu){
          .Random.seed <<- seed # reset seed => monotonicity (not bc of sobol shifts!)
          qmix. <- function(u) qW(u, nu = nu) # function of u only
-         ## Call 'dnvmix.internal' which by default returns the log-density
-         ldens.obj <- dnvmix.internal(qW = qmix., maha2.2 = maha2.2, lrdet = lrdet,
+         ## Call 'densmix.internal' which by default returns the log-density
+         ldens.obj <- densmix.internal(qW = qmix., maha2.2 = maha2.2, lconst = lconst,
                                       d = d, control = control, verbose = verbose)
          if(verbose >= 3) cat(".") # print dot after each call to likelihood
          ll.counts <<- ll.counts + 1 # update 'll.counts' in parent environment
@@ -347,7 +353,6 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
 ## 3. Main function ('fitnvmix') that is exported ###############################
 
 ##' @title Fitting Multivariate Normal Variance Mixtures
-##'        (only Student-t right now)
 ##' @param x (n,d) data matrix
 ##' @param qmix character string ("constant", "inverse.gamma") or function. If
 ##'        function, it *has* to be qmix(u, nu) 
@@ -754,5 +759,46 @@ fitnvmix <- function(x, qmix,
       return(list(nu = nu.est, loc = loc.est, scale = scale.est, iter = iter.ECME,
                   max.ll = -max.ll))
    }
+}
+
+
+
+## 4. QQ-plot of Mahalanobis distances for visual GOF #########################
+
+##' @title QQ Plot of Mahalanobis distances versus their theoretical quantiles
+##' @param x (n,d) data matrix
+##' @param qmix see ?pnvmix()
+##' @param loc see ?pnvmix()
+##' @param scale see ?pnvmix()        
+##' @param control see ?pnvmix()
+##' @param plot.diag logical; if TRUE the curve f(x) = x is plotted additionally
+##' @param verbose logical if warnings from underlying 'qgammamix()' shall be thrown
+##' @param control list of algorithm specific parameters, see ?get.set.parameters and ?fitnvmix
+##' @param ... see ?pnvmix()
+##' @return invisibly returns a list of two: 'maha2' (sorted squared mahalanobis 
+##'         distances obtained from 'x', sorted) and 'q' (theoretical quantiles)
+##' @author Erik Hintz, Marius Hofert, Christiane Lemieux
+qqplot.maha <- function(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE, 
+                        control = list(), ...)
+{
+   ## Initialize and check inputs:
+   control <- get.set.parameters(control)
+   if(!is.matrix(x)) x <- rbind(x)
+   notNA <- rowSums(is.na(x)) == 0
+   x     <- x[notNA,] # non-missing data (rows)
+   n     <- nrow(x)
+   d     <- ncol(x)
+   ## Obtain sorted Mahalanobis distances (X-loc)^T scale^{-1} (X-loc)
+   maha2 <- sort(mahalanobis(x, center = loc, cov = scale))
+   ## Obtain theoretical quantiles 
+   theoretical.quantiles <- 
+      qgammamix(ppoints(n), qmix = qmix, d = d, control = control, 
+                verbose = verbose, q.only = TRUE, stored.values = NULL, ...)
+   ## Plot
+   plot(theoretical.quantiles, maha2, xlab = "Theoretical quantiles",
+        ylab = "Sample quantiles", main = "")
+   ## Add a diagonal
+   if(plot.diag) lines(theoretical.quantiles, theoretical.quantiles, lty = 2)
+   invisible(list(maha2 = maha2, q = theoretical.quantiles))
 }
 

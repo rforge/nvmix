@@ -2,7 +2,7 @@
 \alias{fitnvmix}
 \title{Fitting Multivariate Normal Variance Mixtures}
 \description{
-  Functionality for fitting multivariate normal variance mixtures via an
+  Functionalities for fitting multivariate normal variance mixtures via an
   EMCE algorithm.
 }
 \usage{
@@ -94,6 +94,7 @@ fitnvmix(x, qmix, mix.param.bounds, nu.init = NA,
 }
 \examples{
 set.seed(274) # for reproducibility
+
 ## For sampling:
 nu                <- 3 # parameter used to sample data
 d                 <- 5 # dimension
@@ -103,7 +104,9 @@ A                 <- matrix(runif(d * d), ncol = d)
 diag_vars         <- diag(runif(d, min = 2, max = 5))
 scale             <- diag_vars \%*\% cov2cor(A \%*\% t(A)) \%*\% diag_vars # scale matrix
 mix.param.bounds  <- c(1, 5) # nu in [1, 5]
+
 ### Example 1: Fitting a multivariate t distribution ###########################
+
 ## Define 'qmix' as the quantile function of an IG(nu/2, nu/2) distribution
 qmix <- function(u, nu){
    1 / qgamma(1 - u, shape = nu/2, rate = nu/2)
@@ -115,7 +118,15 @@ x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
 ## Call 'fitnvmix' with 'qmix = "inverse.gamma"' in which case analytical formulas
 ## for weights and densities are used:
 (MyFit12 <- fitnvmix(x, qmix = "inverse.gamma", mix.param.bounds = mix.param.bounds))
+## Check
 stopifnot(all.equal(MyFit11$nu, MyFit12$nu, tol = 5e-2))
+
+
+## Visual goodness-of-fit test: QQ Plot of mahalanobis distances obtained
+## from fitted parameters using 'qqplot.maha()':
+qqplot.maha(x, qmix = "inverse.gamma", loc = MyFit11$loc, scale = MyFit11$scale, 
+            df = MyFit11$nu)
+
 \dontrun{
 ### Example 2: Fitting a Pareto mixture ########################################
 ## Define 'qmix' as the quantile function of a Par(nu, 1) distribution
@@ -124,10 +135,10 @@ qmix <- function(u, nu){
 }
 ## Sample data using 'rnvmix':
 x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
-## Call 'fitvnmix' with 'qmix' as a function (so all densities/weights are estimated)
+## Call 'fitvnmix' with 'qmix' as function (so all densities/weights are estimated)
 (MyFit21 <- fitnvmix(x, qmix = qmix, mix.param.bounds = mix.param.bounds))
 ## Call 'fitnvmix' with 'qmix = "pareto"' in which case an analytical formula
-## forthe density is used:
+## for the density is used:
 (MyFit22 <- fitnvmix(x, qmix = "pareto", mix.param.bounds = mix.param.bounds))
 stopifnot(all.equal(MyFit21$nu, MyFit22$nu, tol = 5e-2))}
 }
