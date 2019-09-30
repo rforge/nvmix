@@ -47,7 +47,7 @@ densmix.internal.adaptRQMC <- function(qW, maha2.2, lconst, d, k = d, control, U
   isWbounded <- is.finite(W.max) | (W.min > 0)
   ## 2 MAIN LOOP OVER MAHALANOBIS DISTANCES ####
   for(ind in 1:n){
-    curr.maha2.2 <- maha2.2[ind]
+    curr.maha2.2 <- max(maha2.2[ind], ZERO) # avoid maha2.2 = 0 
     curr.lconst  <- lconst[ind]
     ## 2.0 Initialize various quantities #######################################
     error         <- NA
