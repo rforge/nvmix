@@ -19,7 +19,7 @@
 ##' @author Erik Hintz
 ##' @note this function is *only* needed for numerical experiments.  
 pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond, 
-                     mean.sqrt.mix = NULL, return.all = FALSE, ...)
+                     mean.sqrt.mix = NULL, return.all = FALSE, verbose = TRUE, ...)
 {
    ## Define the quantile function of the mixing variable.
    special.mix <- NA 
@@ -87,12 +87,18 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
       ## Check if provided/approximated mean.sqrt.mix is strictly positive
       if(mean.sqrt.mix <= 0)
          stop("'mean.sqrt.mix' has to be positive (possibly after being generated in pnvmix())")
-      tmp <- precondition(lower, upper = upper, scale = scale, factor = C, 
+      temp <- precondition(lower, upper = upper, scale = scale, factor = C, 
                           mean.sqrt.mix = mean.sqrt.mix) 
-      a <- tmp$lower
-      b <- tmp$upper
-      R <- tmp$scale
-      C <- tmp$factor
+      if(is.null(temp)){
+         ## Preconditioning did not work, continue with original inputs 
+         if(verbose) warning("Preconditioning led to (numerically) singular 'scale',
+                             continuing with original input.")
+      } else {
+         a <- temp$lower
+         b <- temp$upper
+         R <- temp$scale
+         C <- temp$factor
+      }
    } else {
       a <- lower
       b <- upper
@@ -285,12 +291,22 @@ trunc.var <- function(a, b){
 ##' @param scale (d,d) positive definite 'scale' matrix.
 ##' @param factor Cholesky factor (lower triangular matrix) of 'scale'
 ##' @param mean.sqrt.mix E(sqrt(W)) where W is the rv corresponding to 'qmix'
+##' @param precond.method character, "ExpLength" (=> sorted by expected length),
+##' otherwise sorted by 'trunc.var()'. 
+##' @param tol if a calculated diagonal element of factor is < sqrt(tol), 
+##' factor is deemed singular and preconditioning fails. 
 ##' @return list of length 4 with reordered integration limits, scale matrix and 
 ##' Cholesky factor as well as a d-vector 'perm' giving the ordering obtained. 
+##' If preconditioning was unsuccessful, 'NULL' is returned
 ##' @author Erik Hintz and Marius Hofert
-##' @note See Genz and Bretz (2002, p. 957)
+##' @note See Genz and Bretz (2002, p. 957).
+##' It may happen that the original 'scale' admits a (numerically stable full rank)
+##' 'factor' and that the reordered 'scale' is numerically singular so that a
+##'  full rank 'factor' cannot be found. This is detected by 'precondition'
+##'  and if this happens, NULL is returned. pnvmix1() then throws a warning
+##'  and estimation is carried out with un-preconditioned inputs. 
 precondition <- function(lower, upper, scale, factor, mean.sqrt.mix, 
-                         precond.method = "ExpLength")
+                         precond.method = "ExpLength", tol = 1e-16)
 {
   d <- length(lower)
   y <- rep(0, d - 1)
@@ -303,8 +319,9 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
       denom <- sqrt(diag(scale))
       c <- 0
     } else {
-      denom <- sqrt(diag(scale)[j:d] - .rowSums(factor[j:d, 1:(j-1), drop = FALSE]^2, 
-                                                m = d-j+1, n = j-1))
+      denom <- diag(scale)[j:d] - .rowSums(factor[j:d, 1:(j-1), drop = FALSE]^2, 
+                                           m = d-j+1, n = j-1)
+      if(any(denom <= 0)) return(NULL) else denom <- sqrt(denom) 
       c <- factor[j:d, 1:(j-1), drop = FALSE] %*% y[1:(j-1)]
     }
  
@@ -341,7 +358,8 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
       y[1] <- -(dnorm(upper[1]/mean.sqrt.mix) - dnorm(lower[1]/mean.sqrt.mix)) /
         (pnorm(upper[1]/mean.sqrt.mix) - pnorm(lower[1]/mean.sqrt.mix))
     } else {
-      factor[j,j] <- sqrt(scale[j,j] - sum(factor[j,1:(j-1)]^2))
+      factorjjsq <- scale[j,j] - sum(factor[j,1:(j-1)]^2)
+      if(any(factorjjsq <= tol)) return(NULL) else factor[j,j] <- sqrt(factorjjsq)
       factor[(j+1):d, j] <-
         if(j < d-1) {
           (scale[(j+1):d, j] - factor[(j+1):d, 1:(j-1), drop = FALSE] %*%
@@ -357,10 +375,12 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
       y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) / (pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]))
     }
   } # for()
-  ## In case of 'catastrophic cancellation' use 'chol()' (more accurate)
-  lastsq <- scale[d, d] - sum(factor[d, 1:(d-1)]^2)
-  if(lastsq < 1e-16) factor <- t(chol(scale)) else 
-     factor[d,d] <- sqrt(lastsq) 
+  factorddsq <- scale[d, d] - sum(factor[d, 1:(d-1)]^2)
+  if(factorddsq > tol) factor[d,d] <- sqrt(factorddsq) else {
+     ## Try 'chol()' for reordered 'scale' (more accurate)
+     factor <- tryCatch(t(chol(scale)), error = function(e) e)
+     if(!is.matrix(factor)) return(NULL) # else 'factor' is correct => return
+  }
   ## Return
   list(lower = lower, upper = upper, scale = scale, factor = factor, perm = perm)
 }
@@ -401,7 +421,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
                     tol = 1e-3, do.reltol = FALSE, CI.factor = 3.3, 
                     fun.eval = c(2^6, 1e8),
                     max.iter.rqmc = 15, increment = c("doubling", "num.init"), 
-                    B = 12, ...)
+                    B = 15, verbose = TRUE, ...)
 {
   rank <- length(k.factor)
   d    <- sum(k.factor)
@@ -419,15 +439,18 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
   
   ## Preconditioning (resorting the limits; only for d > 2 and non-singular case)
   if(precond && d > 2 && rank == d) {
-    ## Note that mean.sqrt.mix has already been calculated in pnvmix()
+    ## Note that 'mean.sqrt.mix' has already been calculated in pnvmix()
     temp <- precondition(lower = lower, upper = upper, scale = scale,
                     factor = factor, mean.sqrt.mix = mean.sqrt.mix)
-    lower <- temp$lower
-    upper <- temp$upper
-    factor <- temp$factor
-    ## In rare cases there is catastrophic cancellation in 'precondition'
-    ## => use 'chol()' instead 
-    if(any(is.nan(factor))) factor <- t(chol(temp$scale)) 
+    if(is.null(temp)){
+       ## Preconditioning did not work, continue with original inputs 
+       if(verbose) warning("Preconditioning led to (numerically) singular 'scale',
+                           continuing with original input.")
+    } else {
+       lower <- temp$lower
+       upper <- temp$upper
+       factor <- temp$factor
+    }
   }
   
   ## 1 Basics for while loop below #############################################
@@ -888,7 +911,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
                          fun.eval = control$fun.eval, 
                          max.iter.rqmc = control$max.iter.rqmc, 
                          increment = increment, 
-                         B = control$B, 
+                         B = control$B, verbose = as.logical(verbose),
                          inv.gam = (!is.na(special.mix) && special.mix == "inverse.gamma"),
                          ...)
     
