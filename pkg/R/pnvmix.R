@@ -322,7 +322,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
 
     ## Swap i and j if they are different
     if(i != j){
-      tmp <- swap(i = i, j = j, lower = lower, upper = upper, scale = scale)
+      tmp   <- swap(i = i, j = j, lower = lower, upper = upper, scale = scale)
       lower <- tmp$lower
       upper <- tmp$upper
       scale <- tmp$scale
@@ -357,7 +357,10 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
       y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) / (pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]))
     }
   } # for()
-  factor[d, d] <- sqrt(scale[d, d] - sum(factor[d, 1:(d-1)]^2))
+  ## In case of 'catastrophic cancellation' use 'chol()' (more accurate)
+  lastsq <- scale[d, d] - sum(factor[d, 1:(d-1)]^2)
+  if(lastsq < 1e-16) factor <- t(chol(scale)) else 
+     factor[d,d] <- sqrt(lastsq) 
   ## Return
   list(lower = lower, upper = upper, scale = scale, factor = factor, perm = perm)
 }
@@ -422,6 +425,9 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
     lower <- temp$lower
     upper <- temp$upper
     factor <- temp$factor
+    ## In rare cases there is catastrophic cancellation in 'precondition'
+    ## => use 'chol()' instead 
+    if(any(is.nan(factor))) factor <- t(chol(temp$scale)) 
   }
   
   ## 1 Basics for while loop below #############################################
