@@ -7,9 +7,8 @@
 ##' @param lower see ?pnvmix
 ##' @param upper see ?pnvmix
 ##' @param scale see ?pnvmix. Has to be full rank here though! 
-##' @param df degrees of freedom parameter (>0)
-##' @param precond see ?pnvmix
-##' @param mean.sqrt.mix see ?pnvmix 
+##' @param precond see ?get.set.parameters()
+##' @param mean.sqrt.mix see ?get.set.parameters()
 ##' @param return.all logical if all function evaluations should be returned.
 ##' @param ... additional parameters passed to qmix()
 ##' @return if return.all = TRUE a n-vector with g(U) values, otherwise a 2-vector
@@ -28,7 +27,7 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
       switch(qmix,
              "constant" = {
                 special.mix <- "constant"
-                function(u) 1
+                function(u) rep(1, length(u))
              },
              "inverse.gamma" = {
                 if(hasArg(df)) {
@@ -46,7 +45,7 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
                 } else {
                    special.mix <- "constant"
                    mean.sqrt.mix <- 1 # used for preconditioning
-                   function(u) 1
+                   function(u) rep(1, length(u))
                 }
              },
              "pareto"= {
@@ -356,7 +355,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
       factor[2:d, 1] <- scale[2:d, 1, drop = FALSE] / factor[1, 1]
       ## Store y1
       y[1] <- -(dnorm(upper[1]/mean.sqrt.mix) - dnorm(lower[1]/mean.sqrt.mix)) /
-        (pnorm(upper[1]/mean.sqrt.mix) - pnorm(lower[1]/mean.sqrt.mix))
+        (max(pnorm(upper[1]/mean.sqrt.mix) - pnorm(lower[1]/mean.sqrt.mix), tol)) # avoid division by zero
     } else {
       factorjjsq <- scale[j,j] - sum(factor[j,1:(j-1)]^2)
       if(any(factorjjsq <= tol)) return(NULL) else factor[j,j] <- sqrt(factorjjsq)
@@ -372,7 +371,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
       scprod     <- sum(factor[j, 1:(j-1)] * y[1:(j-1)]) # needed twice 
       low.j.up.j <- c(lower[j] / mean.sqrt.mix - scprod,
                       upper[j] / mean.sqrt.mix - scprod) / factor[j, j]
-      y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) / (pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]))
+      y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) / (max(pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]), tol))
     }
   } # for()
   factorddsq <- scale[d, d] - sum(factor[d, 1:(d-1)]^2)
@@ -406,6 +405,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
 ##' @param fun.eval see details in ?pnvmix
 ##' @param increment see details in ?pnvmix
 ##' @param B see details in ?pnvmix
+##' @param verbose see ?pnvmix
 ##' @param ... see details in ?pnvmix
 ##' @return list of length 3:
 ##'         - value: computed probability
@@ -697,7 +697,8 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
      switch(qmix,
             "constant" = {
                special.mix <- "constant"
-               function(u) 1
+               mean.sqrt.mix <- 1
+               function(u) rep(1, length(u))
             },
             "inverse.gamma" = {
                if(hasArg(df)) {
@@ -715,7 +716,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
                } else {
                   special.mix <- "constant"
                   mean.sqrt.mix <- 1 # used for preconditioning
-                  function(u) 1
+                  function(u) rep(1, length(u))
                }
             },
             "pareto"= {

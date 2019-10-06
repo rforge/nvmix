@@ -81,7 +81,7 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
       switch(qmix,
              "constant" = {
                 special.mix <- "constant"
-                function(u) 1
+                function(u) rep(1, length(u))
              },
              "inverse.gamma" = {
                 if(hasArg(df)) {
@@ -97,7 +97,7 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
                    function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
                 } else {
                    special.mix <- "constant"
-                   function(u) 1
+                   function(u) rep(1, length(u))
                 }
              },
              "pareto"= {
@@ -190,7 +190,7 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
                    matrix(runif(B*n0), ncol = B)
                 }) # (n0, B) matrix
    
-   mixings      <- qW(U0)  # (n0, B) matrix
+   mixings      <- apply(U0, 2, qW) # qW() may be not 'matricized' 
    sqrt.mixings <- sqrt(mixings) # (n0, B) matrix
    
    ## Set up various quantities for est.cdf.dens():
@@ -242,9 +242,9 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
       ## Check if precisions are reached
       error <- c(sd(rqmc.estimates.cdf)/mean(rqmc.estimates.cdf), 
                  sd(rqmc.estimates.log.density) ) *CI.factor
-      precision.reached <- (error[1] <= control$newton.df.reltol && 
+      precision.reached <- (error[1] <= control$newton.df.reltol & 
                                error[2] <= control$newton.logdens.abstol)
-      
+      if(!is.logical(precision.reached)) stop("Problem in est.cdf.dens(): error NA or NaN for x = ", paste(x))
       if(!precision.reached){
          ## Set up while loop
          iter.rqmc <- 1
@@ -264,7 +264,7 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
                              "prng"    = {
                                 matrix(runif(B*n0), ncol = B)
                              })
-            mixings.next <- qW(U.next) # (n0, B) matrix
+            mixings.next <- apply(U.next, 2, qW) # (n0, B) matrix
             sqrt.mixings.next <- sqrt(mixings.next ) # (n0, B) matrix
             
             ## Update RQMC estimators

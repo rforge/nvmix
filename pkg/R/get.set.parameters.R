@@ -51,7 +51,7 @@ get.set.parameters <- function(control = list()){
     method = "sobol", 
     increment = "doubling", # "doubling" or "num.init" 
     max.iter.rqmc = NA, # defined below, depending on 'increment'
-    CI.factor = 3.3,
+    CI.factor = 3.4,
     fun.eval = c(2^7, 1e12), 
     B = 15,
     ## Additional returns for testing? (eg estimates after each iteration in

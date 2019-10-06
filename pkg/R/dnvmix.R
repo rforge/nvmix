@@ -645,7 +645,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
     switch(qmix,
            "constant" = {
              special.mix <- "constant"
-             function(u) 1
+             function(u) rep(1, length(u))
            },
            "inverse.gamma" = {
              if(hasArg(df)) {
@@ -663,7 +663,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
              } else {
                special.mix <- "constant"
                mean.sqrt.mix <- 1 # used for preconditioning
-               function(u) 1
+               function(u) rep(1, length(u))
              }
            },
            "pareto"= {

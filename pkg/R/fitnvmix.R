@@ -399,7 +399,7 @@ fitnvmix <- function(x, qmix,
       switch(qmix,
              "constant" = {
                 special.mix <- "constant"
-                function(u) 1
+                function(u, nu) rep(1, length(u))
              },
              "inverse.gamma" = {
                 special.mix <- "inverse.gamma"

@@ -16,7 +16,7 @@ library(qrmdata) # for the dataset
 library(QRM) # for returns()
 library(xts) # for plotting time-series objects 
 doPDF <- FALSE
-run   <- TRUE # run slow parts
+run   <- FALSE # run slow parts
 ```
 
 ## 1 Introduction
@@ -30,7 +30,7 @@ returns of the 30 stocks look as follows:
 ```{r, fig.align = "center", fig.width = 7, fig.height = 12, fig.show = "hold"}
 data("DJ_const") # load data
 DJ30.X.d <- returns(DJ_const) # obtain daily returns
-DJ30.X.d <- DJ30.X.d[-which(rowSums(is.na(DJ30.X.d))>0),] # remove all rows with >=1 NA
+DJ30.X.d <- DJ30.X.d[-which(rowSums(is.na(DJ30.X.d))>0),] # remove rows with >=1 NA
 if(doPDF) pdf(file = (file <- "fig_dailyreturnsDJ30.pdf"),
               width = 7, height = 12)
 plot.zoo(DJ30.X.d) # plot

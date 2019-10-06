@@ -29,7 +29,7 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
       switch(qmix,
              "constant" = {
                 special.mix <- "constant"
-                function(u) 1
+                function(u) rep(1, length(u))
              },
              "inverse.gamma" = {
                 if(hasArg(df)) {
@@ -45,7 +45,7 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
                    function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
                 } else {
                    special.mix <- "constant"
-                   function(u) 1
+                   function(u) rep(1, length(u))
                 }
              },
              "pareto"= {
@@ -311,7 +311,7 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
       switch(qmix,
              "constant" = {
                 special.mix <- "constant"
-                function(u) 1
+                function(u) rep(1, length(u))
              },
              "inverse.gamma" = {
                 if(hasArg(df)) {
@@ -329,7 +329,7 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
                 } else {
                    special.mix <- "constant"
                    mean.sqrt.mix <- 1 # used for preconditioning
-                   function(u) 1
+                   function(u) rep(1, length(u))
                 }
              },
              "pareto"= {
