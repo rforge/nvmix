@@ -28,16 +28,18 @@
 void eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int d, int r,
                              int *kfactor, double *factor, double ZERO, double ONE, double *res)
 {
-    double yorg[r-1], sqrtmixorg, dorg, difforg, forg, scprodorg;
-    double yant[r-1], sqrtmixant, dant, diffant, fant, scprodant;
+    double yorg[r-1], sqrtmixorg, dorg, difforg, scprodorg;
+    double yant[r-1], sqrtmixant, dant, diffant, scprodant;
+    double ldorg, ldant, ldifforg, ldiffant, lforg, lfant;
     /* Note: <name>org stands for "original", <name>ant for antithetic */
+    /* l<name>org/ant stands for log of that variable */
     /* y:       vector to save phi^{-1}(dj+uj(ej-dj)) */
     /* sqrtmix: used to store sqrt(F_w^{-1}(u_0)) */
     /* d:       current values of di from the paper */
     /* diff:    current values of (ei-di) from the paper */
     /* f:       current value of (e1-d1) * (e2-d2) * ... * (ei-di) */
     /* scprod:  scalar product sum factor_{ij} y_j */
-
+    
     double tmp; /* to store temporary values */
     double lowermaxorg, upperminorg, lowermaxant, upperminant; /* needed in singular case */
     double scprodorgnew, scprodantnew;
@@ -45,6 +47,10 @@ void eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int d
     double sumsq = 0; /* to store sum_{i=1}^n (y_i + yant_i)^2/4 (for variance calculation) */
     int current_limit; /* index of current element in 'lower'/'upper' */
     int i, j, l, m; /* counters for loops */
+    
+    /* Avoid recalculation */
+    double qnormzero = qnorm(ZERO, 0, 1, 1, 0);
+    double qnormone  = -qnormzero;
 
     /* For each row of U (for access, use U[s,k] = U[k * numrows + s]) */
     for(j = 0; j < n; j++){
@@ -63,6 +69,7 @@ void eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int d
             lowermaxorg = lowermaxorg / factor[0];
             upperminorg = upperminorg / factor[0];
         } else if(kfactor[0] > 1){
+            /* Singular case: Find active limit */
             for(i = 1; i <= kfactor[0]; i++){
                 if(lower[i] > lowermaxorg){
                     lowermaxorg = lower[i];
@@ -74,50 +81,79 @@ void eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int d
         }
         current_limit += kfactor[0];
         
-        /* Check if entry of lower is -Inf */
+        
+        /* Need essentially log( pnorm(upper*) - pnorm(lower*)) */
+        /* For higher accuracy, make use of 'lower.tail' argument in pnorm() when helpful */
+        /* Note the arguments: .Call(C_pnorm, q, mean, sd, lower.tail, log.p) */
+        
+        /* lower_ = -Inf */
         if(lowermaxorg == R_NegInf){
             dorg = 0;
             dant = 0;
+            if(upperminorg == R_PosInf){
+                /* Case Phi(Inf) - Phi(-Inf) */
+                difforg = 1;
+                diffant = 1;
+                ldifforg = 0;
+                ldiffant = 0;
+            } else {
+                /* Case Phi(upper) - Phi(-Inf) = Phi(upper) */
+                ldifforg = pnorm(upperminorg / sqrtmixorg, 0, 1, 1, 1);
+                ldiffant = pnorm(upperminorg / sqrtmixant, 0, 1, 1, 1);
+                difforg = exp(ldifforg);
+                diffant = exp(ldiffant);
+            }
         } else {
-            dorg = pnorm(lowermaxorg / sqrtmixorg, 0, 1, 1, 0);
-            dant = pnorm(lowermaxorg / sqrtmixant, 0, 1, 1, 0);
-        }
-
-        /* Check if entry of b is +Inf */
-        if(upperminorg == R_PosInf){
-            difforg = 1 - dorg;
-            diffant = 1 - dant;
-        } else {
-            difforg = pnorm(upperminorg / sqrtmixorg, 0, 1, 1, 0) - dorg;
-            diffant = pnorm(upperminorg / sqrtmixant, 0, 1, 1, 0) - dant;
+            /* lower_ != - Inf */
+            if(upperminorg == R_PosInf){
+                /* Case Phi(Inf) - Phi(lower_) = Phi(lower_, lower.tail = FALSE) */
+                ldifforg = pnorm(lowermaxorg / sqrtmixorg, 0, 1, 0, 1);
+                ldiffant = pnorm(lowermaxorg / sqrtmixant, 0, 1, 0, 1);
+                difforg  = exp(ldifforg);
+                diffant  = exp(ldiffant);
+                dorg = 1 - difforg;
+                dant = 1 - diffant;
+            } else {
+                /* Case Phi(upper_) - Phi(lower_)  */
+                ldorg = pnorm(lowermaxorg / sqrtmixorg, 0, 1, 1, 1);
+                ldant = pnorm(lowermaxorg / sqrtmixant, 0, 1, 1, 1);
+                dorg  = exp(ldorg);
+                dant  = exp(ldant);
+                /* logsumexp trick for log(Phi(upper_)-Phi(lower_))*/
+                tmp = pnorm(upperminorg / sqrtmixorg, 0, 1, 1, 1);
+                ldifforg = tmp + log1p(-exp(ldorg - tmp));
+                tmp = pnorm(upperminorg / sqrtmixant, 0, 1, 1, 1);
+                ldiffant = tmp + log1p(-exp(ldant - tmp));
+                difforg = exp(ldifforg);
+                diffant = exp(ldiffant);
+            }
         }
 
         /* Go through all r-1 columns (without first and last) */
         /* For better readability, we start at i = 0 */
-        forg = difforg;
-        fant = diffant;
+        lforg = ldifforg;
+        lfant = ldiffant;
         for(i = 0; i < r-1; i++){
             /* U[i * n + j] corresponds to U[j,i] in the orginal matrix */
             tmp = dorg + U[(i+1) * n + j] * difforg;
-
             /* Check if too close to 0 or 1 */
             if(tmp < ZERO){
-                tmp = ZERO;
+                yorg[i] = qnormzero;
+            } else if(tmp > ONE){
+                yorg[i] = qnormone;
+            } else {
+                yorg[i] = qnorm(tmp, 0, 1, 1, 0);
             }
-            if(tmp > ONE){
-                tmp = ONE;
-            }
-            yorg[i] = qnorm(tmp, 0, 1, 1, 0);
 
             /* The same for the antithetic value */
             tmp = dant + (1-U[(i+1) * n + j]) * diffant;
             if(tmp < ZERO){
-                tmp = ZERO;
+                yant[i] = qnormzero;
+            } else if(tmp > ONE){
+                yant[i] = qnormone;
+            } else {
+                yant[i] = qnorm(tmp, 0, 1, 1, 0);
             }
-            if(tmp > ONE){
-                tmp = ONE;
-            }
-            yant[i] = qnorm(tmp, 0, 1, 1, 0);
 
             
             /* Calculate the scalar product sum factor[i,j] y[j] for j = 1:(i-1) */
@@ -176,35 +212,59 @@ void eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int d
                 }
             }
             /* Calculate new d */
+            /* Note: lower/upper<...>org Inf/-Inf <=> lower/upper<...>ant Inf/-Inf*/
+            /* lower_ = -Inf */
             if(lowermaxorg == R_NegInf){
                 dorg = 0;
-            } else {
-                dorg = pnorm(lowermaxorg, 0, 1, 1, 0);
-            }
-            if(lowermaxant == R_NegInf){
                 dant = 0;
+                if(upperminorg == R_PosInf){
+                    /* Case Phi(Inf) - Phi(-Inf) */
+                    difforg = 1;
+                    diffant = 1;
+                    ldifforg = 0;
+                    ldiffant = 0;
+                } else {
+                    /* Case Phi(upper) - Phi(-Inf) = Phi(upper) */
+                    ldifforg = pnorm(upperminorg, 0, 1, 1, 1);
+                    ldiffant = pnorm(upperminant, 0, 1, 1, 1);
+                    difforg = exp(ldifforg);
+                    diffant = exp(ldiffant);
+                }
             } else {
-                dant = pnorm(lowermaxant, 0, 1, 1, 0);
-            }
-            /* Calculate new diff = e-d */
-            if(upperminorg == R_PosInf){
-                difforg = 1 - dorg;
-            } else {
-                difforg = pnorm(upperminorg, 0, 1, 1, 0) - dorg;
-            }
-            if(upperminant == R_PosInf){
-                diffant = 1 - dant;
-            } else {
-                diffant = pnorm(upperminant, 0, 1, 1, 0) - dant;
+                /* lower_ != -Inf */
+                if(upperminorg == R_PosInf){
+                    /* Case Phi(Inf) - Phi(lower_) = Phi(lower_, lower.tail = FALSE) */
+                    ldifforg = pnorm(lowermaxorg, 0, 1, 0, 1);
+                    ldiffant = pnorm(lowermaxant, 0, 1, 0, 1);
+                    difforg  = exp(ldifforg);
+                    diffant  = exp(ldiffant);
+                    dorg = 1 - difforg;
+                    dant = 1 - diffant;
+                } else {
+                    /* Case Phi(upper_) - Phi(lower_)  */
+                    ldorg = pnorm(lowermaxorg, 0, 1, 1, 1);
+                    ldant = pnorm(lowermaxant, 0, 1, 1, 1);
+                    dorg  = exp(ldorg);
+                    dant  = exp(ldant);
+                    /* logsumexp trick for log(Phi(upper_)-Phi(lower_))*/
+                    tmp = pnorm(upperminorg, 0, 1, 1, 1);
+                    ldifforg = tmp + log1p(-exp(ldorg - tmp));
+                    tmp = pnorm(upperminant, 0, 1, 1, 1);
+                    ldiffant = tmp + log1p(-exp(ldant - tmp));
+                    difforg = exp(ldifforg);
+                    diffant = exp(ldiffant);
+                }
+                
             }
             /* Update products 'forg' and 'fant' */
-            forg *= difforg;
-            fant *= diffant;
+            lforg += ldifforg;
+            lfant += ldiffant;
             /* Update i in the singular case (as some rows may need to be skipped) */
             current_limit += kfactor[i+1];
         }
-        sum += (forg+fant)/2;
-        sumsq += (forg+fant)*(forg+fant)/4;
+        tmp = (exp(lforg) + exp(lfant))/2;
+        sum += tmp;
+        sumsq += tmp*tmp;
     }
     res[0] = sum/n;
     res[1] = (sumsq - n * res[0] * res[0])/(n-1);

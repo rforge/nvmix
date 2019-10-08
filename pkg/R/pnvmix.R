@@ -472,7 +472,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
   ## It may happen that qnorm(u) for u too close to 1 (or 0) is evaluated; in those
   ## cases, u will be replaced by ONE and ZERO which is the largest (smallest) number
   ## different from 1 (0) such that qnorm(u) is not +/- Inf
-  ZERO <- .Machine$double.eps # for symmetry reasons (-8/+8), use this instead of .Machine$double.xmin
+  ZERO <- .Machine$double.xmin
   ONE <- 1-.Machine$double.neg.eps
   
   ## If method == sobol, we want the same random shifts in each iteration below,
