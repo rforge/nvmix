@@ -11,7 +11,7 @@ get.set.parameters <- function(control = list()){
     mean.sqrt.mix = NULL, 
     precond = TRUE, 
     pnvmix.abstol = 1e-3, 
-    pnvmix.reltol = NA,
+    pnvmix.reltol = NA, 
     cholesky.tol = 1e-9, 
     ## For dnvmix():
     dnvmix.abstol = 1e-3, 
@@ -51,7 +51,7 @@ get.set.parameters <- function(control = list()){
     method = "sobol", 
     increment = "doubling", # "doubling" or "num.init" 
     max.iter.rqmc = NA, # defined below, depending on 'increment'
-    CI.factor = 3.4,
+    CI.factor = 3.5,
     fun.eval = c(2^7, 1e12), 
     B = 15,
     ## Additional returns for testing? (eg estimates after each iteration in
@@ -64,6 +64,8 @@ get.set.parameters <- function(control = list()){
     ## Did the user provide something that is not used?
     if (length(unmatched <- names.provided[!names.provided %in% names.control])) 
       warning("unknown names in control: ", paste(unmatched, collapse = ", "))
+    ## If 'pnvmix.reltol' was provided, set 'pnvmix.abstol' to NA:
+    if(any(names.provided == 'pnvmix.reltol')) ctrl$pnvmix.abstol <- NA
     ## Check if 'method' and 'increment' were provided correctly
     ctrl$method     <- match.arg(ctrl$method, 
                                  choices = c("sobol", "ghalton", "PRNG"))
@@ -91,7 +93,7 @@ get.set.parameters <- function(control = list()){
   }
   ## Define 'max.iter.rqmc': If it was not provided (=> NA), set defaults
   if(is.na(ctrl$max.iter.rqmc)){
-    ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 15 else 100
+    ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 12 else 100
   } else {
     ## If it was provided (=> not NA), check if it's reasonable 
     stopifnot(ctrl$max.iter.rqmc > 1)

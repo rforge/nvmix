@@ -97,8 +97,8 @@ set.seed(274) # for reproducibility
 
 ## For sampling:
 nu                <- 3 # parameter used to sample data
-d                 <- 5 # dimension
-n                 <- 100 # small sample size to have examples run fast 
+d                 <- 4 # dimension
+n                 <- 50 # small sample size to have examples run fast 
 loc               <- rep(0, d) # location vector
 A                 <- matrix(runif(d * d), ncol = d)
 diag_vars         <- diag(runif(d, min = 2, max = 5))
