@@ -38,7 +38,6 @@ dnvmixcop <- function(u, qmix, scale = diag(d), factor = NULL, control = list(),
   ## Obtain quantiles. Note that qnvmix() takes in and returns a vector
   qu <- qnvmix(as.vector(u), qmix = qmix, control = control, 
                verbose = verbose, q.only =  FALSE, ...) # length n*d 
-
   ## log f_{X, scale} (F_{X1}^{-1}(u_{j1}),...,F_X1 ^{-1}(u_{jd})), j = 1,...,n
   num <- dnvmix(matrix(qu$q, ncol = d), qmix = qmix, scale = scale, factor = factor,
                 control = control, verbose = verbose, log = TRUE, ...)# length n

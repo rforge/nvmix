@@ -119,7 +119,7 @@ qmix. <- function(u) 1/qgamma(1-u, shape = df/2, rate = df/2)
 d1 <- dnvmixcop(u, qmix = "inverse.gamma", scale = P, df = df)
 ## Use qmix. to force the algorithm to use a rqmc procedure:
 d2 <- dnvmixcop(u, qmix = qmix., scale = P)
-stopifnot(all.equal(d1, d2, tol = 5e-4, check.attributes = FALSE))
+stopifnot(all.equal(d1, d2, tol = 1e-3, check.attributes = FALSE))
 
 ### Example for pnvmixcop() ####################################################
 ## Same logic as above:

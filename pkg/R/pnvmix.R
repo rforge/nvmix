@@ -964,8 +964,8 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
 pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
                      standardized = FALSE, method = "sobol", 
                      tol = 1e-3, do.reltol = FALSE,
-                     CI.factor = 3.3, fun.eval = c(2^6, 1e8), max.iter.rqmc = 15, 
-                     increment = "doubling", B = 12, verbose = FALSE)
+                     CI.factor = 3.5, fun.eval = c(2^6, 1e8), max.iter.rqmc = 15, 
+                     increment = "doubling", B = 15, verbose = FALSE)
 { 
   n <- length(upper)
   if(!is.vector(upper)) upper <- as.vector(upper)

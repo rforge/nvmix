@@ -65,7 +65,8 @@ get.set.parameters <- function(control = list()){
     if (length(unmatched <- names.provided[!names.provided %in% names.control])) 
       warning("unknown names in control: ", paste(unmatched, collapse = ", "))
     ## If 'pnvmix.reltol' was provided, set 'pnvmix.abstol' to NA:
-    if(any(names.provided == 'pnvmix.reltol')) ctrl$pnvmix.abstol <- NA
+    if(any(names.provided == 'pnvmix.reltol') && !is.na(control$pnvmix.reltol))
+       ctrl$pnvmix.abstol <- NA
     ## Check if 'method' and 'increment' were provided correctly
     ctrl$method     <- match.arg(ctrl$method, 
                                  choices = c("sobol", "ghalton", "PRNG"))
