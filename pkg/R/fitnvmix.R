@@ -434,7 +434,7 @@ fitnvmix <- function(x, qmix,
    ## TODO: More checking (INFs, ...)
    if(!is.matrix(x)) x <- rbind(x)
    notNA <- rowSums(is.na(x)) == 0
-   x     <- x[notNA,] # non-missing data (rows)
+   x     <- x[notNA,, drop = FALSE] # non-missing data (rows)
    tx    <- t(x)
    n     <- nrow(x)
    d     <- ncol(x)
@@ -442,8 +442,8 @@ fitnvmix <- function(x, qmix,
    ## Use only sub-sample to estimate 'nu'?
    if(size.subsample < n){
       sampled.ind <- sample(n, size.subsample)
-      x.sub       <- x[sampled.ind,]
-      tx.sub      <- tx[, sampled.ind]
+      x.sub       <- x[sampled.ind,, drop = FALSE]
+      tx.sub      <- tx[, sampled.ind, drop = FALSE]
    } else {
       x.sub  <- x
       tx.sub <- tx
@@ -504,7 +504,7 @@ fitnvmix <- function(x, qmix,
             switch(special.mix,
                    "inverse.gamma" = {
                       function(param){
-                         ll <- -sum(dnvmix(x[sample(n, init.size.subsample),], 
+                         ll <- -sum(dnvmix(x[sample(n, init.size.subsample),, drop = FALSE], 
                                            qmix = "inverse.gamma", loc = loc.est, 
                                            scale = param[2] * SCov, df = param[1],
                                            log = TRUE))
@@ -515,7 +515,7 @@ fitnvmix <- function(x, qmix,
                    },
                    "pareto" = {
                       function(param){
-                         ll <- -sum(dnvmix(x[sample(n, init.size.subsample),], 
+                         ll <- -sum(dnvmix(x[sample(n, init.size.subsample),, drop = FALSE], 
                                            qmix = "pareto", loc = loc.est, 
                                            scale = param[2] * SCov, alpha = param[1],
                                            log = TRUE))
@@ -529,7 +529,7 @@ fitnvmix <- function(x, qmix,
                ## Define a 'qmix.' function of u only that can be passed to dnvmix():
                .Random.seed <<- seed # for monotonicity
                ## Return - loglikelihood
-               ll <- -sum(dnvmix(x[sample(n, init.size.subsample),], qmix = qW, 
+               ll <- -sum(dnvmix(x[sample(n, init.size.subsample),, drop = FALSE], qmix = qW, 
                                  loc = loc.est, scale = param[mix.param.length + 1] * SCov,
                                  control = control, verbose = verbose, log = TRUE, 
                                  nu = param[1:mix.param.length]))
@@ -690,7 +690,7 @@ fitnvmix <- function(x, qmix,
                if(exists(".Random.seed")) rm(".Random.seed") # destroy the reseted seed 
                runif(1) # get a new seed
                sampled.ind <- sample(n, size.subsample)
-               tx.sub      <- tx[,sampled.ind]
+               tx.sub      <- tx[,sampled.ind, drop = FALSE]
                seed        <- .Random.seed
             }
             ## Optimize neg.log.likelihood over 'nu'
@@ -785,7 +785,7 @@ qqplot.maha <- function(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE,
    control <- get.set.parameters(control)
    if(!is.matrix(x)) x <- rbind(x)
    notNA <- rowSums(is.na(x)) == 0
-   x     <- x[notNA,] # non-missing data (rows)
+   x     <- x[notNA,, drop = FALSE] # non-missing data (rows)
    n     <- nrow(x)
    d     <- ncol(x)
    ## Obtain sorted Mahalanobis distances (X-loc)^T scale^{-1} (X-loc)

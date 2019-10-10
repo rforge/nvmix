@@ -60,20 +60,20 @@ qqplot.maha(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE,
   \code{\link{fitnvmix}()}, \code{\link{rnvmix}()}, \code{\link{pnvmix}()}
 }
 \examples{
-set.seed(274) # for reproducibility
-n     <- 25
-d     <- 3
-nu    <- 3 # degree-of-freedom parameter
-loc   <- rep(0,d)
+set.seed(1) # for reproducibility
+n     <- 21
+d     <- 2
+nu    <- 4 # degree-of-freedom parameter
+loc   <- rep(0, d)
 scale <- diag(d)
 ## Define 'qmix' as the quantile function of an IG(nu/2, nu/2) distribution
 qmix <- function(u, nu){
-   1 / qgamma(1 - u, shape = nu/2, rate = nu/2)
+    1 / qgamma(1 - u, shape = nu/2, rate = nu/2)
 }
-## Sample data using 'rnvmix':
+## Sample data using 'rnvmix()':
 x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
-## Call 'fitvnmix' with 'qmix' as a function (so all densities/weights are estimated)
-(MyFit <- fitnvmix(x, qmix = qmix, mix.param.bounds = c(0.5, 15)))
+## Call 'fitvnmix()' with 'qmix' as a function (so all densities/weights are estimated)
+(MyFit <- fitnvmix(x, qmix = qmix, mix.param.bounds = c(0.5, 9)))
 ## QQ Plot of empirical quantiles vs estimated, theoretical quantiles:
 qqplot.maha(x, qmix = qmix, loc = MyFit$loc, scale = MyFit$scale, nu = MyFit$nu)
 }
