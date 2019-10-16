@@ -36,14 +36,14 @@ library(xts) # for plotting time-series objects
 doPLOT   <- TRUE # generate plots?
 doPDF    <- FALSE # generate .pdfs? (ignored if doPLOT = FALSE)
 doRUN    <- FALSE # run all experiments?
-doSTORE  <- FALSE # store result arrays via 'saveRDS(...)'?
+doSTORE  <- FALSE # store result arrays via 'save(...)'?
 
 ## Ask user if experiments shall be re-performed
 answer <- 
    readline(cat("Press 'Y' if all numerical experiments shall be re-ran (~55 hrs) before plotting or", 
                 " press any other key if plots shall be generated from the files in ../data.", sep="\n"))
 if(answer == "Y" || answer == "y") doRUN <- TRUE 
-
+if(!doRUN) load("../data/numerical_experiments.RData")
 ## Load packages
 library(nvmix) 
 library(mvtnorm) # for comparison with pmvt()
@@ -409,6 +409,7 @@ pnvmix_estimate_sobolind_plot <- function(pnvmix.t.sobolind, index.seed = 1){
    ## Prepare plot
    pal  <- colorRampPalette(c("#000000", brewer.pal(8, name = "Dark2")[c(7, 3, 5)]))
    cols <- pal(2) # colors
+   def.par <- par(no.readonly = TRUE) # save default, for resetting...
    layout(matrix(1:2, nrow = 1))
    ## Left: First order indices 
    plot(NA, xlab = "", ylab = "First order index", ylim = range(first.indices), 
@@ -431,6 +432,7 @@ pnvmix_estimate_sobolind_plot <- function(pnvmix.t.sobolind, index.seed = 1){
                toString(round(vars[1], 5)), "/", toString(round(vars[2], 5)), 
                "and sum of first order indices =", toString(round(sums[1], 2)),
                "/",toString(round(sums[2], 2))), side = 1, line = -2, outer = TRUE)
+   par(def.par)
    ## Return
    invisible(pnvmix.t.sobolind)
 }
@@ -736,6 +738,7 @@ dnvmix_testing_plot <- function(dnvmix.results, index.qmix, plot.title = FALSE)
    ## Prepare plot 
    rgX  <- range(sqrt(maha))
    rgY  <- range(ldens.true, ldens.est.doAdapt, na.rm = TRUE)
+   def.par <- par(no.readonly = TRUE) # save default, for resetting...
    par(mar = c(4, 3, 3, 3) + 0.15)
    ## Initiallize legend (also lty, pch etc)
    lgnd <- expression(paste("P(", (X-mu)^T, Sigma^-1, (X-mu), ">", m^2,")"))
@@ -832,7 +835,7 @@ dnvmix_testing_plot <- function(dnvmix.results, index.qmix, plot.title = FALSE)
    }
    legend('topright', lgnd, col = col.used, lty = lty.used, pch = pch.used,
           box.lty = 0)
-   
+   par(def.par)
    ## Return (invisbly)
    invisible(dnvmix.results)
 }
@@ -1040,8 +1043,6 @@ nu             <- rep(2, 2)
 if(doRUN){ # approximately 24 hours 
    pnvmix.abserrors <-  pnvmix_testing_abserr(qmix, nu = nu, d = d, n = n, 
                                               max.fun.evals = max.fun.evals)
-   ## Store data
-   if(doSTORE) saveRDS(pnvmix.abserrors, file = "pnvmix.abserrors.rda")
 }
 
 ## 2,2 Estimate variance of the integrand with/without reordering
@@ -1058,7 +1059,6 @@ if(doRUN){ # approximately 15 hours
       precond_testing_variance(qmix = "inverse.gamma", N = N, n = n, 
                                mindim = mindim, maxdim = maxdim, 
                                nu.lower = nu.lower, nu.upper = nu.upper)
-   if(doSTORE) saveRDS(pnvmix.t.variances, "pnvmix.t.variances.rda")
    
 }
 
@@ -1082,7 +1082,6 @@ if(doRUN){
       qmix = "inverse.gamma", d = d, nu = nu, n = n, seeds = seeds, 
       original.seed = original.seed)
    if(FALSE) warnings() # Warning: Conversion of the response to numeric
-   if(doSTORE) saveRDS(pnvmix.t.sobolind, "pnvmix.t.sobolind.rda")
 }
 
 ## 2,4 Compare CPU of 'pmvt()' from pkg 'mvtnorm' and 'pStudent()' from pkg 'nvmix'
@@ -1094,7 +1093,6 @@ df       <- 2 # degree-of-freedom parameter for the multivariate t dist'n
 
 if(doRUN){
    pnvmix.t.timing <- pnvmix_timing_mvt(d, n = n, rep = rep, tol = tol, df = df)
-   if(doSTORE) saveRDS(pnvmix.t.timing, file = "pnvmix.t.timing.rda")
 }
 
 
@@ -1108,7 +1106,6 @@ seed      <- 271
 if(doRUN){
    dnvmix.results <- dnvmix_testing(qmix = qmix, nu.sample = nu.sample,
                                     nu.dens = nu.dens, seed = seed)
-   if(doSTORE) saveRDS(dnvmix.results, "dnvmix.results.rda")
 }
 
 
@@ -1123,8 +1120,6 @@ if(doRUN){ # ~25 min
    set.seed(271) # for reproducibility
    ## Generate results
    fitnvmix.results <- fitnvmix_testing(qmix = qmix, n = n, d = d, nu = nu)
-   ## Store results
-   if(doSTORE) saveRDS(fitnvmix.results, file = "fitnvmix.results.rda")
 }
 
 
@@ -1207,15 +1202,20 @@ if(doRUN){ # approximately 20 min
                    control = list(pnvmix.abstol = 1e-6)) # higher accuracy as prob's are small
       }
    }
-   ## Store results
-   if(doSTORE){
-      saveRDS(fit.dj30.analytical,  file = "fit.dj30.analytical.rda")
-      saveRDS(fit.dj30.estimated,   file = "fit.dj30.estimated.rda")
-      saveRDS(qqplots.dj30,         file = "qqplots.dj30.rda")
-      saveRDS(tailprobs.dj30,       file = "tailprobs.dj30.rda")
-   }
 }
 
+if(doSTORE) save(fit.dj30.estimated,
+                 fitnvmix.results,
+                 fit.dj30.estimated,
+                 fit.dj30.analytical,
+                 qqplots.dj30,
+                 pnvmix.t.variances,
+                 pnvmix.t.sobolind,
+                 pnvmix.t.timing,
+                 tailprobs.dj30,
+                 dnvmix.results,
+                 pnvmix.abserrors,
+                 file = "numerical_experiments.RData")
 ## 6. Plot results #############################################################
 
 ## 6.1 Plot results for 'pnvmix()' #############################################
@@ -1225,9 +1225,6 @@ qmix <- c("inverse.gamma", "pareto")
 if(doPLOT){ # absolute errors as a fct of 'n'
    height <- 6 # for plotting
    width  <- 9
-   ## Restore data if necessary:
-   if(!exists('pnvmix.abserrors')) 
-      pnvmix.abserrors <- readRDS(file = "../data/pnvmix.abserrors.rda")
    ## Generate a plot in each dimension for each mixing variable separately
    for(i in seq_along(d)){
       for(j in seq_along(qmix)){
@@ -1245,9 +1242,6 @@ if(doPLOT){ # absolute errors as a fct of 'n'
 if(doPLOT){ # variances with/without reordering
    height <- 6 # for plotting
    width  <- 9
-   ## Restore data if necessary
-   if(!exists('pnvmix.t.variances')) 
-      pnvmix.t.variances <- readRDS(file = "../data/pnvmix.t.variances.rda")
    ## Produce scatterplot
    if(doPDF) pdf(file="fig_pnvmix.t.variances.scatterplot.pdf", width = height, 
                  height = height)
@@ -1263,8 +1257,6 @@ if(doPLOT){ # variances with/without reordering
 if(doPLOT){ # sobol indices with/without re-ordering 
    height <- 4.5 # for plotting
    width  <- 10
-   if(!exists('pnvmix.t.sobolind')) 
-      pnvmix.t.sobolind <- readRDS(file = "../data/pnvmix.t.sobolind.rda")
    for(i in seq_along(seeds)){
       if(doPDF){
          fname <- paste("fig_pnvmix.t.sobolind_seed", seeds[i],".pdf", sep = "")
@@ -1290,9 +1282,6 @@ if(doPLOT){ # timing experiment
 if(doPLOT){
    height <- 4.5 # for plotting
    width  <- 8 
-   ## Load data if necessary
-   if(!exists('dnvmix.results')) 
-      dnvmix.results <- readRDS(file = "../data/dnvmix.results.rda")
    for(i in seq_along(qmix)){
       if(doPDF){
          curr.qmix <- if(qmix[i] == "inverse.gamma") "t" else qmix[i] # keep fname short
@@ -1310,9 +1299,6 @@ d <- c(10, 50) # dimensions
 if(doPLOT){
    height <- 7 # for pdf(..., height, width)
    width  <- 7
-   ## Load data
-   if(!exists('fitnvmix.results')) 
-      fitnvmix.results <- readRDS(file = "../data/fitnvmix.results.rda")
    names.qmix <- dimnames(fitnvmix.results)$qmix
    ## For each mixing quantile fct 'qmix' and each dimension a separate plot
    for(i in seq_along(qmix)){
@@ -1335,14 +1321,6 @@ if(doPLOT){
 
 if(doPLOT){
    size <- 9 # width and height for doPDF()
-   if(!exists('fit.dj30.analytical')) 
-      fit.dj30.analytical <- readRDS(file = "../data/fit.dj30.analytical.rda")
-   if(!exists('fit.dj30.estimated')) 
-      fit.dj30.estimated  <- readRDS(file = "../data/fit.dj30.estimated.rda")
-   if(!exists('qqplots.dj30')) 
-      qqplots.dj30        <- readRDS(file = "../data/qqplots.dj30.rda")
-   if(!exists('tailprobs.dj30'))
-      tailprobs.dj30      <- readRDS(file = "../data/tailprobs.dj30.rda")
    ## Create matrices with 'nu' estimates and run-times in brackets
    res.analytical <- matrix(NA, ncol = 3, nrow = 3)
    colnames(res.analytical) <- qmix.strings
@@ -1378,6 +1356,7 @@ if(doPLOT){
    qmix.strings.[2] <- "inverse-gamma" # instead of "inverse.gamma"
    if(doPDF) pdf(file = (file <- "fig_qqplotsdj30.pdf"),
                  width = size, height = size)
+   def.par <- par(no.readonly = TRUE) # save default, for resetting...
    layout(mat = matrix(1:9, ncol = 3, byrow = TRUE),
           heights = c(1, 1, 1), # heights of the two rows
           widths = c(1, 1, 1)) # widths of the two columns
@@ -1391,6 +1370,7 @@ if(doPLOT){
       }
    }
    if(doPDF) dev.off()
+   par(def.par) # reset
    ## Plot shortfall probabilities: One plot per 'period'
    n <- 32
    u <- 1 - seq(0.95, to = 0.9995, length.out = n) # small levels 
@@ -1426,3 +1406,4 @@ if(doPLOT){
    legend("topright", lgn, col = rep(cols, 2), lty = rep(1:2, each = 3))
    if(doPDF) dev.off()
 }
+
