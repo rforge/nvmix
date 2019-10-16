@@ -216,8 +216,8 @@ densmix.internal.adaptRQMC <- function(qW, maha2.2, lconst, d, k = d, control, U
           ## Next point to check:
           u.next <- mean(curr.candid)
           w.next <- max(qW(u.next), ZERO)
-          diff <- ((l.int.next <- curr.lconst -log(w.next)*k/2 - 
-                       curr.maha2.2/w.next) - l.tol.int.lower)
+          diff   <- (l.int.next <- (curr.lconst -log(w.next)*k/2 - 
+                       curr.maha2.2/w.next)) - l.tol.int.lower
           ## Store values generated
           additionalVals[numiter, ] <- c(u.next, w.next, l.int.next)
           ## Update 'curr.candid' depending on sign of 'diff' and check convergence:
