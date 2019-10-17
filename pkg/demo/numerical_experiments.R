@@ -45,7 +45,7 @@ answer <-
 if(answer == "Y" || answer == "y") doRUN <- TRUE 
 ## Load data if necessary
 if(!doRUN){
-   load("../data/numerical_experiments_data.RData")
+   data("numerical_experiments_data", package = "nvmix")
    ## Grab individual datasets
    if(!exists("numerical_experiments_data")) error("Could not find the list 'numerical_experiments_data'")
    fit.dj30.estimated  <- numerical_experiments_data$fit.dj30.estimated
@@ -1254,6 +1254,7 @@ if(doPLOT){ # absolute errors as a fct of 'n'
             pdf(file = filename, width = height, height = height)
          }
          pnvmix_testing_abserr_plot(pnvmix.abserrors, index.qmix = j, index.dim = i)
+         if(!doPDF) mtext(paste0(qmix[j], "-mixture"), line = 1.5)
          if(doPDF) dev.off()
       }
    }
@@ -1309,6 +1310,7 @@ if(doPLOT){
          pdf(file = filename, width = width, height = height)
       }
       dnvmix_testing_plot(dnvmix.results, index.qmix = i)
+      if(!doPDF) mtext(paste0(qmix[j], "-mixture"), line = 1.5)
       if(doPDF) dev.off()
    }
 }
@@ -1332,6 +1334,7 @@ if(doPLOT){
             pdf(file = fname, height = height, width = width)
          }
          fitnvmix_testing_plot(fitnvmix.results, index.qmix = i, index.d = j)
+         if(!doPDF) mtext(paste0(qmix[i], "-mixture"), line = 1.5)
          if(doPDF) dev.off()
       }
    }
