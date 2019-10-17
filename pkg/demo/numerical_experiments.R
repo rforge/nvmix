@@ -40,10 +40,26 @@ doSTORE  <- FALSE # store result arrays via 'save(...)'?
 
 ## Ask user if experiments shall be re-performed
 answer <- 
-   readline(cat("Press 'Y' if all numerical experiments shall be re-ran (~55 hrs) before plotting or", 
+   readline(cat("Press 'Y' if all numerical experiments shall be re-run (~55 hrs) before plotting or", 
                 " press any other key if plots shall be generated from the files in ../data.", sep="\n"))
 if(answer == "Y" || answer == "y") doRUN <- TRUE 
-if(!doRUN) load("../data/numerical_experiments.RData")
+## Load data if necessary
+if(!doRUN){
+   load("../data/numerical_experiments_data.RData")
+   ## Grab individual datasets
+   if(!exists("numerical_experiments_data")) error("Could not find the list 'numerical_experiments_data'")
+   fit.dj30.estimated  <- numerical_experiments_data$fit.dj30.estimated
+   fit.dj30.analytical <- numerical_experiments_data$fit.dj30.anaylytical
+   fitnvmix.results    <- numerical_experiments_data$fitnvmix.results
+   qqplots.dj30        <- numerical_experiments_data$qqplots.dj30
+   pnvmix.t.variances  <- numerical_experiments_data$pnvmix.t.variances
+   pnvmix.t.sobolind   <- numerical_experiments_data$pnvmix.t.sobolind
+   pnvmix.t.timing     <- numerical_experiments_data$pnvmix.t.timing
+   tailprobs.dj30      <- numerical_experiments_data$tailprobs.dj30
+   dnvmix.results      <- numerical_experiments_data$dnvmix.results
+   pnvmix.abserrors    <- numerical_experiments_data$pnvmix.abserrors
+} 
+
 ## Load packages
 library(nvmix) 
 library(mvtnorm) # for comparison with pmvt()
@@ -1204,18 +1220,22 @@ if(doRUN){ # approximately 20 min
    }
 }
 
-if(doSTORE) save(fit.dj30.estimated,
-                 fitnvmix.results,
-                 fit.dj30.estimated,
-                 fit.dj30.analytical,
-                 qqplots.dj30,
-                 pnvmix.t.variances,
-                 pnvmix.t.sobolind,
-                 pnvmix.t.timing,
-                 tailprobs.dj30,
-                 dnvmix.results,
-                 pnvmix.abserrors,
-                 file = "numerical_experiments.RData")
+if(doSTORE){
+   numerical_experiments_data <- list(fit.dj30.estimated = fit.dj30.estimated,
+                                      fitnvmix.results = fitnvmix.results,
+                                      fit.dj30.anaylytical = fit.dj30.analytical,
+                                      qqplots.dj30 = qqplots.dj30,
+                                      pnvmix.t.variances = pnvmix.t.variances,
+                                      pnvmix.t.sobolind = pnvmix.t.sobolind,
+                                      pnvmix.t.timing = pnvmix.t.timing,
+                                      tailprobs.dj30 = tailprobs.dj30,
+                                      dnvmix.results = dnvmix.results,
+                                      pnvmix.abserrors = pnvmix.abserrors)
+   ## 'version = 2' needed to avoid creating dependency on >= R 3.5.0
+   ## (see https://github.com/r-lib/devtools/issues/1912#event-1942861670)
+   save(numerical_experiments_data, file = "numerical_experiments.RData",
+        version = 2)
+}
 ## 6. Plot results #############################################################
 
 ## 6.1 Plot results for 'pnvmix()' #############################################
