@@ -1062,8 +1062,8 @@ if(doRUN){ # approximately 24 hours
 }
 
 ## 2,2 Estimate variance of the integrand with/without reordering
-N        <- 5e3 # number of runs
-n        <- 5e4 # number of points to estimate variance in each run
+N        <- 5e4 # number of runs
+n        <- 1e4 # number of points to estimate variance in each run
 maxdim   <- 500 # dimension will be sampled uniformly from {3,...,maxdim}
 mindim   <- 5
 nu.lower <- 0.1 # nu is uniformly sampled between 'nu.lower', 'nu,upper'
