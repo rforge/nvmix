@@ -40,7 +40,7 @@ doSTORE  <- FALSE # store result arrays via 'save(...)'?
 
 ## Ask user if experiments shall be re-performed
 answer <- 
-   readline(cat("Press 'Y' if all numerical experiments shall be re-run (~55 hrs) before plotting or", 
+   readline(cat("Press 'Y' if all numerical experiments shall be re-run (~90 hrs) before plotting or", 
                 " press any other key if plots shall be generated from the files in ../data.", sep="\n"))
 if(answer == "Y" || answer == "y") doRUN <- TRUE 
 
@@ -1052,7 +1052,7 @@ fitnvmix_testing_plot <- function(fitnvmix.results, index.qmix = 1,
 }
 
 
-## 2, Perform numerical experiments for 'pnvmix()' #############################
+## 2. Perform numerical experiments for 'pnvmix()' #############################
 
 ## 2.1 Estimate absolute error as a function of 'n' ############################
 maxiter        <- 11 # maximum number of iterations
@@ -1072,7 +1072,7 @@ if(doRUN){ # approximately 29 hours
                                               max.fun.evals = max.fun.evals)
 }
 
-## 2,2 Estimate variance of the integrand with/without reordering
+## 2.2 Estimate variance of the integrand with/without reordering
 N        <- 5e4 # number of runs
 n        <- 1e4 # number of points to estimate variance in each run
 maxdim   <- 500 # dimension will be sampled uniformly from {3,...,maxdim}
@@ -1089,7 +1089,7 @@ if(doRUN){ # approximately 52 hours
    
 }
 
-## 2,3 Estimate Sobol indices with/without reordering
+## 2.3 Estimate Sobol indices with/without reordering
 ## Parameters:
 d  <- 10
 nu <- 1 # df for multivariate t
@@ -1111,7 +1111,7 @@ if(doRUN){ # approximately 30 min
    if(FALSE) warnings() # Warning: Conversion of the response to numeric
 }
 
-## 2,4 Compare CPU of 'pmvt()' from pkg 'mvtnorm' and 'pStudent()' from pkg 'nvmix'
+## 2.4 Compare CPU of 'pmvt()' from pkg 'mvtnorm' and 'pStudent()' from pkg 'nvmix'
 d        <- c(seq(from = 5, to = 95, by = 10), seq(from = 105, to = 1455, by = 50))
 tol      <- 1e-3
 n        <- 15 # number of runs per dimension and method
@@ -1124,7 +1124,7 @@ if(doRUN){ # approximately 7 hours
 }
 
 
-## 3, Numerical experiments for 'dnvmix()' #####################################
+## 3. Numerical experiments for 'dnvmix()' #####################################
 ## Specify simulation parameters for MVT() and PNVM()
 qmix      <- c("inverse.gamma", "pareto")
 nu.sample <- c(1, 0.5)
@@ -1137,7 +1137,7 @@ if(doRUN){ # approximately 3 min
 }
 
 
-## 4, Numerical experiments for 'fitnvmix()' ###################################
+## 4. Numerical experiments for 'fitnvmix()' ###################################
 ## Parameter setttings
 qmix <- c("inverse.gamma", "pareto")
 n    <- c(250, 500, 1000, 2000, 5000) # sample sizes of the input data
