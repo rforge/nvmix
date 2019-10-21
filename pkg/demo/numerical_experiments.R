@@ -990,7 +990,7 @@ fitnvmix_testing <- function(qmix = "inverse.gamma", n = 50, d = 10, nu = 2.5,
             fitnvmix.results[i, j, k, ] <- 
                c(fit$nu.Ests[, 1], fit.analytical.nu, CPUused[1])
          }
-         setTxtProgressBar(pb., (i-1)*length(d)+j) # update progress bar
+         setTxtProgressBar(pb., (i-1)*length(n)+j) # update progress bar
       }
    }
    ## Save results
