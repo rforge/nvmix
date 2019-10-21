@@ -1,6 +1,5 @@
 ### pnvmix() ###################################################################
 
-
 ##' Evaluate integrand of pnvmix()  (corresponds to 'g' in the paper) 
 ##' @param U (n, d) matrix of uniforms (evaluation points)
 ##' @param qmix see ?pnvmix
@@ -20,7 +19,7 @@
 pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond, 
                      mean.sqrt.mix = NULL, return.all = FALSE, verbose = TRUE, ...)
 {
-   ## Define the quantile function of the mixing variable.
+   ## Define the quantile function of the mixing variable
    special.mix <- NA 
    qW <- if(is.character(qmix)) { # 'qmix' is a character vector
       qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma", "pareto"))
@@ -54,7 +53,7 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
                 } else {
                    stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
                 }
-                special.mix <- "pareto"
+                special.mix   <- "pareto"
                 mean.sqrt.mix <- if(alpha > 0.5) alpha/(alpha-0.5) else NULL
                 function(u) (1-u)^(-1/alpha)
              },
@@ -70,9 +69,8 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
       function(u)
          qmix(u, ...)
    } else stop("'qmix' must be a character string, list or quantile function.")
-   ## Dimension of the problem:
+   ## Dimension of the problem and number of evaluations
    d <- dim(scale)[1]
-   ## Number of evals:
    n <- dim(U)[1]
    ## Factor (lower triangular)
    C        <- t(chol(scale))
@@ -83,7 +81,7 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
    if(precond && d > 2){
       if(is.null(mean.sqrt.mix))
          mean.sqrt.mix <- mean(sqrt(qW(qrng::sobol(n = 2^12, d = 1, randomize = TRUE))))
-      ## Check if provided/approximated mean.sqrt.mix is strictly positive
+      ## Check if provided/approximated' mean.sqrt.mix' is strictly positive
       if(mean.sqrt.mix <= 0)
          stop("'mean.sqrt.mix' has to be positive (possibly after being generated in pnvmix())")
       temp <- precondition(lower, upper = upper, scale = scale, factor = C, 
@@ -103,7 +101,7 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
       b <- upper
       R <- scale # C did not change 
    }
-   ## For evaluating qnorm() close to 0 and 1:
+   ## For evaluating qnorm() close to 0 and 1
    ONE <- 1-.Machine$double.neg.eps
    ZERO <- .Machine$double.eps
    ## Transform inputs to realizations of the mixing variable
@@ -169,12 +167,12 @@ cholesky_ <- function(mat, tol = 1e-12){
    ## First try 'chol()' (=>fast)
    C <- tryCatch(t(chol(mat)), error = function(e) e)
    if(is.matrix(C) && all.equal(dim(C), rep(n, 2))){
-      ## C is the desired cholesky factor
+      ## C is the desired Cholesky factor
       ## Grab diagonal
       diag.elements <- diag(C)
    } else {
       ## In this case, 't(chol(scale))' returned an error so that we manually
-      ## compute the cholesky factor of the *singular* matrix 'mat'
+      ## compute the Cholesky factor of the *singular* matrix 'mat'
       C <- matrix(0, ncol = n, nrow = n) # initialize Cholesky factor
       diag.elements <- rep(NA, n)
       for(col in 1:n){
@@ -236,7 +234,7 @@ swap <- function(i, j, lower, upper, scale)
 ##' @return list with lower, upper and scale after components/rows/columns
 ##'         have been switched according to perm
 ##' @author Erik Hintz 
-##' @note No input checking is done.         
+##' @note No input checking is done. This function is mostly for experimenting,
 reorder.limits.scale <- function(perm, upper, lower = rep(-Inf, d), scale = diag(d)){
   d <- length(upper)
   ## Vector to save current positions of original variables 
@@ -343,7 +341,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
       upper <- tmp$upper
       scale <- tmp$scale
       perm[c(i, j)] <- perm[c(j, i)]
-      ## If j>1 and an actual swap has occured, need to reorder cholesky factor:
+      ## If j>1 and an actual swap has occured, need to reorder Cholesky factor:
       if(j > 1){
         factor[c(i,j),]   <- factor[c(j,i),, drop = FALSE]
         factor[j,(j+1):i] <- matrix(0, ncol = i - j, nrow = 1)

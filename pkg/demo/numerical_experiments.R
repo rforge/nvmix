@@ -32,7 +32,7 @@ library(QRM) # for 'fit.mst()' (EM algorithm for multivariate t dist'n) and 'ret
 library(qrmdata) # for the dataset
 library(xts) # for plotting time-series objects 
 
-
+## Defaults for non-interactive demo
 doPLOT   <- TRUE # generate plots?
 doPDF    <- FALSE # generate .pdfs? (ignored if doPLOT = FALSE)
 doRUN    <- FALSE # run all experiments?
@@ -43,6 +43,16 @@ answer <-
    readline(cat("Press 'Y' if all numerical experiments shall be re-run (~55 hrs) before plotting or", 
                 " press any other key if plots shall be generated from the files in ../data.", sep="\n"))
 if(answer == "Y" || answer == "y") doRUN <- TRUE 
+
+## Ask user if data shall be stored after being generated
+if(doRUN){
+   answer <- 
+      readline(cat("Press 'Y' if all numerical results shall be stored via 'save(...)' in the current directory or",
+                   " press any other key otherwise.", sep="\n"))
+   if(answer == "Y" || answer == "y") doSTORE <- TRUE 
+}
+
+
 ## Load data if necessary
 if(!doRUN){
    data("numerical_experiments_data", package = "nvmix")
@@ -1056,7 +1066,8 @@ qmix           <- c("inverse.gamma", "pareto")
 ## Parameter 'nu' of 'qmix' (degree-of-freedom for MVT(), alpha for PNVM())
 nu             <- rep(2, 2)
 
-if(doRUN){ # approximately 24 hours 
+if(doRUN){ # approximately 29 hours 
+   set.seed(271)
    pnvmix.abserrors <-  pnvmix_testing_abserr(qmix, nu = nu, d = d, n = n, 
                                               max.fun.evals = max.fun.evals)
 }
@@ -1069,7 +1080,7 @@ mindim   <- 5
 nu.lower <- 0.1 # nu is uniformly sampled between 'nu.lower', 'nu,upper'
 nu.upper <- 5
 
-if(doRUN){ # approximately 15 hours 
+if(doRUN){ # approximately 52 hours 
    set.seed(271)
    pnvmix.t.variances <- 
       precond_testing_variance(qmix = "inverse.gamma", N = N, n = n, 
@@ -1093,7 +1104,7 @@ n  <- 5e5 # Sample size of the 3 design matrices needed in 'sobolowen()'
 seeds          <- c(10575, 96865, 30367) 
 original.seed  <- 271 # seed to generate design matrices. 
 
-if(doRUN){
+if(doRUN){ # approximately 30 min
    pnvmix.t.sobolind <- pnvmix_estimate_sobolind(
       qmix = "inverse.gamma", d = d, nu = nu, n = n, seeds = seeds, 
       original.seed = original.seed)
@@ -1107,7 +1118,8 @@ n        <- 15 # number of runs per dimension and method
 rep      <- 3 # Repetitions for *each* setting (=> eliminate noise from time measurment)
 df       <- 2 # degree-of-freedom parameter for the multivariate t dist'n 
 
-if(doRUN){
+if(doRUN){ # approximately 7 hours
+   set.seed(271)
    pnvmix.t.timing <- pnvmix_timing_mvt(d, n = n, rep = rep, tol = tol, df = df)
 }
 
@@ -1119,7 +1131,7 @@ nu.sample <- c(1, 0.5)
 nu.dens   <- c(4, 2.5)
 seed      <- 271
 
-if(doRUN){
+if(doRUN){ # approximately 3 min 
    dnvmix.results <- dnvmix_testing(qmix = qmix, nu.sample = nu.sample,
                                     nu.dens = nu.dens, seed = seed)
 }
@@ -1132,7 +1144,7 @@ n    <- c(250, 500, 1000, 2000, 5000) # sample sizes of the input data
 d    <- c(10, 50) # dimensions
 nu   <- 2.5 # true parameter to be sampled from 
 
-if(doRUN){ # ~25 min 
+if(doRUN){ # approximately 30 min
    set.seed(271) # for reproducibility
    ## Generate results
    fitnvmix.results <- fitnvmix_testing(qmix = qmix, n = n, d = d, nu = nu)
@@ -1197,6 +1209,8 @@ if(doRUN){ # approximately 20 min
    
    ## Estimate joint quantile shortfall probabilities for the different models,
    ## ie P(X_i <= F_{X_i}^{-1}(u), i = 1,...,d)
+   n <- 32
+   u <- 1 - seq(0.95, to = 0.9995, length.out = n) # small levels 
    tailprobs.dj30 <- 
       array(NA, dim = c( length(u), length(qmix.strings), length(periods) , 2), 
             dimnames = list(u = u, mix = qmix.strings, period = periods,
@@ -1395,8 +1409,7 @@ if(doPLOT){
    if(doPDF) dev.off()
    par(def.par) # reset
    ## Plot shortfall probabilities: One plot per 'period'
-   n <- 32
-   u <- 1 - seq(0.95, to = 0.9995, length.out = n) # small levels 
+   u <- as.numeric(dimnames(tailprobs.dj30)$u)
    size <- 6 # width and height for doPDF()
    pal  <- colorRampPalette(c("#000000", brewer.pal(8, name = "Dark2")[c(7, 3, 5)]))
    cols <- pal(3) # colors
