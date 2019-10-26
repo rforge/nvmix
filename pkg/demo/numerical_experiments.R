@@ -231,10 +231,11 @@ pnvmix_testing_abserr_plot <- function(pnvmix.abserrors, index.qmix = 1,
         xlab = "Number of function evaluations", ylab = "Estimated error")
    lgnd <- character(4)
    for(k in 1:4) {
-      lines(max.fun.evals, mean.abs.errors[,k], col = cols[k], lty = k)
+      lines(max.fun.evals, mean.abs.errors[,k], col = cols[k], lty = k, lwd = 2)
       lgnd[k] <- paste0(nms[k]," (",round(coeff[k], 2),")")
    }
-   legend("topright", bty = "n", lty = rev(1:4), col = rev(cols), legend = rev(lgnd))
+   legend("bottomleft", bty = "n", lty = rev(1:4), col = rev(cols), 
+          lwd = rep(2, 4), legend = rev(lgnd))
    mtext(paste0("Dimension ", d[index.dim]),  side = 4) # Dimension on the 'right' axis
    ## Return
    invisible(pnvmix.abserrors)
@@ -301,7 +302,20 @@ precond_testing_variance  <- function(qmix = "inverse.gamma", N = 1e3, n = 1e4,
 #' @return see 'scatterplot'. Additionally invisibly returns the input 
 #' @author Erik Hintz 
 #' 
-precond_testing_variance_plot  <- function(pnvmix.variances, scatterplot = TRUE){
+#' Title: Plot results obtained by 'precond_testing_variance()'
+#' 
+#' @param pnvmix.variances (N, 4) matrix as created by 'precond_testing_variance()'
+#' @param scatterplot logical; if TRUE (default) scatterplot of variances 
+#'        with/without reordering is produduces, otherwise a histogram/density
+#'        plot of variance ratios
+#' @param density logical; only used when 'scatterplot = FALSE'. If true,
+#'        a density plot of the variance ratios is generated, otherwise a 
+#'        histogram truncated to 30. 
+#' @return see 'scatterplot'. Additionally invisibly returns the input 
+#' @author Erik Hintz 
+#' 
+precond_testing_variance_plot  <- function(pnvmix.variances, scatterplot = TRUE,
+                                           density = TRUE){
    ## Only take first two columns containing 'var_precond' and 'var_noprecond'
    vars  <- pnvmix.variances[, 1:2, drop = FALSE]
    N     <- dim(vars)[1] 
@@ -315,23 +329,35 @@ precond_testing_variance_plot  <- function(pnvmix.variances, scatterplot = TRUE)
    pal <- colorRampPalette(c("#000000", brewer.pal(8, name = "Dark2")[c(7, 3, 5)]))
    cols <- pal(2) # two colors: with/without reordering
    if(scatterplot){ # produce scatterplot of ordered pairs (var_with, var_without)
-      plot(NA, xlim = c(1, N), ylim = range(vars), xlab = "Run", 
+      plot(NA, xlim = c(1, N), ylim = range(vars), 
+           # xlab = "Run (ordered according to Var(g(U)))", 
+           xlab = expression(paste("Run (ordered according to Var(", tilde(g), "(U)))")),
            ylab = "Estimated variance")
       for(i in 2:1){
          points(vars[,i], col = cols[i], pch = i)
       }
-      legend('topright', c("Without reordering",  "With reordering"), 
+      legend('topleft', c("Without reordering",  "With reordering"), 
              col = rev(cols), pch = 2:1, bty = "n")
    } else { # produce histogram of variance ratios
-      ## Variance ratios for the histogram:
-      vars.ratios <- vars[, 2] / vars[, 1] # non-precond / precond
-      if(any(is.na(vars.ratios))) vars.ratios <- vars.ratios[-which(is.na(vars.ratios))]
-      end.hist <- 30 # any ratio > end.hist is set to end.hist as ow plot too wide
-      vars.ratios.hist <- vars.ratios
-      vars.ratios.hist[vars.ratios.hist > end.hist] <- end.hist
-      hist(vars.ratios.hist, breaks = 50, freq = FALSE, main = NULL, 
-           xlab = "Estimated variance ratio without versus with reordering")
-      abline(v = 1, col = 'red', lty = 1, lwd = 1)
+      if(!density){
+         ## Variance ratios for the histogram:
+         vars.ratios <- vars[, 2] / vars[, 1] # non-precond / precond
+         if(any(is.na(vars.ratios))) vars.ratios <- vars.ratios[-which(is.na(vars.ratios))]
+         end.hist <- 100 # any ratio > end.hist is set to end.hist as ow plot too wide
+         vars.ratios.hist <- vars.ratios
+         vars.ratios.hist[vars.ratios.hist > end.hist] <- end.hist
+         hist(vars.ratios.hist, breaks = 50, freq = FALSE, main = NULL, 
+              xlab = "Estimated variance ratio without versus with reordering")
+         abline(v = 1, col = 'red', lty = 1, lwd = 1)
+      } else {
+         dens <- density(vars.ratios)
+         plot(dens$x, dens$y, type = 'l', log = 'x', axes = F, 
+              xlab = "Estimated variance ratio without versus with reordering",
+              ylab = "Density")
+         axis(1, at = c(0, 1, 5, 50, 500, 5000)) # x axis
+         axis(2) # y axis
+         abline(v = 1, col = 'red', lty = 1, lwd = 1)
+      }
    }
    invisible(pnvmix.variances)
 }
@@ -780,8 +806,11 @@ dnvmix_testing_plot <- function(dnvmix.results, index.qmix, plot.title = FALSE)
    ## Plot P((X-mu)^T Sigma^{-1} (X-mu) > maha) 
    plot(sqrt(maha), pgreater, type = 'l', col = cols[1], xlab = "", 
         ylab = "", log = "y", axes = F, lty = 3, ylim = c(0.01*min(pgreater), 1))
-   axis(2, ylim = range(pgreater), lwd = 2)
-   mtext(2, text = expression(paste("P(", D^2, ">", m^2,")")), line = 1.9)
+   axis(2, ylim = range(pgreater), lwd = 1)
+   # mtext(2, text = expression(paste("P(", D^2, ">", m^2,")")), line = 1.9)
+   mtext(2, text = 
+            expression(paste("P(", (X-mu)^T, Sigma^-1, (X-mu), ">", m^2,")")), 
+         line = 1.9)
    par(new = T)
    ## Plot 'ldens.est.doadapt' as a function of 'sqrt(maha)'
    if(plot.doadapt){
@@ -847,7 +876,7 @@ dnvmix_testing_plot <- function(dnvmix.results, index.qmix, plot.title = FALSE)
       col.used <- c(col.used, cols[4])
    } 
    ## Get both axis
-   axis(4, ylim = rgY, lwd = 2, line = 0)
+   axis(4, ylim = rgY, lwd = 1, line = 0)
    mtext(4, text = "log-density", line = 2)
    axis(1, pretty(range(sqrt(maha)), 10))
    mtext("m (Mahalanobis distance)", side = 1, col = "black", line = 2)
@@ -1037,11 +1066,11 @@ fitnvmix_testing_plot <- function(fitnvmix.results, index.qmix = 1,
    for(j in seq_along(n)){
       ## Grab analytical result (possibly NA) and CPU needed
       analytical.result <- fitnvmix.results[index.d, j, index.qmix, "Analytical"]
-      CPU               <- fitnvmix.results[index.d, j, index.qmix, "CPU"]
+      CPU               <- round(fitnvmix.results[index.d, j, index.qmix, "CPU"], 1)
       lines(iter, fitnvmix.results[index.d, j, index.qmix, 1:numiter],
             col = cols[j], lty = j)
       lgn[[j]] <- bquote(hat(nu)[fitnvmix]~textstyle('for')~textstyle(n == .(n[j]))~
-                            textstyle(' (')~textstyle(.(CPU))~textstyle('sec)'))
+                            textstyle(' (')~textstyle(.(CPU))~textstyle('s)'))
       ## If available, put a mark at the end of the plot with analytical result
       if(!is.na(analytical.result)) points(tail(iter, 1), analytical.result, 
                                            col = cols[j], pch = j)
@@ -1285,7 +1314,8 @@ if(doPLOT){ # variances with/without reordering
    ## Produce histogram of variance ratios
    if(doPDF) pdf(file="fig_pnvmix.t.variances.histogram.pdf", width = height, 
                  height = height)
-   precond_testing_variance_plot(pnvmix.t.variances, scatterplot = FALSE)
+   precond_testing_variance_plot(pnvmix.t.variances, scatterplot = FALSE,
+                                 density = TRUE)
    if(doPDF) dev.off()
 }
 
@@ -1357,7 +1387,7 @@ if(doPLOT){
 ## 6.4 Plot results for the DJ30 data analysis #################################
 
 if(doPLOT){
-   size <- 9 # width and height for doPDF()
+   size <- 8.5 # width and height for doPDF()
    ## Create matrices with 'nu' estimates and run-times in brackets
    res.analytical <- matrix(NA, ncol = 3, nrow = 3)
    colnames(res.analytical) <- qmix.strings
@@ -1389,8 +1419,8 @@ if(doPLOT){
    print(res.analytical)
    print(res.estimated)
    ## Produce QQ-Plots (results already obtained above)
-   qmix.strings. <- qmix.strings
-   qmix.strings.[2] <- "inverse-gamma" # instead of "inverse.gamma"
+   qmix.strings. <- c("Constant", "Inverse-gamma", "Pareto") # capitalized 
+   periods.      <- c("Daily", "Weekly", "Monthly") # capitalized 
    if(doPDF) pdf(file = (file <- "fig_qqplotsdj30.pdf"),
                  width = size, height = size)
    def.par <- par(no.readonly = TRUE) # save default, for resetting...
@@ -1403,35 +1433,35 @@ if(doPLOT){
               xlab = "Theoretical quantiles", ylab = "Sample quantiles", main = "")
          lines(qqplots.dj30[[i,j]]$q, qqplots.dj30[[i,j]]$q, lty = 2) # diagonal
          if(i == 1) mtext(qmix.strings.[j],  cex = 1.1, line = 1)
-         if(j == 3) mtext(periods[i],  cex = 1.1, line = 1, side = 4, adj = NA)
+         if(j == 3) mtext(periods.[i],  cex = 1.1, line = 1, side = 4, adj = NA)
       }
    }
    if(doPDF) dev.off()
    par(def.par) # reset
    ## Plot shortfall probabilities: One plot per 'period'
-   u <- as.numeric(dimnames(tailprobs.dj30)$u)
-   size <- 6 # width and height for doPDF()
+   u    <- as.numeric(dimnames(tailprobs.dj30)$u)
+   size <- 5.5 # width and height for doPDF()
    pal  <- colorRampPalette(c("#000000", brewer.pal(8, name = "Dark2")[c(7, 3, 5)]))
    cols <- pal(3) # colors
    for(j in seq_along(periods)){
       if(doPDF) pdf(file = paste0("fig_shortfallprob_", periods[j], ".pdf"),
                     width = size, height = size)
       plot(NA, xlim = range(u), ylim = range(tailprobs.dj30[,,,2]), xlab = "u",
-           ylab = expression("Tail probability"~P(X[1]<=q[u],...,X[30]<=q[u])),
+           ylab = expression(P(X[1]<=q[u],...,X[30]<=q[u])),
            log = "y")
       for(i in seq_along(qmix.strings)){
          lines(u, tailprobs.dj30[, i, j, 2], type = 'l', col = cols[i], lty = i)
       }
-      mtext(periods[j],  cex = 1.1, line = 1)
-      legend("bottomright", c("multiv. normal", "inverse-gamma mixture", "pareto mixture"),
-             col = cols, lty = 1:3)
+      mtext(periods.[j],  cex = 1.1, line = 1)
+      legend("bottomright", c("Pareto mixture", "Inverse-gamma mixture", "Multiv. normal"),
+             col = rev(cols), lty = 3:1, box.lty = 0)
       if(doPDF) dev.off()
    }
    ## Plot shotfall probabilities standardized by the normal case:
    lgn <- vector("expression", 6)
    if(doPDF) pdf(file = "fig_shortfallprob_standardized.pdf", width = size, height = size)
    plot(NA, xlim = range(u), ylim = c(1, 1e5), xlab = "u",
-        ylab = expression("Tail probability"~P(X[1]<=q[u],...,X[30]<=q[u])~"standardized by Normal case"),
+        ylab = expression(P(X[1]<=q[u],...,X[30]<=q[u])~"standardized by the normal"),
         log = "y")
    for(i in 2:3){ # omit normal case 
       for(j in seq_along(periods)){
@@ -1439,7 +1469,7 @@ if(doPLOT){
          lgn[[(i-2)*3+j]] <- paste0(qmix.strings.[i], " (", periods[j], " data)")
       }
    }
-   legend("topright", lgn, col = rep(cols, 2), lty = rep(1:2, each = 3))
+   legend("topright", lgn, col = rep(cols, 2), lty = rep(1:2, each = 3),
+          box.lty = 0)
    if(doPDF) dev.off()
 }
-
