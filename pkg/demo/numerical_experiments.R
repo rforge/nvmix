@@ -1,6 +1,7 @@
+## Demo "numerical_experiments" 
 ## By Erik Hintz (2019)
 
-## Numerical experiments for 'pnvmix()', 'dnvmix()'and 'fitnvmix()'
+## Numerical experiments for 'pnvmix()', 'dnvmix()'and 'fitnvmix()' ############
 
 
 ## Table of contents ###########################################################
@@ -338,11 +339,11 @@ precond_testing_variance_plot  <- function(pnvmix.variances, scatterplot = TRUE,
       }
       legend('topleft', c("Without reordering",  "With reordering"), 
              col = rev(cols), pch = 2:1, bty = "n")
-   } else { # produce histogram of variance ratios
+   } else { # produce histogram /density plot of variance ratios
+      ## Variance ratios for the histogram:
+      vars.ratios <- vars[, 2] / vars[, 1] # non-precond / precond
+      if(any(is.na(vars.ratios))) vars.ratios <- vars.ratios[-which(is.na(vars.ratios))]
       if(!density){
-         ## Variance ratios for the histogram:
-         vars.ratios <- vars[, 2] / vars[, 1] # non-precond / precond
-         if(any(is.na(vars.ratios))) vars.ratios <- vars.ratios[-which(is.na(vars.ratios))]
          end.hist <- 100 # any ratio > end.hist is set to end.hist as ow plot too wide
          vars.ratios.hist <- vars.ratios
          vars.ratios.hist[vars.ratios.hist > end.hist] <- end.hist
@@ -350,17 +351,18 @@ precond_testing_variance_plot  <- function(pnvmix.variances, scatterplot = TRUE,
               xlab = "Estimated variance ratio without versus with reordering")
          abline(v = 1, col = 'red', lty = 1, lwd = 1)
       } else {
-         dens <- density(vars.ratios)
-         plot(dens$x, dens$y, type = 'l', log = 'x', axes = F, 
-              xlab = "Estimated variance ratio without versus with reordering",
+         dens <- density(1/vars.ratios)
+         plot(dens$x, dens$y, type = 'l', axes = T, 
+              xlab = "Estimated variance ratio with versus without reordering",
               ylab = "Density")
-         axis(1, at = c(0, 1, 5, 50, 500, 5000)) # x axis
-         axis(2) # y axis
-         abline(v = 1, col = 'red', lty = 1, lwd = 1)
+         # abline(v = 1, col = 'red', lty = 2) 
+         legend("topright", expression(paste("Var(", tilde(g), "(U)) / Var(g(U))")),
+                lty = 1, col = "black", bty = 'n')
       }
    }
    invisible(pnvmix.variances)
 }
+
 
 #' Title: Estimate sobol indices with/without reordering
 #'
@@ -1081,6 +1083,7 @@ fitnvmix_testing_plot <- function(fitnvmix.results, index.qmix = 1,
 }
 
 
+
 ## 2. Perform numerical experiments for 'pnvmix()' #############################
 
 ## 2.1 Estimate absolute error as a function of 'n' ############################
@@ -1279,6 +1282,7 @@ if(doSTORE){
    save(numerical_experiments_data, file = "numerical_experiments.RData",
         version = 2)
 }
+
 ## 6. Plot results #############################################################
 
 ## 6.1 Plot results for 'pnvmix()' #############################################
