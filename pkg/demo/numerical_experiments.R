@@ -1297,7 +1297,7 @@ if(doPLOT){ # absolute errors as a fct of 'n'
       for(j in seq_along(qmix)){
          if(doPDF){
             curr.qmix <- if(qmix[j] == "inverse.gamma") "t" else qmix[j] # keep fname short
-            filename  <- paste0("fig_pnvmix.", curr.qmix, ".abserrors_dim", d[i],".pdf")
+            filename  <- paste0("fig_pnvmix_", curr.qmix, "_abserrors_dim", d[i],".pdf")
             pdf(file = filename, width = height, height = height)
          }
          pnvmix_testing_abserr_plot(pnvmix.abserrors, index.qmix = j, index.dim = i)
@@ -1311,12 +1311,12 @@ if(doPLOT){ # variances with/without reordering
    height <- 6 # for plotting
    width  <- 9
    ## Produce scatterplot
-   if(doPDF) pdf(file="fig_pnvmix.t.variances.scatterplot.pdf", width = height, 
+   if(doPDF) pdf(file="fig_pnvmix_t_variances_scatterplot.pdf", width = height, 
                  height = height)
    precond_testing_variance_plot(pnvmix.t.variances, scatterplot = TRUE)
    if(doPDF) dev.off()
    ## Produce histogram of variance ratios
-   if(doPDF) pdf(file="fig_pnvmix.t.variances.histogram.pdf", width = height, 
+   if(doPDF) pdf(file="fig_pnvmix_t_variances_histogram.pdf", width = height, 
                  height = height)
    precond_testing_variance_plot(pnvmix.t.variances, scatterplot = FALSE,
                                  density = TRUE)
@@ -1328,7 +1328,7 @@ if(doPLOT){ # sobol indices with/without re-ordering
    width  <- 10
    for(i in seq_along(seeds)){
       if(doPDF){
-         fname <- paste("fig_pnvmix.t.sobolind_seed", seeds[i],".pdf", sep = "")
+         fname <- paste("fig_pnvmix_t_sobolind_seed", seeds[i],".pdf", sep = "")
          pdf(file = fname, height = height, width = width)
       }
       pnvmix_estimate_sobolind_plot(pnvmix.t.sobolind, index.seed = i)
@@ -1339,9 +1339,7 @@ if(doPLOT){ # sobol indices with/without re-ordering
 if(doPLOT){ # timing experiment
    height <- 4.5 # for plotting
    width  <- 9
-   if(!exists('pnvmix.t.timing')) 
-      pnvmix.t.timing <- readRDS(file = "../data/pnvmix.t.timing.rda")
-   if(doPDF) pdf(file = "fig_pnvmix.t.timing.pdf", width = width, height = height)
+   if(doPDF) pdf(file = "fig_pnvmix_t_timing.pdf", width = width, height = height)
    pnvmix_timing_mvt_plot(pnvmix.t.timing)
    if(doPDF) dev.off()
 }
@@ -1354,7 +1352,7 @@ if(doPLOT){
    for(i in seq_along(qmix)){
       if(doPDF){
          curr.qmix <- if(qmix[i] == "inverse.gamma") "t" else qmix[i] # keep fname short
-         filename  <- paste0("fig_dnvmix.", curr.qmix, ".pdf")
+         filename  <- paste0("fig_dnvmix_", curr.qmix, ".pdf")
          pdf(file = filename, width = width, height = height)
       }
       dnvmix_testing_plot(dnvmix.results, index.qmix = i)
@@ -1378,7 +1376,7 @@ if(doPLOT){
       for(j in seq_along(d)){
          ## Generate .pdf?
          if(doPDF){
-            fname <- paste("fig_fitnvmix.", curr.qmix, ".dim", d[j],".pdf", sep = "")
+            fname <- paste("fig_fitnvmix_", curr.qmix, "_dim", d[j],".pdf", sep = "")
             pdf(file = fname, height = height, width = width)
          }
          fitnvmix_testing_plot(fitnvmix.results, index.qmix = i, index.d = j)
