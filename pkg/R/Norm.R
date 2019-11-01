@@ -57,12 +57,15 @@ dNorm <- function(x, loc = rep(0, d), scale = diag(d),
 ##' @author Erik Hintz and Marius Hofert
 ##' 
 ##' 
-pNorm <- function(upper, lower = rep(-Inf, d),
+pNorm <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
                   loc = rep(0, d), scale = diag(d), standardized = FALSE,
                   control = list(),
                   verbose = TRUE)
 {
-    d <- length(upper) # for 'lower', 'loc', 'scale'
+   ## Checks (needed to get the default for 'lower' correctly)
+   if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
+   n <- nrow(upper) # number of evaluation points
+   d <- ncol(upper) # dimension
     pnvmix(upper, lower = lower, qmix = "constant", loc = loc, scale = scale,
            standardized = standardized, control = control, verbose = verbose)
 }

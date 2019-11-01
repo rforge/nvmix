@@ -12,10 +12,10 @@ pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
       loc = rep(0, d), scale = diag(d), standardized = FALSE,
       control = list(), verbose = TRUE, ...)
 
-pStudent(upper, lower = rep(-Inf, d), df, loc = rep(0, d), scale = diag(d),
-         standardized = FALSE, control = list(), verbose = TRUE)
-pNorm(upper, lower = rep(-Inf, d), loc = rep(0, d), scale = diag(d),
-      standardized = FALSE, control = list(), verbose = TRUE)
+pStudent(upper, lower = matrix(-Inf, nrow = n, ncol = d), df, loc = rep(0, d), 
+         scale = diag(d), standardized = FALSE, control = list(), verbose = TRUE)
+pNorm(upper, lower = matrix(-Inf, nrow = n, ncol = d), loc = rep(0, d), 
+      scale = diag(d), standardized = FALSE, control = list(), verbose = TRUE)
 }
 \arguments{
   \item{upper}{\eqn{(n, d)}-\code{\link{matrix}} of upper integration limits;
