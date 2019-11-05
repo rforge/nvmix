@@ -3,10 +3,9 @@
 
 ## Numerical experiments for 'pnvmix()', 'dnvmix()'and 'fitnvmix()' ############
 
-
 ## Table of contents ###########################################################
-## 
 ## 1.    Helper functions to perform the experiments
+## 
 ## 
 ## 2.    Numerical experiments for 'pnvmix'
 ## 
@@ -38,6 +37,10 @@ doPLOT   <- TRUE # generate plots?
 doPDF    <- FALSE # generate .pdfs? (ignored if doPLOT = FALSE)
 doRUN    <- FALSE # run all experiments?
 doSTORE  <- FALSE # store result arrays via 'save(...)'?
+
+## Global variables for plotting
+lwds <- c(1, 1.3, 1.8, 1.6, 1.3, 1.5) # lwd for lty = 'l'
+# 'solid', 'dashed', 'dotted', 'dotdash', 'longdash', 'twodash'
 
 ## Ask user if experiments shall be re-performed
 answer <- 
@@ -86,7 +89,7 @@ library(xts) # for plotting time-series objects
 ## 1. Helper functions to perform the experiments ##############################
 
 ## 1.1  Experiments for 'pnvmix()'  ############################################
-
+#
 #' Title: Data generation for numerical experiments for 'pnvmix()': 
 #'        Estimate absolute error as a function of total number of fun.evals
 #' 
@@ -231,12 +234,14 @@ pnvmix_testing_abserr_plot <- function(pnvmix.abserrors, index.qmix = 1,
    plot(NA, log = "xy", xlim = range(max.fun.evals), ylim = range(mean.abs.errors),
         xlab = "Number of function evaluations", ylab = "Estimated error")
    lgnd <- character(4)
+   lwds <- c(1, 1.1, 1.7, 1.6, 1.45, 1.3)[1:4] # lwds[k] for 'lty = k'
    for(k in 1:4) {
-      lines(max.fun.evals, mean.abs.errors[,k], col = cols[k], lty = k, lwd = 2)
+      lines(max.fun.evals, mean.abs.errors[,k], col = cols[k], lty = k, 
+            lwd = lwds[k])
       lgnd[k] <- paste0(nms[k]," (",round(coeff[k], 2),")")
    }
    legend("bottomleft", bty = "n", lty = rev(1:4), col = rev(cols), 
-          lwd = rep(2, 4), legend = rev(lgnd))
+          lwd = rev(lwds), legend = rev(lgnd))
    mtext(paste0("Dimension ", d[index.dim]),  side = 4) # Dimension on the 'right' axis
    ## Return
    invisible(pnvmix.abserrors)
@@ -481,7 +486,7 @@ pnvmix_estimate_sobolind_plot <- function(pnvmix.t.sobolind, index.seed = 1){
    }
    legend("topright", bty = "n", lty = rev(1:2), col = rev(cols), legend = rev(nms),
           pch = rev(1:2))
-   ## Text under the plot
+   ## Text under the pot
    mtext(paste("With/without reordering: Var(g(U)) =", 
                toString(round(vars[1], 5)), "/", toString(round(vars[2], 5)), 
                "and sum of first order indices =", toString(round(sums[1], 2)),
@@ -796,9 +801,6 @@ dnvmix_testing_plot <- function(dnvmix.results, index.qmix, plot.title = FALSE)
    par(mar = c(4, 3, 3, 3) + 0.15)
    ## Initiallize legend (also lty, pch etc)
    lgnd <- expression(paste("P(", (X-mu)^T, Sigma^-1, (X-mu), ">", m^2,")"))
-   lty.used <- c(3)
-   pch.used <- c(NA)
-   col.used <- c(cols[1])
    ## Any errors NA? Will be set below
    anyerrorNA <- FALSE
    ## Is there a 'no.adapt' data-set provided?
@@ -807,22 +809,28 @@ dnvmix_testing_plot <- function(dnvmix.results, index.qmix, plot.title = FALSE)
    plot.doadapt <- !prod(is.na(ldens.est.doAdapt))
    ## Plot P((X-mu)^T Sigma^{-1} (X-mu) > maha) 
    plot(sqrt(maha), pgreater, type = 'l', col = cols[1], xlab = "", 
-        ylab = "", log = "y", axes = F, lty = 3, ylim = c(0.01*min(pgreater), 1))
+        ylab = "", log = "y", axes = F, lty = 3, lwd = lwds[3],
+        ylim = c(0.01*min(pgreater), 1))
    axis(2, ylim = range(pgreater), lwd = 1)
    # mtext(2, text = expression(paste("P(", D^2, ">", m^2,")")), line = 1.9)
    mtext(2, text = 
             expression(paste("P(", (X-mu)^T, Sigma^-1, (X-mu), ">", m^2,")")), 
          line = 1.9)
+   lty.used <- c(3)
+   lwd.used <- lwds[3]
+   pch.used <- c(NA)
+   col.used <- c(cols[1])
    par(new = T)
    ## Plot 'ldens.est.doadapt' as a function of 'sqrt(maha)'
    if(plot.doadapt){
       plot(sqrt(maha), ldens.est.doAdapt,  col = cols[2], lty = 1, xlab = "", 
-           ylab = "", main = if(plot.title) 
+           ylab = "", lwd = lwds[1], main = if(plot.title) 
               paste0("d = ", d, " ; n = ", n, " ; nu = ", nu.dens) else "", 
            xlim = rgX, ylim = rgY, axes = F, type = "l")
       ## Add to legend
       lgnd <- c(lgnd, paste0("est. log-density (adaptive, ", round(CPUused.doAdapt , 2), " sec)"))
       lty.used <- c(lty.used, 1)
+      lwd.used <- c(lwd.used, lwds[1])
       pch.used <- c(pch.used, NA)
       col.used <- c(col.used, cols[2])
       ## Mark points for which the estimation is unreliable (ie 'error = NA')
@@ -833,11 +841,13 @@ dnvmix_testing_plot <- function(dnvmix.results, index.qmix, plot.title = FALSE)
       }
       ## Plot 'ldens.est.noadapt' as a function of 'sqrt(maha)'
       if(plot.noadapt){
-         lines(sqrt(maha), ldens.est.noAdapt,  col = cols[3], lty = 2)
+         lines(sqrt(maha), ldens.est.noAdapt,  col = cols[3], lty = 2,
+               lwd = lwds[2])
          ## Add to legend
          lgnd <- c(lgnd, paste0("est. log-density (non-adaptive, ", 
                                 round(CPUused.noAdapt , 2), " sec)"))
          lty.used <- c(lty.used, 2)
+         lwd.used <- c(lwd.used, lwds[2])
          pch.used <- c(pch.used, NA)
          col.used <- c(col.used, cols[3])
          ## Mark points for which the estimation is unreliable (ie 'error = NA')
@@ -849,10 +859,11 @@ dnvmix_testing_plot <- function(dnvmix.results, index.qmix, plot.title = FALSE)
       }
    } else if(plot.noadapt){
       ## Plot *only* 'ldens.est.noadapt' as a function of 'sqrt(maha)'
-      plot(sqrt(maha), ldens.est.noAdapt,  col = cols[3], lty = 1, xlab = "", 
-           ylab = "", main = if(plot.title) 
+      plot(sqrt(maha), ldens.est.noAdapt,  col = cols[3], lwd = lwds[1], 
+           xlab = "", ylab = "", main = if(plot.title) 
               paste0("d = ", d, " ; n = ", n, " ; nu = ", nu.dens) else "", 
            xlim = rgX, ylim = rgY, axes = F, type = "l")
+      lwd.used <- c(lwd.used, lwds[1])
       lty.used <- c(lty.used, 1)
       pch.used <- c(pch.used, NA)
       col.used <- c(col.used, cols[3])
@@ -874,6 +885,7 @@ dnvmix_testing_plot <- function(dnvmix.results, index.qmix, plot.title = FALSE)
       ## Add to legend
       lgnd <- c(lgnd, "True log-density")
       lty.used <- c(lty.used, NA)
+      lwd.used <- c(lwd.used, NA)
       pch.used <- c(pch.used, 4)
       col.used <- c(col.used, cols[4])
    } 
@@ -887,11 +899,12 @@ dnvmix_testing_plot <- function(dnvmix.results, index.qmix, plot.title = FALSE)
    if(anyerrorNA){
       lgnd     <- c(lgnd, "Error NA")
       lty.used <- c(lty.used, NA)
+      lwd.used <- c(lwd.used, NA)
       pch.used <- c(pch.used, 9)
       col.used <- c(col.used, "black")
    }
    legend('topright', lgnd, col = col.used, lty = lty.used, pch = pch.used,
-          box.lty = 0)
+          box.lty = 0, lwd = lwd.used)
    par(def.par)
    ## Return (invisbly)
    invisible(dnvmix.results)
@@ -1050,18 +1063,22 @@ fitnvmix_testing_plot <- function(fitnvmix.results, index.qmix = 1,
    ## Input checking
    stopifnot(length(dim(fitnvmix.results)) == 4)
    ## Grab sample sizes from dimension names 
-   n    <- as.integer(dimnames(fitnvmix.results)$n)
-   d    <- as.integer(dimnames(fitnvmix.results)$d)
+   n         <- as.integer(dimnames(fitnvmix.results)$n)
+   length.n  <- length(n)
+   d         <- as.integer(dimnames(fitnvmix.results)$d)
    
    numiter <- length(dimnames(fitnvmix.results)[[4]]) - 2
    ## If 'nu.init' wasn't provided (=> estimated) start at iteration 0
    iter <- if(is.na(attr(fitnvmix.results, 'nu.init'))) 0:(numiter-1) else 1:numiter
    ## Colors
    pal  <- colorRampPalette(c("#000000", brewer.pal(8, name = "Dark2")[c(7, 3, 5)]))
-   cols <- pal(length(n)) # colors
+   cols <- pal(length.n) # colors
+   ## 'lwd's for different 'lty's 
+   lwds.curr <- (if(length.n <= 6) lwds[1:length.n] else 
+      c(lwds, rep(max(lwds), length.n - 5)))
    ## Set up legend
-   lgn <- vector("expression", length(n))
-   plot(NA, xlim = c(1, numiter),
+   lgn <- vector("expression", length.n)
+   plot(NA, xlim = range(iter), 
         ylim = range(fitnvmix.results[index.d, , index.qmix, 1:(numiter+1)], na.rm = TRUE),
         xlab = "Number of iterations", ylab = expression(widehat(nu)))
    mtext(paste0("d = ", d[index.d]), side = 4)     
@@ -1070,18 +1087,18 @@ fitnvmix_testing_plot <- function(fitnvmix.results, index.qmix = 1,
       analytical.result <- fitnvmix.results[index.d, j, index.qmix, "Analytical"]
       CPU               <- round(fitnvmix.results[index.d, j, index.qmix, "CPU"], 1)
       lines(iter, fitnvmix.results[index.d, j, index.qmix, 1:numiter],
-            col = cols[j], lty = j)
+            col = cols[j], lty = j, lwd = lwds.curr[j])
       lgn[[j]] <- bquote(hat(nu)[fitnvmix]~textstyle('for')~textstyle(n == .(n[j]))~
                             textstyle(' (')~textstyle(.(CPU))~textstyle('s)'))
       ## If available, put a mark at the end of the plot with analytical result
       if(!is.na(analytical.result)) points(tail(iter, 1), analytical.result, 
-                                           col = cols[j], pch = j)
+                                           col = cols[j], 
+                                           pch = if(index.qmix == 1) 1 else 3)
    }
    legend('topright', legend = lgn, col = cols, lty = 1:length(n), box.lty = 0)
    ## Invisbly return data (eg in case it was called by 'fitnvix_testing()')
    invisible(fitnvmix.results)
 }
-
 
 
 ## 2. Perform numerical experiments for 'pnvmix()' #############################
@@ -1365,8 +1382,8 @@ if(doPLOT){
 
 d <- c(10, 50) # dimensions
 if(doPLOT){
-   height <- 7 # for pdf(..., height, width)
-   width  <- 7
+   height <- 5.5 # for pdf(..., height, width)
+   width  <- 5.5
    names.qmix <- dimnames(fitnvmix.results)$qmix
    ## For each mixing quantile fct 'qmix' and each dimension a separate plot
    for(i in seq_along(qmix)){
@@ -1432,8 +1449,9 @@ if(doPLOT){
    for(i in 1:3){ # for each period
       for(j in 1:3){ # for each 'qmix'
          plot(qqplots.dj30[[i,j]]$q, qqplots.dj30[[i,j]]$maha2, 
-              xlab = "Theoretical quantiles", ylab = "Sample quantiles", main = "")
-         lines(qqplots.dj30[[i,j]]$q, qqplots.dj30[[i,j]]$q, lty = 2) # diagonal
+              xlab = "Theoretical quantiles", ylab = "Sample quantiles", main = "",
+              pch = 4)
+         lines(qqplots.dj30[[i,j]]$q, qqplots.dj30[[i,j]]$q, lty = 2, lwd = 0.5) # diagonal
          if(i == 1) mtext(qmix.strings.[j],  cex = 1.1, line = 1)
          if(j == 3) mtext(periods.[i],  cex = 1.1, line = 1, side = 4, adj = NA)
       }
@@ -1452,11 +1470,12 @@ if(doPLOT){
            ylab = expression(P(X[1]<=q[u],...,X[30]<=q[u])),
            log = "y")
       for(i in seq_along(qmix.strings)){
-         lines(u, tailprobs.dj30[, i, j, 2], type = 'l', col = cols[i], lty = i)
+         lines(u, tailprobs.dj30[, i, j, 2], type = 'l', col = cols[i], lty = i, 
+               lwd = lwds[i])
       }
       mtext(periods.[j],  cex = 1.1, line = 1)
       legend("bottomright", c("Pareto mixture", "Inverse-gamma mixture", "Multiv. normal"),
-             col = rev(cols), lty = 3:1, box.lty = 0)
+             col = rev(cols), lty = 3:1, lwd = lwds[3:1], box.lty = 0)
       if(doPDF) dev.off()
    }
    ## Plot shotfall probabilities standardized by the normal case:
@@ -1467,11 +1486,14 @@ if(doPLOT){
         log = "y")
    for(i in 2:3){ # omit normal case 
       for(j in seq_along(periods)){
-         lines(u, tailprobs.dj30[, i, j, 2]/tailprobs.dj30[, 1, j, 2], lty = i-1, col = cols[j])
+         lines(u, tailprobs.dj30[, i, j, 2]/tailprobs.dj30[, 1, j, 2], lty = (i-1),
+               col = cols[j], lwd = lwds[i-1])
          lgn[[(i-2)*3+j]] <- paste0(qmix.strings.[i], " (", periods[j], " data)")
       }
    }
-   legend("topright", lgn, col = rep(cols, 2), lty = rep(1:2, each = 3),
-          box.lty = 0)
+   legend("topright", lgn, col = rep(cols, 2), lty = (ltys <- rep(1:2, each = 3)),
+          lwd = lwds[ltys], box.lty = 0)
    if(doPDF) dev.off()
 }
+
+
