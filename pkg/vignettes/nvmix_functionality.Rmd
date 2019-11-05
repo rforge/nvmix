@@ -410,7 +410,7 @@ cloud(r[,3] ~ r[,1] * r[,2], screen = list(z = 115, x = -68),
 if(doPDF) dev.off()
 ```
 
-## Parameter estimation
+## 5 Parameter estimation
 
 The function `fitnvmix()` can be used to fit any multivariate normal variance
 mixture distribution to data so long as the quantile function of the mixing
@@ -428,18 +428,17 @@ RQMC methods. The following example illustrates the problem of fitting data
 to a Pareto-mixture. 
 
 ```{r, fig.align = "center", fig.width = 6, fig.height = 6, fig.show = "hold"}
-set.seed(42)
+set.seed(42) # for reproducibility 
 ## Define 'qmix' as the quantile function of a Par(nu, 1) distribution
 qmix <- function(u, nu) (1-u)^(-1/nu)
 ## Parameters for sampling
-n         <- 100          
-d         <- 5
+n         <- 50    
+d         <- 3
 loc       <- rep(0, d) # true location vector
 A         <- matrix(runif(d * d), ncol = d)
-diag_vars <- diag(runif(d, min = 2, max = 5))
-scale     <- diag_vars %*% cov2cor(A %*% t(A)) %*% diag_vars # true scale matrix
-nu        <- 3 # true mixing parameter 
-mix.param.bounds  <- c(1, 7) # nu in [1, 5]
+scale     <- cov2cor(A %*% t(A)) # true scale matrix
+nu        <- 2.4 # true mixing parameter 
+mix.param.bounds  <- c(1, 10) # nu in [1, 10]
 ## Sample data using 'rnvmix()':
 x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
 ## Call 'fitvnmix()' with 'qmix' as function (so all densities/weights are estimated)
@@ -447,7 +446,7 @@ x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
 ## Call 'fitnvmix()' with 'qmix = "pareto"' in which case an analytical formula
 ## for the density is used
 (MyFit22 <- fitnvmix(x, qmix = "pareto", mix.param.bounds = mix.param.bounds))
-# stopifnot(all.equal(MyFit21$nu, MyFit22$nu, tol = 5e-2))
+stopifnot(all.equal(MyFit21$nu, MyFit22$nu, tol = 5e-2))
 ## Produce a Q-Q-Plot of the sampled mahalanobis distance versus their theoretical
 ## quantiles with parameters estimated in 'MyFit21' 
 if(doPDF) pdf(file = (file <- paste0("fig_fitnvmix_qqplot.pdf")),
@@ -456,9 +455,3 @@ qqplot.maha(x, qmix = "pareto", loc = MyFit21$loc, scale = MyFit21$scale,
             alpha = MyFit21$nu)
 if(doPDF) dev.off()
 ```
-
-
-
-
-
-

@@ -576,7 +576,6 @@ fitnvmix <- function(x, qmix,
          if(verbose >= 2) cat(paste0("  Iteration ",iter.EMCE + 1, '\n'))
          
          ## 2.1: 'loc.est' and 'scale.est' updates #############################
-         
          converged.locscale   <- FALSE
          iter.locscaleupdate  <- 1
          ## Update 'scale.est' and 'loc.est' given current estimate of 'nu.est'
@@ -710,7 +709,7 @@ fitnvmix <- function(x, qmix,
             nu.est.rel.diff <- 0
          }
          ## Did we converge?
-         converged <- if(iter.EMCE < control$EMCE.miniter){
+         converged <- if(iter.EMCE >= control$EMCE.miniter){
             (abs(nu.est.rel.diff) < control$EMCE.rel.conv.tol[3])
          } else FALSE 
          ## Update counter and 'nu.Ests'

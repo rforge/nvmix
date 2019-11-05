@@ -38,7 +38,7 @@ get.set.parameters <- function(control = list()){
     laststep.do.nu = FALSE,
     resample = FALSE, 
     ### Tolerances:
-    EMCE.maxiter = 15,
+    EMCE.maxiter = 20,
     EMCE.miniter = 3,
     max.iter.locscaleupdate = 25,
     weights.abstol = 1e-1, # currently not used
