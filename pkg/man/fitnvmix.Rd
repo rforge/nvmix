@@ -3,7 +3,7 @@
 \title{Fitting Multivariate Normal Variance Mixtures}
 \description{
   Functionalities for fitting multivariate normal variance mixtures via an
-  EMCE algorithm.
+  ECME algorithm.
 }
 \usage{
 fitnvmix(x, qmix, mix.param.bounds, nu.init = NA, 
@@ -42,7 +42,7 @@ fitnvmix(x, qmix, mix.param.bounds, nu.init = NA,
   \item{nu.init}{either \code{NA} or an initial guess for the parameter (vector) \eqn{nu}. In the former case an initial
   estimate is calculated by the algorithm. If \code{nu.init} is provided, the algorithm often converges faster; the better the starting value, the faster convergence.}
   \item{init.size.subsample}{\code{\link{numeric}}, non-negative, giving the sub-samplesize used to get an initial estimate for \eqn{nu}. Only used if \code{is.na(nu.init)}, otherwise ignored.}
-  \item{size.subsample}{\code{\link{numeric}}, non-negative, specifying the size of the subsample that is being used in the EMCE iterations to optimize the log-likelihood over \eqn{nu}. Defaults to \code{n}, so that the full sample is being used. Decreasing this number can lead to faster run-times (as fewer log-densities need to be estimated) but also to an increase in bias and variance.}
+  \item{size.subsample}{\code{\link{numeric}}, non-negative, specifying the size of the subsample that is being used in the ECME iterations to optimize the log-likelihood over \eqn{nu}. Defaults to \code{n}, so that the full sample is being used. Decreasing this number can lead to faster run-times (as fewer log-densities need to be estimated) but also to an increase in bias and variance.}
   \item{control}{\code{\link{list}} specifying algorithm specific parameters; see below under 'Details' and \code{?get.set.parameters}.}
   \item{verbose}{\code{\link{numeric}} or \code{\link{logical}} (in which case it is converted to \code{numeric}) specifying the
   amount of tracing to be done. If 0 or \code{FALSE}, neither tracing nor warnigns are communicated; if 1, only warnigns are communicated, if 2 or 3, warnings and (shorter or longer) tracing information is provided.}
@@ -50,11 +50,11 @@ fitnvmix(x, qmix, mix.param.bounds, nu.init = NA,
 \value{
   \code{fitnvmix()} by returns a \code{\link{list}} containing \code{nu}, 
   \code{loc}, \code{scale} as MLEs for \eqn{nu}, the location vector and the scale 
-  matrix, respectively; the list also contains \code{iter} (number of EMCE iterations performed)
+  matrix, respectively; the list also contains \code{iter} (number of ECME iterations performed)
   and \code{max.ll} (log-likelihood at the MLEs).
 }
 \details{
-  The function \code{fitnvmix} uses an EMCE algorithm to approximate the MLEs of
+  The function \code{fitnvmix} uses an ECME algorithm to approximate the MLEs of
   the parameters \code{nu}, \code{loc} and \code{scale} of a normal variance mixture specified by
   \code{qmix}. The underlying procedure successively estimates \code{nu} (with 
   given \code{loc} and \code{scale}) by maximizing the likelihood which is approximated

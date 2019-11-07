@@ -367,7 +367,7 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
 ##'        If provided and close to MLE, can speed up 'fitnvmix' significantly         
 ##' @param init.size.subsample if 'is.na(nu.init)', size of subsample of 'x' used to obtain 
 ##'        initial estimate of nu. 
-##' @param size.subsample numeric, <= nrow(x). Number of rows of 'x' used in EMCE iteration 
+##' @param size.subsample numeric, <= nrow(x). Number of rows of 'x' used in ECME iteration 
 ##'        to optimize the log-likelihood. Defaults to n (all datapoints are used)        
 ##' @param control list of algorithm specific parameters, see ?get.set.parameters and ?fitnvmix
 ##' @param verbose numeric or logical. 0: No warnings; 1: Warnings; 
@@ -376,7 +376,7 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
 ##'         $nu: estimate for nu (omitted if qmix = "constant")
 ##'         $loc: estimate for the location vector
 ##'         $scale: estimate for scale matrix
-##'         $iter: number of EMCE iterations
+##'         $iter: number of ECME iterations
 ##'         $max.ll: log-likelihood at (nu, loc, scale)
 ##'         $nu.Ests: matrix of estimates of 'nu' with corresponding loglikelihood
 ##'                   in each iteration (only if isTRUE(control.addRetruns))
@@ -462,15 +462,15 @@ fitnvmix <- function(x, qmix,
    if(control$addReturns){
       ## Matrix storing all 'nu' estimates with corresponding likelihoods 
       nu.Ests <- matrix(NA, ncol = mix.param.length + 1, 
-                        nrow = (nrow <- if(control$laststep.do.nu) control$EMCE.maxiter+2 
-                                else control$EMCE.maxiter + 1))
+                        nrow = (nrow <- if(control$laststep.do.nu) control$ECME.maxiter+2 
+                                else control$ECME.maxiter + 1))
       rownames(nu.Ests) <- if(control$laststep.do.nu) {
          c("Initial", 
-           sapply(1:control$EMCE.maxiter, function(i) paste0("EMCE-iteration ", i)), 
+           sapply(1:control$ECME.maxiter, function(i) paste0("ECME-iteration ", i)), 
            "Laststep")
       } else { 
          c("Initial", 
-           sapply(1:control$EMCE.maxiter, function(i) paste0("EMCE-iteration ", i)))
+           sapply(1:control$ECME.maxiter, function(i) paste0("ECME-iteration ", i)))
       }
       colnames(nu.Ests) <- c(sapply(1:mix.param.length, function(i) paste0("nu[", i, "]")),
                              "Log-likelihood")
@@ -560,20 +560,20 @@ fitnvmix <- function(x, qmix,
                        control = control, verbose = verbose, log = TRUE))
       nu.Ests[current.iter.total, ] <- c(nu.est, ll)
       current.iter.total <- current.iter.total + 1
-      iter.converged <- control$EMCE.maxiter + 2
+      iter.converged <- control$ECME.maxiter + 2
    }
    
-   ## 2: EMCE step: ############################################################
+   ## 2: ECME step: ############################################################
    
-   if(control$EMCEstep){
+   if(control$ECMEstep){
       if(verbose == 2) cat(paste0('\n')) # if 'verbose==3' linebreak already happened
-      if(verbose >= 2) cat(paste0("Step 2: EMCE iteration.", '\n'))
+      if(verbose >= 2) cat(paste0("Step 2: ECME iteration.", '\n'))
       ## Initialize various quantities
-      iter.EMCE            <- 0
+      iter.ECME            <- 0
       converged            <- FALSE
       ## Main loop:
-      while(iter.EMCE < control$EMCE.maxiter & !converged){
-         if(verbose >= 2) cat(paste0("  Iteration ",iter.EMCE + 1, '\n'))
+      while(iter.ECME < control$ECME.maxiter & !converged){
+         if(verbose >= 2) cat(paste0("  Iteration ",iter.ECME + 1, '\n'))
          
          ## 2.1: 'loc.est' and 'scale.est' updates #############################
          converged.locscale   <- FALSE
@@ -672,8 +672,8 @@ fitnvmix <- function(x, qmix,
             ## Did we converge?
             scale.est.rel.diff <- abs((scale.est - scale.est.new)/scale.est)
             loc.est.rel.diff   <- abs((loc.est - loc.est.new)/loc.est)
-            converged.locscale <- (max(loc.est.rel.diff) < control$EMCE.rel.conv.tol[2]) &&
-               (max(scale.est.rel.diff) < control$EMCE.rel.conv.tol[2])
+            converged.locscale <- (max(loc.est.rel.diff) < control$ECME.rel.conv.tol[2]) &&
+               (max(scale.est.rel.diff) < control$ECME.rel.conv.tol[2])
             ## Update counter
             iter.locscaleupdate <- iter.locscaleupdate + 1
             ## Update 'loc.est' and 'scale.est'
@@ -683,7 +683,7 @@ fitnvmix <- function(x, qmix,
          if(verbose >= 3) cat(paste0(".DONE (", iter.locscaleupdate, " iterations needed)", '\n')) 
          
          ## 2.2: Update 'nu.est', if desired/necessary: ########################
-         if(control$EMCEstep.do.nu){
+         if(control$ECMEstep.do.nu){
             ## New subsample used for this 'nu' update?
             if(control$resample && size.subsample < n){
                if(exists(".Random.seed")) rm(".Random.seed") # destroy the reseted seed 
@@ -709,11 +709,11 @@ fitnvmix <- function(x, qmix,
             nu.est.rel.diff <- 0
          }
          ## Did we converge?
-         converged <- if(iter.EMCE >= control$EMCE.miniter){
-            (abs(nu.est.rel.diff) < control$EMCE.rel.conv.tol[3])
+         converged <- if(iter.ECME >= control$ECME.miniter){
+            (abs(nu.est.rel.diff) < control$ECME.rel.conv.tol[3])
          } else FALSE 
          ## Update counter and 'nu.Ests'
-         iter.EMCE <- iter.EMCE + 1
+         iter.ECME <- iter.ECME + 1
          if(control$addReturns){
             ## Store new 'nu.est' along with log-likelihood
             nu.Ests[current.iter.total, ] <- c(nu.est, -max.ll)
@@ -728,7 +728,7 @@ fitnvmix <- function(x, qmix,
             current.iter.total <- current.iter.total + 1
          }
       } # end while()
-   } #end if(control$EMCEstep)
+   } #end if(control$ECMEstep)
    
    ## 3: Another last 'nu.est' with *full* sample? #############################   
    if(control$laststep.do.nu){
@@ -754,10 +754,10 @@ fitnvmix <- function(x, qmix,
    
    ## 4: Return ################################################################
    if(control$addReturns){
-      return(list(nu = nu.est, loc = loc.est, scale = scale.est, iter = iter.EMCE,
+      return(list(nu = nu.est, loc = loc.est, scale = scale.est, iter = iter.ECME,
                   max.ll = -max.ll, nu.Ests = nu.Ests, iter.converged = iter.converged))
    } else {
-      return(list(nu = nu.est, loc = loc.est, scale = scale.est, iter = iter.EMCE,
+      return(list(nu = nu.est, loc = loc.est, scale = scale.est, iter = iter.ECME,
                   max.ll = -max.ll))
    }
 }

@@ -14,14 +14,17 @@ get.set.parameters(control = list())
 }
 \value{
   \code{get.set.parameters()} returns a \code{\link{list}} with more than 30 elements 
-  specifying algorithm specific parameters for the functions \code{\link{fitnvmix}}, \code{\link{dnvmix}} and \code{\link{pnvmix}}. Parameter values passed to \code{get.set.parameters()} via the
+  specifying algorithm specific parameters for the functions \code{\link{fitnvmix}}, 
+  \code{\link{dnvmix}} and \code{\link{pnvmix}}. 
+  Parameter values passed to \code{get.set.parameters()} via the
   \code{control} argument overwrite the defaults; for parameters not specified in the
   \code{control} argument, the default values are being returned. 
 }
 \details{
   For most functions in the \code{nvmix} package, internally, an iterative randomized 
   Quasi-Monte Carlo (RQMC) approach is used to estimate probabilities, weights and 
-  (log-)densities. 
+  (log-)densities. There are various parameters than can be individiually
+  changed. 
   
   Algorithm specific parameters can be passed as a list via \code{control}. 
   It can contain any of the following:

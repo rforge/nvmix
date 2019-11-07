@@ -74,16 +74,6 @@ if(!doRUN){
    pnvmix.abserrors    <- numerical_experiments_data$pnvmix.abserrors
 } 
 
-## Load packages
-library(nvmix) 
-library(mvtnorm) # for comparison with pmvt()
-library(qrng) # to generate sobol points 
-library(sensitivity) # for sobol indices
-library(RColorBrewer) # for colors
-library(microbenchmark) # for accurate timing 
-library(QRM) # for 'fit.mst()' (EM algorithm for MVT dist'n) and 'returns()'
-library(qrmdata) # for the DJ30 dataset
-library(xts) # for plotting time-series objects 
 
 
 ## 1. Helper functions to perform the experiments ##############################
@@ -934,7 +924,7 @@ dnvmix_testing_plot <- function(dnvmix.results, index.qmix, plot.title = FALSE)
 #' @param plot logical, if TRUE fitnvmix_testing_plot is called
 #' @param ... additional parameters passed to 'qmix' if it is a function 
 #' @author Erik Hintz
-#' @return Result array c( length(dim), length(n), length(qmix), control$ECME.maxiter + 3),
+#' @return Result array c( length(dim), length(n), length(qmix), control$EMCE.maxiter + 3),
 #' including 'nu' estimates for each iteration and additional information,
 #' see dimnames of the output for more details. 
 fitnvmix_testing <- function(qmix = "inverse.gamma", n = 50, d = 10, nu = 2.5, 
@@ -994,9 +984,9 @@ fitnvmix_testing <- function(qmix = "inverse.gamma", n = 50, d = 10, nu = 2.5,
    ## Result array
    fitnvmix.results <- 
       array(NA, dim = c( length(d), length(n), length(qmix), 
-                         control$ECME.maxiter + 3),
+                         control$EMCE.maxiter + 3),
             dimnames = list(d = d, n = n, qmix = names.qmix, 
-                            c(1:(control$ECME.maxiter+1), "Analytical", "CPU")))
+                            c(1:(control$EMCE.maxiter+1), "Analytical", "CPU")))
    ## Set up progress bar
    pb. <- txtProgressBar(max = length(d)*length(n), style = 3)
    for(i in seq_along(d)){ # for each dimenion

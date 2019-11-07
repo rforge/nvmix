@@ -414,8 +414,8 @@ if(doPDF) dev.off()
 
 The function `fitnvmix()` can be used to fit any multivariate normal variance
 mixture distribution to data so long as the quantile function of the mixing
-variable $W$ is available. Internally, an EMCE (Expectation Maximization Constraint/Either)
-algorithm is used to estimate the mixing parameters of $W$, the location 
+variable $W$ is available. Internally, an ECME (Expectation/Conditional Maximization
+Either) algorithm is used to estimate the mixing parameters of $W$, the location 
 vector $\mathbf{\mu}$ and the scale matrix $\Sigma$. 
 The specification of $W$ is passed to `fitnvmix()` via the argument `qmix`, 
 see also the documentation for further details. Here, `qmix` can be either

@@ -33,18 +33,18 @@ get.set.parameters <- function(control = list()){
     newton.logdens.abstol = 1e-2, 
     ## For fitnvmix():
     ### Algorithm specifications:
-    EMCEstep = TRUE,
-    EMCEstep.do.nu = TRUE,
+    ECMEstep = TRUE,
+    ECMEstep.do.nu = TRUE,
     laststep.do.nu = FALSE,
     resample = FALSE, 
     ### Tolerances:
-    EMCE.maxiter = 20,
-    EMCE.miniter = 3,
+    ECME.maxiter = 20,
+    ECME.miniter = 3,
     max.iter.locscaleupdate = 25,
     weights.abstol = 1e-1, # currently not used
     weights.reltol = 5e-2,
     weights.interpol.reltol = 1e-2,
-    EMCE.rel.conv.tol = c(1e-2, 1e-2, 5e-3), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
+    ECME.rel.conv.tol = c(1e-2, 1e-2, 5e-3), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
     ### For the underlying 'optim':
     control.optim = list(maxit = 10),
     control.optim.laststep = list(), 
@@ -85,10 +85,10 @@ get.set.parameters <- function(control = list()){
               ctrl$newton.df.abstol >= 0,
               ctrl$newton.logdens.abstol >= 0,
               ctrl$weights.abstol >= 0,
-              is.logical(ctrl$EMCEstep.do.nu),
+              is.logical(ctrl$ECMEstep.do.nu),
               is.logical(ctrl$laststep.do.nu),
-              ctrl$EMCE.maxiter >= 0,
-              length(ctrl$EMCE.rel.conv.tol) == 3, ctrl$EMCE.rel.conv.tol >= 0, 
+              ctrl$ECME.maxiter >= 0,
+              length(ctrl$ECME.rel.conv.tol) == 3, ctrl$ECME.rel.conv.tol >= 0, 
               ctrl$CI.factor >= 0,
               length(ctrl$fun.eval) == 2, ctrl$fun.eval >= 0,
               ctrl$B > 1) # If B = 1 error estimates are NA => need B > 1
