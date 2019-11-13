@@ -1,10 +1,11 @@
 Package: nvmix
 Version: 0.0-3
 Encoding: UTF-8
-Title: Multivariate Normal Variance Mixtures (Including Student's t Distribution for Non-Integer Degrees of Freedom)
+Title: Multivariate Normal Variance Mixtures
 Description: Functions for working with multivariate normal variance mixture
-  distributions including evaluating their distribution functions, densities
-  random number generation and parameter estimation.
+  distributions (evaluation of distribution functions and densities,
+  random number generation and parameter estimation), including
+  Student's t distribution for non-integer degrees of freedom.
 Authors@R: c(person(given = "Marius", family = "Hofert", role = c("aut", "cre"),
                     email = "marius.hofert@uwaterloo.ca"),
              person(given = "Erik", family = "Hintz", role = "aut",
