@@ -128,6 +128,10 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux.}
 \references{
+  Hintz, E., Hofert, M. and Lemieux, C. (2019),
+  Normal variance mixtures: Distribution, density and parameter estimation.
+  \url{https://arxiv.org/abs/1911.03017}. 
+  
   McNeil, A. J., Frey, R. and Embrechts, P. (2015).
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
   Princeton University Press.

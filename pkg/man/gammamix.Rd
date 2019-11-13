@@ -68,21 +68,9 @@ rgammamix(n, rmix = NULL, qmix = NULL, d, method = c("PRNG", "sobol", "ghalton")
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
-  McNeil, A. J., Frey, R. and Embrechts, P. (2015).
-  \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
-  Princeton University Press.
-
-  Genz, A. and Bretz, F. (1999).
-  Numerical computation of multivariate t-probabilities with
-  application to power calculation of multiple contrasts.
-  \emph{Journal of Statistical Computation and Simulation} 63(4),
-  103--117.
-
-  Genz, A. and Bretz, F. (2002).
-  Comparison of methods for the computation of multivariate \emph{t}
-  probabilities.
-  \emph{Journal of Computational and Graphical Statistics} 11(4),
-  950--971.
+  Hintz, E., Hofert, M. and Lemieux, C. (2019),
+  Normal variance mixtures: Distribution, density and parameter estimation.
+  \url{https://arxiv.org/abs/1911.03017}. 
 }
 \seealso{
   \code{\link{dnvmix}()}, \code{\link{pnvmix}()}, \code{\link{qnvmix}()},

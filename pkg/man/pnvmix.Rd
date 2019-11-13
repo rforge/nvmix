@@ -127,6 +127,10 @@ pNorm(upper, lower = matrix(-Inf, nrow = n, ncol = d), loc = rep(0, d),
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
+  Hintz, E., Hofert, M. and Lemieux, C. (2019),
+  Normal variance mixtures: Distribution, density and parameter estimation.
+  \url{https://arxiv.org/abs/1911.03017}. 
+  
   McNeil, A. J., Frey, R. and Embrechts, P. (2015).
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
   Princeton University Press.
@@ -142,6 +146,11 @@ pNorm(upper, lower = matrix(-Inf, nrow = n, ncol = d), loc = rep(0, d),
   probabilities.
   \emph{Journal of Computational and Graphical Statistics} 11(4),
   950--971.
+  
+  Genz, A. and Kwong, K. (2000).
+  Numerical evaluation of singular multivariate normal distributions.
+  \emph{Journal of Statistical Computation and Simulation} 68(1),
+  1--21.
 }
 \seealso{
   \code{\link{dnvmix}()}, \code{\link{rnvmix}()}, \code{\link{fitnvmix}()},

@@ -34,4 +34,9 @@
           \code{demo(numerical_experiments)}.}
   }
 }
+\references{
+  Hintz, E., Hofert, M. and Lemieux, C. (2019),
+  Normal variance mixtures: Distribution, density and parameter estimation.
+  \url{https://arxiv.org/abs/1911.03017}. 
+}
 \keyword{datasets}

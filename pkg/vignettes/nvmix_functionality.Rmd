@@ -48,23 +48,17 @@ singular normal variance mixture).
 
 For most functions in the package, the *quantile function* of $W$ needs to be
 provided which is (here) defined as
-\begin{align*}
-  F_W^\leftarrow(u)=\inf\{w\in[0,\infty):F_W(w)\ge u\},\quad u\in[0,1].
-\end{align*}
+$$ F_W^\leftarrow(u)=\inf\{w\in[0,\infty):F_W(w)\ge u\},\quad u\in[0,1]. $$
 
 
 ## 2 Evaluating the distribution function
 
 An important but difficult task is to evaluate the (cumulative) distribution
 function of a normal variance mixture distribution, so
-\begin{align*}
-	F(\mathbf{x})=P(\mathbf{X}\le\mathbf{x})=P(X_1\le x_1,\dots,X_d\le x_d),\quad \mathbf{x}\in\mathbb{R}^d.
-\end{align*}
+$$	F(\mathbf{x})=P(\mathbf{X}\le\mathbf{x})=P(X_1\le x_1,\dots,X_d\le x_d),\quad \mathbf{x}\in\mathbb{R}^d. $$
 In fact, the function `pnvmix()` can be used to estimate more general probabilities
 of the form
-\begin{align*}
-	F(\mathbf{a},\mathbf{a} )=P(\mathbf{a} < \mathbf{X}\le\mathbf{b})=P(a_1 < X_1\le b_1,\dots, a_d < X_d\le b_d),\quad \mathbf{a},\mathbf{b}\in\mathbb{R}^d
-\end{align*}
+$$	F(\mathbf{a},\mathbf{a} )=P(\mathbf{a} < \mathbf{X}\le\mathbf{b})=P(a_1 < X_1\le b_1,\dots, a_d < X_d\le b_d),\quad \mathbf{a},\mathbf{b}\in\mathbb{R}^d $$
 where $\mathbf{a}<\mathbf{b}$ (interpreted componentwise) where entries of 
 $\mathbf{a},\mathbf{b}$ are allowed to be $\pm\infty$. 
 To this end, the function `pnvmix()` internally approximates the $d$-dimensional
