@@ -20,7 +20,9 @@ doPDF <- FALSE
 ## 1 Introduction
 
 The R package `nvmix` provides functionality for (multivariate) normal variance mixture
-distributions, including normal and Student's *t* distributions.
+distributions, including normal and Student's *t* distributions; see also 
+Hintz et al. (2019, “Normal variance mixtures: Distribution, density and 
+parameter estimation”).
 A random vector $\mathbf{X}=(X_1,\dots,X_d)$ follows a *normal
 variance mixture*, in notation $\mathbf{X}\sim NVM_d(\mathbf{\mu},\Sigma,F_W)$, if, in
 distribution,
@@ -37,8 +39,9 @@ case $W$ is almost surely constant (taken as $1$ so that $\Sigma$ is the
 covariance matrix of $\mathbf{X}$ in this case).
 
 Note that the density of $\mathbf{X}$ exists if and only if $\Sigma$ is
-positive definite. In this case one can take $A\in\mathbb{R}^{d\times d}$ to be
-the (lower triangular) Cholesky factor $A$ of $\Sigma$ such that $AA^\top=\Sigma$.
+positive definite and $P(W=0)=0$. In this case one can 
+take $A\in\mathbb{R}^{d\times d}$ to be the (lower triangular) Cholesky factor 
+$A$ of $\Sigma$ such that $AA^\top=\Sigma$.
 This corresponds to the argument `factor` in those functions. In `rnvmix()`,
 `factor` is of the general form as $A$ above. The function `pnvmix()` accepts 
 a singular scale matrix $\Sigma$ as input and then estimates the distribution 
@@ -59,7 +62,7 @@ $$	F(\mathbf{x})=P(\mathbf{X}\le\mathbf{x})=P(X_1\le x_1,\dots,X_d\le x_d),\quad
 In fact, the function `pnvmix()` can be used to estimate more general probabilities
 of the form
 $$	F(\mathbf{a},\mathbf{a} )=P(\mathbf{a} < \mathbf{X}\le\mathbf{b})=P(a_1 < X_1\le b_1,\dots, a_d < X_d\le b_d),\quad \mathbf{a},\mathbf{b}\in\mathbb{R}^d $$
-where $\mathbf{a}<\mathbf{b}$ (interpreted componentwise) where entries of 
+where $\mathbf{a}<\mathbf{b}$ (interpreted componentwise) and entries of 
 $\mathbf{a},\mathbf{b}$ are allowed to be $\pm\infty$. 
 To this end, the function `pnvmix()` internally approximates the $d$-dimensional
 integral using a randomized Quasi Monte Carlo (RQMC) method. Due to the
@@ -100,7 +103,8 @@ stopifnot(all.equal(p1, p2))
 We see that the results coincide.
 
 If higher precision of the computed probabilities is desired, this can be
-accomplished by changing the argument `pnvmix.abstol` (which defaults to `1e-3`) at the
+accomplished by changing the argument `pnvmix.abstol` (which defaults to `1e-3`)
+in the `control` argument at the
 expense of a higher run time.
 ```{r}
 pnvmix(b, lower = a, qmix = function(u, lambda) -log(1-u)/lambda,

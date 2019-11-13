@@ -728,6 +728,11 @@ fitnvmix <- function(x, qmix,
             current.iter.total <- current.iter.total + 1
          }
       } # end while()
+      
+      iter.ECME < control$ECME.maxiter & !converged
+      
+      if(iter.ECME == control$ECME.maxiter & !converged & verbose >= 1)
+         warning("Maximum number of ECME iterations exhausted, consider increasing 'ECME.maxiter' in the 'control' argument.")
    } #end if(control$ECMEstep)
    
    ## 3: Another last 'nu.est' with *full* sample? #############################   

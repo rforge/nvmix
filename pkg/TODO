@@ -12,14 +12,10 @@
 
 
 - TODO	Finish copula.rd 
-- TODO! Re-think verbose and warnings for copula functions! Error estimates not reliable,
-	as approximations are plugged into approximations etc pp 
 - TODO  'loc' right now has to be a vector, shd maybe also work for 'loc' being (d,1) matrix?
 - TODO: 'factor' should most likely also be an argument of pnvmix() -- sometimes one already
         has that computed and by passing it one could avoid it being computed
 	every time
-- TODO: cite our own paper on ?pnvmix, ?dnvmix and ?rnvmix and in the vignette
-        (e.g. when saying 'has proven to outperform the others')
 - TODO Allow rmix() to be specified in pnvmix() for method = 'PRNG'. This can be a first
        step towards evaluation GIG mixtures, where qmix() is not available but one can
        sample from the mixing distribution.
