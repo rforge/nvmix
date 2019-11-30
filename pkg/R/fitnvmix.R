@@ -392,11 +392,10 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
 ##'                          (only if isTRUE(control.addRetruns))
 ##' TODO    include option to give names to parameters etc
 ##' @author Erik Hintz, Marius Hofert, Christiane Lemieux
-fitnvmix <- function(x, qmix,
-                     mix.param.bounds, nu.init = NA,
+fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                      init.size.subsample = min(n, 100),
                      size.subsample = n, control = list(),
-                     verbose = 2)
+                     verbose = TRUE)
 {
     ## Initialize various quantities
     control <- get.set.parameters(control)

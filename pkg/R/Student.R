@@ -1,4 +1,4 @@
-### d/p/rStudent() #############################################################
+### d/p/r/fitStudent() #########################################################
 
 ##' @title Density of the Multivariate Student t Distribution
 ##' @param x (n, d)-matrix of evaluation points
@@ -96,3 +96,13 @@ rStudent <- function(n, df, loc = rep(0, d), scale = diag(2),
            loc = loc, scale = scale, factor = factor, df = df,
            method = method, skip = skip)
 }
+
+
+##' @title Fitting the Parameters of a Multivariate Student t Distribution
+##' @param x see ?fitnvmix
+##' @param mix.param.bounds see ?fitnvmix
+##' @param ... additional arguments passed to the underlying fitnvmix()
+##' @return see ?fitnvmix
+##' @author Marius Hofert
+fitStudent <- function(x, mix.param.bounds = c(1e-3, 1e3), ...)
+    fitnvmix(x, qmix = "inverse.gamma", mix.param.bounds = mix.param.bounds, ...)
