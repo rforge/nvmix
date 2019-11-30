@@ -26,7 +26,7 @@ dnvmixcop <- function(u, qmix, scale = diag(d), factor = NULL, control = list(),
     ## (The default for abstol.newton.logdensity is chosen somewhat large for
     ## efficiency reasons as the logdensity there is only needed for Newton)
     names.control <- names(control)
-    if(!any(names.control == "newton.logdens.abstol")){
+    if(!any(names.control == "newton.logdens.abstol")) {
         ## 'newton.logdens.abstol' was *not* provided:
         control <- get.set.parameters(control)
         control$newton.logdens.abstol <- control$dnvmix.abstol
@@ -40,10 +40,11 @@ dnvmixcop <- function(u, qmix, scale = diag(d), factor = NULL, control = list(),
     num <- dnvmix(matrix(qu$q, ncol = d), qmix = qmix, scale = scale, factor = factor,
                   control = control, verbose = verbose, log = TRUE, ...)# length n
 
-    ## sum_{i=1}^d log f_{X1}( F_{X1}^{-1}(u_{ji})), j = 1,..,n
+    ## sum_{i=1}^d log f_{X1}( F_{X1}^{-1}(u_{ji})), j = 1,...,n
     ## Note that the log-density values are already calculated by qnvmix()
     denom <- rowSums(matrix(qu$log.density, ncol = d)) # length n
 
+    ## Return
     if(log) num - denom else exp(num - denom)
 }
 
@@ -102,7 +103,7 @@ rnvmixcop <- function(n, qmix, scale = diag(2), factor = NULL,
     stopifnot(dim(scale) == c(d,d))
     scale <- cov2cor(scale) # only need correlation matrix
 
-    ## Sample from the nvmix dist'n
+    ## Sample from the nvmix distribution
     sample.nvmix <- rnvmix(n = n, qmix = qmix, scale = scale, factor = factor,
                            method = method, skip = skip, ...)
     ## Apply univariate margins

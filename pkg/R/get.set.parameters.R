@@ -58,7 +58,7 @@ get.set.parameters <- function(control = list())
         ## Additional returns for testing? (eg estimates after each iteration in
         ## 'fitnvmix')
         addReturns = FALSE)
-    if(length(control) > 0){
+    if(length(control) > 0) {
         ## If input provided, grab input controls and overwrite:
         names.control <- names(ctrl)
         ctrl[(names.provided <- names(control))] <- control
@@ -94,7 +94,7 @@ get.set.parameters <- function(control = list())
                   ctrl$B > 1) # If B = 1 error estimates are NA => need B > 1
     }
     ## Define 'max.iter.rqmc': If it was not provided (=> NA), set defaults
-    if(is.na(ctrl$max.iter.rqmc)){
+    if(is.na(ctrl$max.iter.rqmc)) {
         ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 12 else 100
     } else {
         ## If it was provided (=> not NA), check if it's reasonable

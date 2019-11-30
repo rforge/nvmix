@@ -1,6 +1,7 @@
 ### pgammamix() ################################################################
 
-##' @title Distribution function of the mahalanobis distance of a normal variance mixture
+##' @title Distribution Function of the Mahalanobis Distance of a Normal
+##'        Variance Mixture
 ##' @param x n-vector of evaluation points
 ##' @param qmix see ?pnvmix()
 ##' @param lower.tail logical if P(X <= m) or P(X>m) shd be returned
@@ -49,7 +50,7 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
                          }
                      },
                      "pareto"= {
-                         if(hasArg(alpha)){
+                         if(hasArg(alpha)) {
                              alpha <- list(...)$alpha
                          } else {
                              stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
@@ -79,17 +80,19 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
     numiter <- 0 # initialize counter (0 for 'inv.gam' and 'is.const.mix')
 
     ## Deal with special distributions
-    if(!is.na(special.mix)){
-        if(!(special.mix == "pareto")){
+    if(!is.na(special.mix)) {
+        if(!(special.mix == "pareto")) {
             ## Only for "inverse.gamma" and "constant" do we have analytical forms:
             pres[notNA] <- switch(special.mix,
                                   "inverse.gamma" = {
                                       ## D^2 ~ d* F(d, nu)
-                                      pf(x/d, df1 = d, df2 = df, lower.tail = lower.tail)
+                                      pf(x/d, df1 = d, df2 = df,
+                                         lower.tail = lower.tail)
                                   },
                                   "constant" = {
                                       ## D^2 ~ chi^2_d = Gamma(shape = d/2, scale = 2)
-                                      pgamma(x, shape = d/2, scale = 2, lower.tail = lower.tail)
+                                      pgamma(x, shape = d/2, scale = 2,
+                                             lower.tail = lower.tail)
                                   })
             ## Return in those cases
             attr(pres, "error")   <- rep(0, n)
@@ -105,7 +108,7 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
     total.fun.evals <- 0
     ZERO            <- .Machine$double.neg.eps
     ## Absolte/relative precision?
-    if(is.na(control$pgammamix.reltol)){
+    if(is.na(control$pgammamix.reltol)) {
         ## Use absolute error
         tol <- control$pgammamix.abstol
         do.reltol <- FALSE
@@ -139,10 +142,10 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
     while(max.error > tol && numiter < control$max.iter.rqmc &&
           total.fun.evals < control$fun.eval[2])
     {
-        ## Reset seed to have the same shifts in sobol( ... )
+        ## Reset seed to have the same shifts in sobol(...)
         if(control$method == "sobol" && numiter > 0)
-            .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
-        for(b in 1:B){
+            .Random.seed <<- seed # reset seed to have the same shifts in sobol(...)
+        for(b in 1:B) {
 
             ## 2.1 Get the point set
             U <- switch(control$method,
@@ -168,8 +171,8 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
             ## 2.2 Evaluate the integrand at the (next) point set
             W <- pmax(qW(U), ZERO) # realizations of the mixing variable
             next.estimate <- .colMeans(pgamma(
-                sapply(x, function(i) i/W), shape = d/2, scale = 2, lower.tail = lower.tail),
-                current.n, n, 0)
+                sapply(x, function(i) i/W), shape = d/2, scale = 2,
+                lower.tail = lower.tail), current.n, n, 0)
 
             ## 2.3 Update RQMC estimates
             rqmc.estimates[b,] <-
@@ -189,7 +192,7 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
         ## Double sample size and adjust denominator in averaging as well as useskip
         if(dblng) {
             ## Change denom and useksip (exactly once, in the first iteration)
-            if(numiter == 0){
+            if(numiter == 0) {
                 denom <- 2
                 useskip <- 1
             } else {
@@ -204,7 +207,7 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
         ## Update error. The following is slightly faster than 'apply(..., 2, var)'
         pres[notNA] <- .colMeans(rqmc.estimates, B, n , 0)
         vars <- .colMeans((rqmc.estimates - rep(pres, each = B))^2, B, n, 0)
-        errors <- if(!do.reltol){
+        errors <- if(!do.reltol) {
                       sqrt(vars)*CI.factor.sqrt.B
                   } else {
                       sqrt(vars)/pres*CI.factor.sqrt.B
@@ -242,7 +245,7 @@ qgammamix <- function(u, qmix, d, control = list(), verbose = TRUE, q.only = TRU
 
 ### rgammamix() ################################################################
 
-##' @title Random Number Generator for Gamma mixtures ( = Mahalanobis distances for
+##' @title Random Number Generator for Gamma mixtures (= Mahalanobis distances for
 ##'        normal mixture models)
 ##' @param n see ?rnvmix()
 ##' @param rmix ?rnvmix()
@@ -261,10 +264,11 @@ qgammamix <- function(u, qmix, d, control = list(), verbose = TRUE, q.only = TRU
 ##'         + "GIGrvg":  faster if n small and often called with several parameters
 ##'         see examples of 'GIGrvg' for both methods
 ##'       - user friendly wrappers are provided in 'rnvmix()' and 'rgammamix()'
-rgammamix <- function(n, rmix = NULL, qmix = NULL, d, method = c("PRNG", "sobol", "ghalton"),
-                      skip = 0, ...)
+rgammamix <- function(n, rmix = NULL, qmix = NULL, d,
+                      method = c("PRNG", "sobol", "ghalton"), skip = 0, ...)
     rmix.internal(n, rmix = rmix, qmix = qmix, loc = rep(0, d), scale = diag(d),
-                  factor = diag(d), method = method, skip = skip, which = "maha2", ...)
+                  factor = diag(d), method = method, skip = skip, which = "maha2",
+                  ...)
 
 
 ### dgammamix() ################################################################
@@ -298,6 +302,7 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
     x <- x[notNA, drop = FALSE] # non-missing data (rows)
 
     ## 1 Define the quantile function of the mixing variable ###################
+
     ## If 'mix' is "constant", "inverse.gamma" or "pareto", we use the analytical formulas
     special.mix <- NA
     qW <- if(is.character(qmix)) { # 'qmix' is a character vector
@@ -318,7 +323,8 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
                          if(is.finite(df)) {
                              special.mix <- "inverse.gamma"
                              df2 <- df / 2
-                             mean.sqrt.mix <- sqrt(df) * gamma(df2) / (sqrt(2) * gamma((df+1)/2)) # used for preconditioning
+                             mean.sqrt.mix <- sqrt(df) * gamma(df2) /
+                                 (sqrt(2) * gamma((df+1)/2)) # used for preconditioning
                              function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
                          } else {
                              special.mix <- "constant"
@@ -327,7 +333,7 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
                          }
                      },
                      "pareto"= {
-                         if(hasArg(alpha)){
+                         if(hasArg(alpha)) {
                              alpha <- list(...)$alpha
                          } else {
                              stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
@@ -354,8 +360,8 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
     ## Deal with the different distributions
 
     ## Deal with special distributions
-    if(!is.na(special.mix)){
-        if(!(special.mix == "pareto")){
+    if(!is.na(special.mix)) {
+        if(!(special.mix == "pareto")) {
             ## Only for "inverse.gamma" and "constant" do we have analytical forms:
             lres[notNA] <- switch(special.mix,
                                   "inverse.gamma" = {
@@ -384,7 +390,7 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
                              d = d, control = control, verbose = verbose)
     ## Grab results, correct 'error' and 'lres' if 'log = FALSE'
     lres[notNA] <- ests$ldensities[order(ordering.x)]
-    error <- if(log){
+    error <- if(log) {
                  ests$error[order(ordering.x)]
              } else {
                  lres <- exp(lres)

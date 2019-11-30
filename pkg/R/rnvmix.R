@@ -24,8 +24,9 @@
 ##'         + "GIGrvg":  faster if n small and often called with several parameters
 ##'         see examples of 'GIGrvg' for both methods
 ##'       - user friendly wrappers are provided in 'rnvmix()' and 'rgammamix()'
-rmix.internal <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2),
-                          factor = NULL, method = c("PRNG", "sobol", "ghalton"),
+rmix.internal <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d),
+                          scale = diag(2), factor = NULL,
+                          method = c("PRNG", "sobol", "ghalton"),
                           skip = 0, which = c("nvmix", "maha2"), ...)
 {
     ## Basic checks
@@ -54,10 +55,11 @@ rmix.internal <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = 
     if(inversion) { # work with 'qmix'
 
         ## In this case, we need qmix to be provided and use inversion
-        if(is.null(qmix)) stop("'qmix' needs to be provided for methods 'sobol' and 'ghalton'")
+        if(is.null(qmix))
+            stop("'qmix' needs to be provided for methods 'sobol' and 'ghalton'")
 
         ## Get low discrepancy pointset
-        ## For 'which = "nvmix"' need k-dim normal dist'n later => k+1 uniforms;
+        ## For 'which = "nvmix"' need k-dim normal distribution later => k+1 uniforms;
         ## otherwise 2 (one for 'W', one for the chi-squared)
         dim. <- if(which == "nvmix") k + 1 else 2
         U <- switch(method,
@@ -94,7 +96,7 @@ rmix.internal <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = 
                             }
                         },
                         "pareto" = {
-                            if(hasArg(alpha)){
+                            if(hasArg(alpha)) {
                                 alpha <- list(...)$alpha
                             } else {
                                 stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
@@ -139,7 +141,7 @@ rmix.internal <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = 
                             }
                         },
                         "pareto" = {
-                            if(hasArg(alpha)){
+                            if(hasArg(alpha)) {
                                 alpha <- list(...)$alpha
                             } else {
                                 stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
@@ -160,9 +162,9 @@ rmix.internal <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = 
              } else stop("'rmix' must be a character string, list, random number generator or n-vector of non-negative random variates.")
 
     }
-    if(which == "nvmix"){
+    if(which == "nvmix") {
         ## Generate Z ~ N(0, I_k)
-        Z <- if(!inversion){
+        Z <- if(!inversion) {
                  matrix(rnorm(n * k), ncol = k) # (n, k)-matrix of N(0, 1)
              } else {
                  qnorm(U[, 2:(k+1)]) # (n, k)-matrix of N(0, 1)
@@ -173,15 +175,15 @@ rmix.internal <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = 
         ## Generate X ~ M_d(0, Sigma, LS[F_W])
         X <- sqrt(W) * Y # also fine for different k
         ## Generate X ~ M_d(mu, Sigma, LS[F_W])
-        return(sweep(X, 2, loc, "+"))
+        sweep(X, 2, loc, "+")
     } else {
         ## Generate Z^2 ~ chi^2_d
-        Zsq <- if(!inversion){
+        Zsq <- if(!inversion) {
                    rgamma(n, shape = d/2, scale = 2)
                } else {
                    qgamma(U[, 2], shape = d/2, scale = 2)
                }
-        return(W*Zsq)
+        W * Zsq
     }
 }
 
@@ -246,6 +248,5 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
     d <- if(is.null(factor)) dim(scale)[1] else nrow(factor <- as.matrix(factor))
     ## Call 'rmix.internal'
     rmix.internal(n, rmix = rmix, qmix = qmix, loc = loc, scale = scale,
-                  factor = factor, method = method, skip = skip, which = "nvmix",
-                  ...)
+                  factor = factor, method = method, skip = skip, which = "nvmix", ...)
 }

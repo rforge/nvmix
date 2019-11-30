@@ -3,7 +3,8 @@
 ##' @title Density of the Multivariate Normal Distribution
 ##' @param x (n, d)-matrix of evaluation points
 ##' @param loc d-vector (location = mean vector here)
-##' @param scale (d, d)-covariance matrix, positive definite (scale = covariance matrix here)
+##' @param scale (d, d)-covariance matrix, positive definite (scale = covariance
+##'        matrix here)
 ##' @param factor *lower triangular* factor R of the covariance matrix 'scale'
 ##'        such that R^T R = 'scale' here (otherwise det(scale) not computed
 ##'        correctly!)
@@ -54,7 +55,8 @@ dNorm <- function(x, loc = rep(0, d), scale = diag(d),
 ##' @param verbose logical indicating whether a warning is given if the required
 ##'        precision 'abstol' (see dnvmix()) has not been reached.
 ##' @return numeric vector with the computed probabilities and attributes "error"
-##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
+##'         (error estimate of the RQMC estimator) and "numiter"
+##'         (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pNorm <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
                   loc = rep(0, d), scale = diag(d), standardized = FALSE,
@@ -78,8 +80,8 @@ pNorm <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
 ##'        such that R R^T = 'scale'.
 ##' @return (n, d)-matrix with N(loc, scale) samples
 ##' @author Erik Hintz and Marius Hofert
-rNorm <- function(n, loc = rep(0, d), scale = diag(2),
-                  factor = NULL, method = c("PRNG", "sobol", "ghalton"), skip = 0) # needs to be triangular!
+rNorm <- function(n, loc = rep(0, d), scale = diag(2), factor = NULL, # needs to be triangular!
+                  method = c("PRNG", "sobol", "ghalton"), skip = 0)
 {
     d <- if(!is.null(factor)) { # for 'loc', 'scale'
              nrow(factor <- as.matrix(factor))

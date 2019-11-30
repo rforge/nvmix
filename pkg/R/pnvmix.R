@@ -40,7 +40,8 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
                          if(is.finite(df)) {
                              special.mix <- "inverse.gamma"
                              df2 <- df / 2
-                             mean.sqrt.mix <- sqrt(df) * gamma(df2) / (sqrt(2) * gamma((df+1)/2)) # used for preconditioning
+                             mean.sqrt.mix <- sqrt(df) * gamma(df2) /
+                                 (sqrt(2) * gamma((df+1)/2)) # used for preconditioning
                              function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
                          } else {
                              special.mix <- "constant"
@@ -49,7 +50,7 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
                          }
                      },
                      "pareto"= {
-                         if(hasArg(alpha)){
+                         if(hasArg(alpha)) {
                              alpha <- list(...)$alpha
                          } else {
                              stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
@@ -79,7 +80,7 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
     k.factor <- rep(1, d)
 
     ## Precondition?
-    if(precond && d > 2){
+    if(precond && d > 2) {
         if(is.null(mean.sqrt.mix))
             mean.sqrt.mix <- mean(sqrt(qW(qrng::sobol(n = 2^12, d = 1, randomize = TRUE))))
         ## Check if provided/approximated' mean.sqrt.mix' is strictly positive
@@ -87,7 +88,7 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
             stop("'mean.sqrt.mix' has to be positive (possibly after being generated in pnvmix())")
         temp <- precondition(lower, upper = upper, scale = scale, factor = C,
                              mean.sqrt.mix = mean.sqrt.mix)
-        if(is.null(temp)){
+        if(is.null(temp)) {
             ## Preconditioning did not work, continue with original inputs
             if(verbose) warning("Preconditioning led to (numerically) singular 'scale',
                              continuing with original input.")
@@ -111,7 +112,7 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
     if(!is.matrix(U)) U <- as.matrix(U)
     U <- cbind(sqrt(qW(U[, 1])), U[, 2:d], sqrt(qW(1 - U[, 1])))
 
-    if(return.all){
+    if(return.all) {
         ## Matrix to store results (y_i from paper)
         Yorg <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
         Yant <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
@@ -123,15 +124,15 @@ pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
         forg <- eorg - dorg
         fant <- eant - dant
         ## Recursively calculate (e_i - d_i)
-        for(i in 2:d){
+        for(i in 2:d) {
             ## Store realization:
             Yorg[,(i-1)] <- qnorm( pmax( pmin(dorg + U[, i]*(eorg-dorg), ONE), ZERO))
             Yant[,(i-1)] <- qnorm( pmax( pmin(dant + (1-U[, i])*(eant-dant), ONE), ZERO))
             ## Update d__, e__, f___:
-            dorg <- pnorm( (a[i]/U[,1]   - Yorg[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
-            dant <- pnorm( (a[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
-            eorg <- pnorm( (b[i]/U[,1]   - Yorg[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
-            eant <- pnorm( (b[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+            dorg <- pnorm((a[i]/U[,1]   - Yorg[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+            dant <- pnorm((a[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+            eorg <- pnorm((b[i]/U[,1]   - Yorg[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+            eant <- pnorm((b[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
             forg <- forg*(eorg-dorg)
             fant <- fant*(eant-dant)
         }
@@ -166,7 +167,7 @@ cholesky_ <- function(mat, tol = 1e-12)
     stopifnot(dim(mat)[2] == n)
     ## First try 'chol()' (=>fast)
     C <- tryCatch(t(chol(mat)), error = function(e) e)
-    if(is.matrix(C) && all.equal(dim(C), rep(n, 2))){
+    if(is.matrix(C) && all.equal(dim(C), rep(n, 2))) {
         ## C is the desired Cholesky factor
         ## Grab diagonal
         diag.elements <- diag(C)
@@ -175,15 +176,16 @@ cholesky_ <- function(mat, tol = 1e-12)
         ## compute the Cholesky factor of the *singular* matrix 'mat'
         C <- matrix(0, ncol = n, nrow = n) # initialize Cholesky factor
         diag.elements <- rep(NA, n)
-        for(col in 1:n){
+        for(col in 1:n) {
             dsq <- mat[col, col] - sum(C[col, 1:(col-1)]^2) # C(col,col)^2
             if(dsq < 0) stop("Matrix not positive semi-definite")
             d <- if(dsq < abs(mat[col, col] * tol)) 0 else sqrt(dsq) # set 0 if too small
             C[col, col] <- d
             diag.elements[col] <- d # store diagnonal element
-            if(col < n && d > 0){ # calculate the remaining elements in column 'col'
-                for(row in (col+1):n){
-                    C[row, col] <- (mat[row, col] - sum(C[row, 1:(row-1)]*C[col, 1:(row-1)]))/d
+            if(col < n && d > 0) { # calculate the remaining elements in column 'col'
+                for(row in (col+1):n) {
+                    C[row, col] <- (mat[row, col] -
+                                    sum(C[row, 1:(row-1)]*C[col, 1:(row-1)]))/d
                 }
             }
         }
@@ -239,17 +241,18 @@ reorder.limits.scale <- function(perm, upper, lower = rep(-Inf, d), scale = diag
     d <- length(upper)
     ## Vector to save current positions of original variables
     org.perm <- 1:d
-    for(i in 1:d){
+    for(i in 1:d) {
         ## Variable at position i before swapping
         curr.i <- org.perm[i]
         ## Variable at position i after swapping
         next.i <- perm[i]
         ## Do we need to swap?
-        if(curr.i != next.i){
+        if(curr.i != next.i) {
             ## Index of the variable to be put to position i
             ind.next.i <- which(org.perm == next.i)
             ## Swap positions i and ind.next.i
-            tmp <- swap(i, ind.next.i, lower = lower, upper = upper, scale = scale)
+            tmp <- swap(i, ind.next.i, lower = lower, upper = upper,
+                        scale = scale)
             lower <- tmp$lower
             upper <- tmp$upper
             scale <- tmp$scale
@@ -312,7 +315,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
     ## Main
     for(j in 1:(d-1)) {
         ## Case j = 1 somewhat special
-        if(j == 1){
+        if(j == 1) {
             denom <- sqrt(diag(scale))
             c <- 0
         } else {
@@ -327,7 +330,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
         next.lowers <- (lower[j:d] / mean.sqrt.mix - c) / denom
 
         ## Find i = argmin { <expected length of interval j> }
-        i <- if(precond.method == "ExpLength"){
+        i <- if(precond.method == "ExpLength") {
                  which.min(pnorm(next.uppers) - pnorm(next.lowers)) + j - 1
              } else {
                  ## Find i = argmin { <truncated variance of variable j> }
@@ -335,20 +338,20 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
              }
 
         ## Swap i and j if they are different
-        if(i != j){
+        if(i != j) {
             tmp   <- swap(i = i, j = j, lower = lower, upper = upper, scale = scale)
             lower <- tmp$lower
             upper <- tmp$upper
             scale <- tmp$scale
             perm[c(i, j)] <- perm[c(j, i)]
             ## If j>1 and an actual swap has occured, need to reorder Cholesky factor:
-            if(j > 1){
+            if(j > 1) {
                 factor[c(i,j),]   <- factor[c(j,i),, drop = FALSE]
                 factor[j,(j+1):i] <- matrix(0, ncol = i - j, nrow = 1)
             }
         }
         ## Update Cholesky factor
-        if(j == 1){
+        if(j == 1) {
             factor[1, 1] <- sqrt(scale[1, 1])
             factor[2:d, 1] <- scale[2:d, 1, drop = FALSE] / factor[1, 1]
             ## Store y1
@@ -369,15 +372,18 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
             scprod     <- sum(factor[j, 1:(j-1)] * y[1:(j-1)]) # needed twice
             low.j.up.j <- c(lower[j] / mean.sqrt.mix - scprod,
                             upper[j] / mean.sqrt.mix - scprod) / factor[j, j]
-            y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) / (max(pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]), tol))
+            y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) /
+                (max(pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]), tol))
         }
     } # for()
     factorddsq <- scale[d, d] - sum(factor[d, 1:(d-1)]^2)
-    if(factorddsq > tol) factor[d,d] <- sqrt(factorddsq) else {
-                                                             ## Try 'chol()' for reordered 'scale' (more accurate)
-                                                             factor <- tryCatch(t(chol(scale)), error = function(e) e)
-                                                             if(!is.matrix(factor)) return(NULL) # else 'factor' is correct => return
-                                                         }
+    if(factorddsq > tol) {
+        factor[d,d] <- sqrt(factorddsq)
+    } else {
+        ## Try 'chol()' for reordered 'scale' (more accurate)
+        factor <- tryCatch(t(chol(scale)), error = function(e) e)
+        if(!is.matrix(factor)) return(NULL) # else 'factor' is correct => return
+    }
     ## Return
     list(lower = lower, upper = upper, scale = scale, factor = factor, perm = perm)
 }
@@ -394,7 +400,8 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
 ##' @param loc see details in ?pnvmix
 ##' @param scale see details in ?pnvmix
 ##' @param factor see details in ?pnvmix
-##' @param k.factor vector of length rank(scale) with heights of each step in 'factor'
+##' @param k.factor vector of length rank(scale) with heights of each step in
+##'        'factor'
 ##' @param method see details in ?pnvmix
 ##' @param precond see details in ?pnvmix
 ##' @param tol absolute/relative error tolerance depending on 'do.reltol'
@@ -440,9 +447,10 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
         ## Note that 'mean.sqrt.mix' has already been calculated in pnvmix()
         temp <- precondition(lower = lower, upper = upper, scale = scale,
                              factor = factor, mean.sqrt.mix = mean.sqrt.mix)
-        if(is.null(temp)){
+        if(is.null(temp)) {
             ## Preconditioning did not work, continue with original inputs
-            if(verbose) warning("Preconditioning led to (numerically) singular 'scale',
+            if(verbose)
+                warning("Preconditioning led to (numerically) singular 'scale',
                            continuing with original input.")
         } else {
             lower <- temp$lower
@@ -467,9 +475,9 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
     ## Initialize counter for the number of iterations in the while loop below
     numiter <- 0
 
-    ## It may happen that qnorm(u) for u too close to 1 (or 0) is evaluated; in those
-    ## cases, u will be replaced by ONE and ZERO which is the largest (smallest) number
-    ## different from 1 (0) such that qnorm(u) is not +/- Inf
+    ## It may happen that qnorm(u) for u too close to 1 (or 0) is evaluated;
+    ## in those cases, u will be replaced by ONE and ZERO which is the largest
+    ## (smallest) number different from 1 (0) such that qnorm(u) is not +/- Inf
     ZERO <- .Machine$double.xmin
     ONE <- 1-.Machine$double.neg.eps
 
@@ -494,7 +502,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
     while(error > tol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
     {
         if(method == "sobol" && numiter > 0)
-            .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
+            .Random.seed <<- seed # reset seed to have the same shifts in sobol(...)
 
         ## Get B RQCM estimates
         for(b in 1:B)
@@ -523,7 +531,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
                                  "PRNG" = {
                                      matrix(runif( current.n * (rank - 1)), ncol = rank - 1)
                                  })
-                     ## First/last column contain 1s corresponding to "simulated" values from sqrt(mix)
+                     ## First/last column contain 1s corresponding to "simulated"
+                     ## values from sqrt(mix)
                      cbind(rep(1, current.n), U, rep(1, current.n))
                  } else {
                      U <- switch(method,
@@ -547,7 +556,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
                                  })
 
                      ## Case d = 1 somewhat special again:
-                     if(d == 1){
+                     if(d == 1) {
                          cbind( sqrt(qW(U)), sqrt(qW(1 - U)) )
                      } else {
                          ## Column 1:sqrt(mix), Columns 2--r: unchanged (still uniforms),
@@ -560,8 +569,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
 
             next.estimate <-
                 if(d == 1) {
-                    ## Case of dimension 1: Don't need to approximate the multivariate
-                    ##                      normal df and can just use pnorm()
+                    ## Case of dimension 1: Don't need to approximate the
+                    ## multivariate normal df and can just use pnorm()
                     ## Note that d = 1 for a pure normal or t df has already been addressed
                     mean((pnorm(upper/U[,1])   - pnorm(lower/U[,1]) +
                           pnorm(upper/U[,d+1]) - pnorm(lower/U[,d+1])) / 2)
@@ -601,7 +610,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
         ## Double sample size and adjust denominator in averaging as well as useskip
         if(increment == "doubling") {
             ## Change denom and useksip (exactly once, in the first iteration)
-            if(numiter == 0){
+            if(numiter == 0) {
                 denom <- 2
                 useskip <- 1
             } else {
@@ -611,7 +620,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
             }
         }
         ## Update error depending on 'do.reltol'
-        error <- if(!do.reltol){
+        error <- if(!do.reltol) {
                      CI.factor.sqrt.B * sd(rqmc.estimates)
                  } else {
                      CI.factor.sqrt.B * sd(rqmc.estimates)/mean(rqmc.estimates)
@@ -649,7 +658,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
 ##'        'control$pnvmix.abstol'/'control$pnvmix.reltol' has not been reached.
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return numeric vector with the computed probabilities and attributes "error"
-##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
+##'         (error estimate of the RQMC estimator) and "numiter"
+##'         (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
                    loc = rep(0, d), scale = diag(d), standardized = FALSE,
@@ -675,12 +685,12 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     mean.sqrt.mix <- control$mean.sqrt.mix
 
     ## Absolute or relative precision required?
-    tol <- if(is.null(control$pnvmix.abstol)){
-               ## Set tol to <0 so that algorithm runs until 'fun.eval[2]' function evaluations
-               ## or 'max.iter.rqmc' iterations are exhausted
+    tol <- if(is.null(control$pnvmix.abstol)) {
+               ## Set tol to <0 so that algorithm runs until 'fun.eval[2]'
+               ## function evaluations or 'max.iter.rqmc' iterations are exhausted
                do.reltol <- FALSE
                -42
-           } else if(is.na(control$pnvmix.abstol)){ # if 'abstol = NA' use relative precision
+           } else if(is.na(control$pnvmix.abstol)) { # if 'abstol = NA' use relative precision
                do.reltol <- TRUE
                control$pnvmix.reltol
            } else { # otherwise use absolute precision (default)
@@ -718,7 +728,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
                          }
                      },
                      "pareto"= {
-                         if(hasArg(alpha)){
+                         if(hasArg(alpha)) {
                              alpha <- list(...)$alpha
                          } else {
                              stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
@@ -741,9 +751,9 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
           } else stop("'qmix' must be a character string, list or quantile function.")
 
     ## In the special case d = 1 we call pnvmix1d which is truly *vectorized*
-    ## as there is no conditioning to be done. The case of a normal / t dist'n
+    ## as there is no conditioning to be done. The case of a normal / t distribution
     ## will be handled correctly below (using pnorm() and pt())
-    if(d == 1 && (is.na(special.mix) || special.mix == "pareto")){
+    if(d == 1 && (is.na(special.mix) || special.mix == "pareto")) {
         return(pnvmix1d(upper = as.vector(upper), lower = as.vector(lower),
                         qW = qW, loc = loc, scale = as.numeric(scale),
                         standardized = standardized,
@@ -757,7 +767,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     }
     ## Grab / approximate mean.sqrt.mix, which will be needed for preconditioning
     ## in pnvmix1(). This only depends on 'qmix', hence it is done (once) here in pnvmix.
-    if(control$precond && d > 2){
+    if(control$precond && d > 2) {
         if(is.null(mean.sqrt.mix))
             mean.sqrt.mix <- mean(sqrt(qW(qrng::sobol(n = 2^12, d = 1,
                                                       randomize = TRUE))))
@@ -782,7 +792,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     D.zero       <- (factor.diag==0)
     rank         <- d - sum(D.zero)
     ## In case of a singular matrix, need to reorder 'factor':
-    if(rank < d){
+    if(rank < d) {
         if(verbose) warning("Provided 'scale' is singular.")
         ## In each row i, get minimal index j such that factor[i,k]=0 for all k>j
         length.rows <- apply(factor, 2, function(i) which.max( i != 0))
@@ -809,7 +819,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
         upper <- matrix(rep(1/row.scales, each = n), ncol = d, nrow = n, byrow = FALSE) *
             upper
         ## Need to swap columns in 'lower'/'upper' multiplied by negative 'row.scales':
-        if(any(row.scales < 0)){
+        if(any(row.scales < 0)) {
             which.row.scales.neg <- which(row.scales < 0)
             temp.lower <- lower[, which.row.scales.neg]
             lower[, which.row.scales.neg] <- upper[, which.row.scales.neg]
@@ -824,7 +834,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
         ## In case of non-singular 'scale', each of the d steps in factor has height 1:
         k.factor <- rep(1, d)
         ## Standardize 'scale', 'lower', 'upper', 'factor' ('loc' was already taken care of)
-        if(!standardized){
+        if(!standardized) {
             row.scales     <- diag(factor) # diagonal of cholesky factor
             row.scales.inv <- 1/row.scales # d-vector
             ## The following is equivalent but faster than
@@ -841,7 +851,8 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
         }
     }
 
-    ## Loop over observations ####################################################
+    ## Loop over observations ##################################################
+
     reached <- rep(TRUE, n) # indicating whether 'abstol' has been reached in the ith integration bounds (needs default TRUE)
     for(i in seq_len(n)) {
         if(NAs[i]) {
@@ -870,7 +881,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
             ## => Return 0
             d <- length(low) # Update dimension and 'k.factor'
             k.factor <- rep(1, d)
-            if(d == 0){
+            if(d == 0) {
                 res1[[i]] <- list(value = 1, error = 0, numiter = 0)
                 next
             }
@@ -884,12 +895,12 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
 
         ## If d = 1, deal with multivariate normal, and t via pnorm() and pt()
         ## Note that everything has been standardized.
-        if(d == 1 && !is.na(special.mix)){
-            if(special.mix == "constant"){
+        if(d == 1 && !is.na(special.mix)) {
+            if(special.mix == "constant") {
                 value <- pnorm(up) - pnorm(low)
                 res1[[i]] <- list(value = value, error = 0, numiter = 0)
                 next
-            } else if(special.mix == "inverse.gamma"){
+            } else if(special.mix == "inverse.gamma") {
                 value <- pt(up, df = df) - pt(low, df = df)
                 res1[[i]] <- list(value = value, error = 0, numiter = 0)
                 next
@@ -955,9 +966,9 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
 ##' @param B see details in ?pnvmix
 ##' @param verbose see details in ?pnvmix
 ##' @param ... see details in ?pnvmix
-##' @return numeric vector with the computed probabilities and attributes "error"
-##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
-##'
+##' @return numeric vector with the computed probabilities and attributes
+##'         "error" (error estimate of the RQMC estimator) and "numiter"
+##'         (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
                      standardized = FALSE, method = "sobol",
@@ -971,7 +982,7 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
     if(!is.vector(upper)) upper <- as.vector(upper)
     if(!is.vector(lower)) lower <- as.vector(lower)
     ## Standardize
-    if(!standardized){
+    if(!standardized) {
         upper <- (upper - loc) / sqrt(scale)
         lower <- (lower - loc) / sqrt(scale)
     }
@@ -1012,7 +1023,7 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
     while(max(error) > tol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
     {
         if(method == "sobol" && numiter > 0)
-            .Random.seed <<- seed # reset seed to have the same shifts in sobol( ... )
+            .Random.seed <<- seed # reset seed to have the same shifts in sobol(...)
         ## Get B RQCM estimates
         for(b in 1:B)
         {
@@ -1069,7 +1080,7 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
         ## Double sample size and adjust denominator in averaging as well as useskip
         if(increment == "doubling") {
             ## Change denom and useksip (exactly once, in the first iteration)
-            if(numiter == 0){
+            if(numiter == 0) {
                 denom <- 2
                 useskip <- 1
             } else {
@@ -1080,7 +1091,7 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
         }
 
         ## Update error depending on 'do.reltol'
-        error <- if(!do.reltol){ # absolute error
+        error <- if(!do.reltol) { # absolute error
                      CI.factor.sqrt.B * apply(rqmc.estimates, 2, sd)
                  } else { # relative error
                      CI.factor.sqrt.B * apply(rqmc.estimates, 2, sd)/colMeans(rqmc.estimates)
@@ -1092,9 +1103,9 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
 
     ## Check if error tolerance reached and print warnings accordingly
     reached <- (error <= tol)
-    if(any(!reached) && verbose > 0){
+    if(any(!reached) && verbose > 0) {
         ii <- which(!reached)
-        if(verbose == 1){
+        if(verbose == 1) {
             strng <- if(length(ii) > 6) {
                          paste0(paste(head(ii), collapse = ", "), ",...")
                      } else {
@@ -1102,7 +1113,7 @@ pnvmix1d <- function(upper, lower = rep(-Inf,n), qW, loc = 0, scale = 1,
                      }
             warning("Tolerance not reached for pair(s) ",strng," of integration bounds; consider increasing 'fun.eval[2]' and 'max.iter.rqmc' in the 'control' argument.")
         } else {
-            for(i in 1:length(ii)){
+            for(i in 1:length(ii)) {
                 warning(sprintf("Tolerance not reached for pair %d of integration bounds; consider increasing 'fun.eval[2]' and 'max.iter.rqmc' in the 'control' argument", ii[i]))
             }
         }
