@@ -1,7 +1,7 @@
 ### rnvmix() ###################################################################
 
 ##' @title Random Number Generator for Multivariate Normal Variance Mixtures
-##'        and Gamma mixtures (not exported)
+##'        and Gamma mixtures
 ##' @param n see ?rnvmix()
 ##' @param rmix ?rnvmix()
 ##' @param qmix ?rnvmix()

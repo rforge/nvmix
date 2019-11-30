@@ -356,7 +356,7 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
 }
 
 
-### Main function ('fitnvmix') that is exported ################################
+### Main function ##############################################################
 
 ##' @title Fitting Multivariate Normal Variance Mixtures
 ##' @param x (n,d) data matrix

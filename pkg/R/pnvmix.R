@@ -947,7 +947,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
 }
 
 
-##' @title Distribution Function of a 1d Normal Variance Mixture (not exported)
+##' @title Distribution Function of a 1d Normal Variance Mixture
 ##' @param upper n vector of upper evaluation limits
 ##' @param lower n vector of lower evaluation limits (<= upper)
 ##' @param qW function of one variable; quantile fct of W
