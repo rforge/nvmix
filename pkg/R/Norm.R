@@ -23,6 +23,7 @@ dNorm <- function(x, loc = rep(0, d), scale = diag(d),
            factor = factor, log = log, verbose = verbose, ...)
 }
 
+
 ##' @title Distribution Function of the Multivariate Normal Distribution
 ##' @param upper d-vector of upper evaluation limits
 ##' @param lower d-vector of lower evaluation limits
@@ -55,20 +56,19 @@ dNorm <- function(x, loc = rep(0, d), scale = diag(d),
 ##' @return numeric vector with the computed probabilities and attributes "error"
 ##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
-##' 
-##' 
 pNorm <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
                   loc = rep(0, d), scale = diag(d), standardized = FALSE,
                   control = list(),
                   verbose = TRUE)
 {
-   ## Checks (needed to get the default for 'lower' correctly)
-   if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
-   n <- nrow(upper) # number of evaluation points
-   d <- ncol(upper) # dimension
+    ## Checks (needed to get the default for 'lower' correctly)
+    if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
+    n <- nrow(upper) # number of evaluation points
+    d <- ncol(upper) # dimension
     pnvmix(upper, lower = lower, qmix = "constant", loc = loc, scale = scale,
            standardized = standardized, control = control, verbose = verbose)
 }
+
 
 ##' @title Random Number Generator for the Multivariate Normal Distribution
 ##' @param n sample size
