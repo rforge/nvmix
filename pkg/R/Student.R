@@ -105,4 +105,12 @@ rStudent <- function(n, df, loc = rep(0, d), scale = diag(2),
 ##' @return see ?fitnvmix
 ##' @author Marius Hofert
 fitStudent <- function(x, mix.param.bounds = c(1e-3, 1e3), ...)
-    fitnvmix(x, qmix = "inverse.gamma", mix.param.bounds = mix.param.bounds, ...)
+{
+    fit <- fitnvmix(x, qmix = "inverse.gamma", mix.param.bounds = mix.param.bounds, ...)
+    ## Consistency with other *Student() functions
+    nms <- names(fit)
+    nms[nms == "nu"] <- "df"
+    names(fit) <- nms
+    ## Return
+    fit
+}

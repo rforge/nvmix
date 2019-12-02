@@ -80,7 +80,10 @@ fitStudent(x, mix.param.bounds = c(1e-3, 1e3), ...)
   (log-likelihood at the MLEs).
 
   \code{fitStudent()} is a wrapper to \code{fitnvmix()} for parameter
-  estimation of multivariate \emph{t} distributions.
+  estimation of multivariate Student \emph{t} distributions; in comparison
+  to \code{fitnvmix()}, the fitted degrees of freedom are called
+  \code{"df"} (to be consistent with the other wrappers for the
+  Student \emph{t} distributions).
 }
 \details{
   The function \code{fitnvmix} uses an ECME algorithm to approximate the
