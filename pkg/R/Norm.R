@@ -92,3 +92,16 @@ rNorm <- function(n, loc = rep(0, d), scale = diag(2), factor = NULL, # needs to
            loc = loc, scale = scale, factor = factor,
            method = method, skip = skip)
 }
+
+
+##' @title Fitting the Parameters of a Multivariate Normal Distribution
+##' @param x (n,d) data matrix
+##' @return list with components 'loc' (sample mean) and 'scale'
+##'         (sample covariance matrix)
+##' @author Marius Hofert
+fitNorm <- function(x)
+{
+    if(!is.matrix(x))
+        x <- rbind(x)
+    list(loc = colMeans(x), scale = cov(x))
+}

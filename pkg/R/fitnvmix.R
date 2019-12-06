@@ -397,6 +397,9 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                      size.subsample = n, control = list(),
                      verbose = TRUE)
 {
+    ## Basics
+    if(!is.matrix(x))
+        x <- rbind(x)
     ## Initialize various quantities
     control <- get.set.parameters(control)
     ## Get quantile function:

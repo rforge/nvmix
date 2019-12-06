@@ -99,7 +99,7 @@ rStudent <- function(n, df, loc = rep(0, d), scale = diag(2),
 
 
 ##' @title Fitting the Parameters of a Multivariate Student t Distribution
-##' @param x see ?fitnvmix
+##' @param x (n,d) data matrix
 ##' @param mix.param.bounds see ?fitnvmix
 ##' @param ... additional arguments passed to the underlying fitnvmix()
 ##' @return see ?fitnvmix

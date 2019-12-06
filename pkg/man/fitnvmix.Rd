@@ -1,6 +1,7 @@
 \name{fitnvmix}
 \alias{fitnvmix}
 \alias{fitStudent}
+\alias{fitNorm}
 \title{Fitting Multivariate Normal Variance Mixtures}
 \description{
   Functionalities for fitting multivariate normal variance mixtures (in
@@ -10,7 +11,9 @@
 fitnvmix(x, qmix, mix.param.bounds, nu.init = NA,
          init.size.subsample = min(n, 100), size.subsample = n,
          control = list(), verbose = TRUE)
+
 fitStudent(x, mix.param.bounds = c(1e-3, 1e3), ...)
+fitNorm(x)
 }
 \arguments{
   \item{x}{\eqn{(n, d)}-data \code{\link{matrix}}.}
@@ -84,6 +87,10 @@ fitStudent(x, mix.param.bounds = c(1e-3, 1e3), ...)
   to \code{fitnvmix()}, the fitted degrees of freedom are called
   \code{"df"} (to be consistent with the other wrappers for the
   Student \emph{t} distributions).
+
+  \code{fitNorm()} just returns a \code{\link{list}} with components
+  \code{loc} (columnwise sample means) and \code{scale} (sample
+  covariance matrix).
 }
 \details{
   The function \code{fitnvmix} uses an ECME algorithm to approximate the
