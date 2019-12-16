@@ -9,17 +9,17 @@
 ##' @param plot.diag logical; if TRUE the curve f(x) = x is plotted additionally
 ##' @param verbose logical if warnings from underlying 'qgammamix()' shall be
 ##'        thrown
-##' @param control list of algorithm specific parameters, see ?get.set.parameters
+##' @param control list of algorithm specific parameters, see ?get_set_param()
 ##'        and ?fitnvmix
 ##' @param ... see ?pnvmix()
 ##' @return invisibly returns a list of two: 'maha2' (sorted squared mahalanobis
 ##'         distances obtained from 'x', sorted) and 'q' (theoretical quantiles)
 ##' @author Erik Hintz, Marius Hofert, Christiane Lemieux
-qqplot.maha <- function(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE,
+qqplot_maha <- function(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE,
                         control = list(), ...)
 {
    ## Initialize and check inputs:
-   control <- get.set.parameters(control)
+   control <- get_set_param(control)
    if(!is.matrix(x)) x <- rbind(x)
    notNA <- rowSums(is.na(x)) == 0
    x     <- x[notNA,, drop = FALSE] # non-missing data (rows)

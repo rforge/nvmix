@@ -28,7 +28,7 @@ dnvmixcop <- function(u, qmix, scale = diag(d), factor = NULL, control = list(),
     names.control <- names(control)
     if(!any(names.control == "newton.logdens.abstol")) {
         ## 'newton.logdens.abstol' was *not* provided:
-        control <- get.set.parameters(control)
+        control <- get_set_param(control)
         control$newton.logdens.abstol <- control$dnvmix.abstol
     }
     ## If it was provided, we don't change it.

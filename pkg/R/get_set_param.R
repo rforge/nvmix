@@ -1,9 +1,9 @@
-### get.set.parameters() #######################################################
+### get_set_param() #######################################################
 
 ##' @title  Retrieve algorithm specific default parameters and overwrite them
 ##' @return list with default values for all functions in the 'nvmix' package
 ##' @author Erik Hintz and Marius Hofert
-get.set.parameters <- function(control = list())
+get_set_param <- function(control = list())
 {
     ## Set up default controls:
     ctrl <- list(
@@ -22,7 +22,7 @@ get.set.parameters <- function(control = list())
         dnvmix.order.lower = 10,
         dnvmix.tol.bisec = c(1e-16, 1e-1, 1e-1),
         dnvmix.tol.stratlength = 1e-20,
-        dnvmix.max.iter.bisec = 55,
+        dnvmix.max.iter.bisec = 50,
         ## For pgammamix:
         pgammamix.reltol = NA,
         pgammamix.abstol = 1e-3,
@@ -40,7 +40,7 @@ get.set.parameters <- function(control = list())
         ## Tolerances:
         ECME.maxiter = 20,
         ECME.miniter = 3,
-        max.iter.locscaleupdate = 25,
+        max.iter.locscaleupdate = 20,
         weights.abstol = 1e-1, # currently not used
         weights.reltol = 5e-2,
         weights.interpol.reltol = 1e-2,

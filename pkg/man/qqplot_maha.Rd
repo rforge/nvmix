@@ -1,30 +1,30 @@
-\name{qqplot.maha}
-\alias{qqplot.maha}
+\name{qqplot_maha}
+\alias{qqplot_maha}
 \title{QQ Plot for Multivariate Normal Variance Mixtures}
 \description{
   Visual goodness-of-fit test for multivariate normal variance mixtures:
-  Plotting squared Mahalanobis distance against their theoretical quantiles.
+  Plotting squared Mahalanobis distances against their theoretical quantiles.
 }
 \usage{
-qqplot.maha(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE,
+qqplot_maha(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE,
             control = list(), ...)
 }
 \arguments{
   \item{x}{\eqn{(n, d)}-data \code{\link{matrix}}.}
-  \item{qmix}{see \code{?\link{pnvmix}()}}
-  \item{loc}{see \code{?\link{pnvmix}()}}
-  \item{scale}{see \code{?\link{pnvmix}()}}
+  \item{qmix}{see \code{\link{pnvmix}()}.}
+  \item{loc}{see \code{\link{pnvmix}()}.}
+  \item{scale}{see \code{\link{pnvmix}()}.}
   \item{plot.diag}{\code{\link{logical}} indicating if the diagonal \eqn{y=x}
     shall be included in the plot.}
-  \item{verbose}{see \code{?\link{pnvmix}()}}
+  \item{verbose}{see \code{\link{pnvmix}()}.}
   \item{control}{\code{\link{list}} specifying algorithm specific
-    parameters; see \code{?\link{get.set.parameters}()}.}
+    parameters; see \code{\link{get_set_param}()}.}
   \item{\dots}{additional arguments (for example, parameters) passed to the
     underlying mixing distribution when \code{qmix} is a
     \code{\link{character}} string or \code{\link{function}}.}
 }
 \value{
-  \code{qqolot.maha()} (invisibly) returns a list of two: \code{maha2}, the
+  \code{qqplot_maha()} (invisibly) returns a list of two: \code{maha2}, the
   sorted Mahalanobis distances of the data in \code{x} with respect to
   \code{loc} and \code{scale} and \code{q}, the theoretical quantiles evaluated
   at \code{ppoints(n)} where \code{n=nrow(x)}.
@@ -33,10 +33,10 @@ qqplot.maha(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE,
   If \eqn{X} follows a multivariate normal variance mixture, the distribution of
   the Mahalanobis distance \eqn{D^2 = (X-\mu)^T \Sigma^{-1} (X-\mu)}
   is a gamma mixture whose distribution can be approximated.
-  The function \code{qqplot.maha()} plots the empirical Mahalanobis distances
+  The function \code{qqplot_maha()} plots the empirical Mahalanobis distances
   from the data in \code{x} (with \eqn{\mu=}\code{loc} and
   \eqn{Sigma=}\code{scale}) versus their theoretical quantiles which are
-  internally estimated via the function \code{qgammamix()}.
+  internally estimated via the function \code{\link{qgammamix}()}.
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
@@ -78,6 +78,6 @@ x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
 ## Call fitvnmix() with qmix (so all densities/weights are estimated)
 (MyFit <- fitnvmix(x, qmix = qmix, mix.param.bounds = c(0.5, 9)))
 ## QQ Plot of empirical quantiles vs estimated theoretical quantiles
-qqplot.maha(x, qmix = qmix, loc = MyFit$loc, scale = MyFit$scale, nu = MyFit$nu)
+qqplot_maha(x, qmix = qmix, loc = MyFit$loc, scale = MyFit$scale, nu = MyFit$nu)
 }
 \keyword{distribution}

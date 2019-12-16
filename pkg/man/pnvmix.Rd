@@ -71,10 +71,10 @@ pNorm(upper, lower = matrix(-Inf, nrow = n, ncol = d), loc = rep(0, d),
   \item{standardized}{\code{logical} indicating whether \code{scale} is
     assumed to be a correlation matrix.}
   \item{control}{\code{\link{list}} specifying algorithm specific
-    parameters such as error tolerances; see details below.}
+    parameters; see \code{\link{get_set_param}()}.}
   \item{verbose}{% *not* the same as in ?dnvmix()
     \code{\link{logical}}
-    indicating whether a warning is given if the required precision
+    indicating whether a warning is thrown if the required precision
     \code{pnvmix.abstol} or \code{pnvmix.reltol} as specified in the
     \code{control} argument has not been reached; can also be an
     \code{\link{integer}} in which case 0 is \code{FALSE}, 1 is
@@ -111,10 +111,9 @@ pNorm(upper, lower = matrix(-Inf, nrow = n, ncol = d), loc = rep(0, d),
   \code{control$pnvmix.reltol} which is used only when
   \code{control$pnvmix.reltol = NA}) is reached.  The attribute
   \code{"numiter"} gives the number of such iterations needed.
-
   Algorithm specific parameters (such as the above mentioned
-  \code{'increment'} or \code{'pnvmix.abstol'}) can be passed as a list
-  via \code{control}, see \code{\link{get.set.parameters}()} for more
+  \code{control$pnvmix.abstol}) can be passed as a list
+  via \code{control}, see \code{\link{get_set_param}()} for more
   details. If specified error tolerances are not reached and
   \code{verbose = TRUE}, a warning is thrown. If provided \code{scale}
   is singular, \code{pnvmix()} estimates the correct probability but
@@ -155,7 +154,7 @@ pNorm(upper, lower = matrix(-Inf, nrow = n, ncol = d), loc = rep(0, d),
 }
 \seealso{
   \code{\link{dnvmix}()}, \code{\link{rnvmix}()}, \code{\link{fitnvmix}()},
-  \code{\link{get.set.parameters}()}
+  \code{\link{get_set_param}()}
 }
 \examples{
 ### Examples for pnvmix() ######################################################

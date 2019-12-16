@@ -18,12 +18,11 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
     ## Checks
     if(!is.vector(x)) x <- as.vector(x)
     n <- length(x) # length of input
-    ## Deal with algorithm parameters, see also get.set.parameters():
-    ## get.set.parameters() also does argument checking, so not needed here.
-    control <- get.set.parameters(control)
+    ## Deal with algorithm parameters, see also get_set_param():
+    ## get_set_param() also does argument checking, so not needed here.
+    control <- get_set_param(control)
 
     ## 1 Define the quantile function of the mixing variable ###################
-
     special.mix <- NA
     qW <- if(is.character(qmix)) { # 'qmix' is a character vector
               qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma", "pareto"))
@@ -70,7 +69,6 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
               function(u)
                   qmix(u, ...)
           } else stop("'qmix' must be a character string, list or quantile function.")
-
     ## Build result object
     pres <- rep(0, n) # n-vector of results
     notNA <- which(!is.na(x))
@@ -78,7 +76,6 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
     x <- x[notNA, drop = FALSE] # non-missing data (rows)
     ## Counter
     numiter <- 0 # initialize counter (0 for 'inv.gam' and 'is.const.mix')
-
     ## Deal with special distributions
     if(!is.na(special.mix)) {
         if(!(special.mix == "pareto")) {
@@ -100,7 +97,6 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
             return(pres)
         }
     }
-
     ## Define various quantites for the RQMC procedure
     dblng           <- (control$increment == "doubling")
     B               <- control$B # number of randomizations
@@ -129,9 +125,8 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
     }
     ## Matrix to store RQMC estimates
     rqmc.estimates <- matrix(0, ncol = n, nrow = B)
-    ## Will be needed a lot:
-    CI.factor.sqrt.B <- control$CI.factor / sqrt(B)
-    ## Initialize 'max.error' to > tol so that we can enter the while loop:
+    CI.factor.sqrt.B <- control$CI.factor / sqrt(B) # needed again and again
+    ## Initialize 'max.error' to > tol so that we can enter the while loop
     max.error <- tol + 42
 
     ## 2 Main loop #############################################################
@@ -238,7 +233,7 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
 ##' @return see ?qnvmix()
 qgammamix <- function(u, qmix, d, control = list(), verbose = TRUE, q.only = TRUE,
                       stored.values = NULL, ...)
-    quantile.internal(u, qmix = qmix, which = "maha2", d = d, control = control,
+    quantile_(u, qmix = qmix, which = "maha2", d = d, control = control,
                       verbose = verbose, q.only = q.only,
                       stored.values = stored.values, ...)
 
@@ -266,7 +261,7 @@ qgammamix <- function(u, qmix, d, control = list(), verbose = TRUE, q.only = TRU
 ##'       - user friendly wrappers are provided in 'rnvmix()' and 'rgammamix()'
 rgammamix <- function(n, rmix = NULL, qmix = NULL, d,
                       method = c("PRNG", "sobol", "ghalton"), skip = 0, ...)
-    rmix.internal(n, rmix = rmix, qmix = qmix, loc = rep(0, d), scale = diag(d),
+    rnvmix_(n, rmix = rmix, qmix = qmix, loc = rep(0, d), scale = diag(d),
                   factor = diag(d), method = method, skip = skip, which = "maha2",
                   ...)
 
@@ -291,9 +286,8 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
     n <- length(x) # dimension
     stopifnot(d >= 1)
     verbose <- as.logical(verbose)
-    ## Deal with algorithm parameters, see also get.set.parameters():
-    ## get.set.parameters() also does argument checking, so not needed here.
-    control <- get.set.parameters(control)
+    ## Deal with algorithm parameters, see also get_set_param()
+    control <- get_set_param(control)
 
     ## Build result object (log-density)
     lres  <- rep(-Inf, n) # n-vector of results
@@ -379,14 +373,14 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
         }
     }
     ## General case of a multivariate normal variance mixture (RQMC)
-    ## Prepare inputs for densmix.internal.RQMC
+    ## Prepare inputs for 'densmix_()'
     ## Sort input 'x' increasingly and store ordering for later
     ordering.x <- order(x)
     x.ordered  <- x[ordering.x]
     ## Define log-constant for the integration
     lconst <- -lgamma(d/2) - d/2 * log(2) + (d/2-1)*log(x.ordered)
-    ## Call internal dnvmix (which itself calls C-Code and handles warnings):
-    ests <- densmix.internal(qW, maha2.2 = x.ordered/2, lconst = lconst,
+    ## Call 'densmix_()' (which itself calls C-Code and handles warnings):
+    ests <- densmix_(qW, maha2.2 = x.ordered/2, lconst = lconst,
                              d = d, control = control, verbose = verbose)
     ## Grab results, correct 'error' and 'lres' if 'log = FALSE'
     lres[notNA] <- ests$ldensities[order(ordering.x)]

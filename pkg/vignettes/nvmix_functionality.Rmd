@@ -151,7 +151,7 @@ time of development of this package.
 
 The function `pnvmix()` (and thus the wrappers `pStudent()` and `pNorm()`) give
 the user the possibility to change algorithm-specific parameters via the `control`
-argument. A few of them are (for others see `?get.set.parameters`):
+argument. A few of them are (for others see `?get_set_param`):
 
 * `method`: The integration method to be used. The default, a randomized Sobol
 sequence, has proven to outperform the others.
@@ -447,7 +447,7 @@ stopifnot(all.equal(MyFit21$nu, MyFit22$nu, tol = 5e-2))
 ## quantiles with parameters estimated in 'MyFit21' 
 if(doPDF) pdf(file = (file <- paste0("fig_fitnvmix_qqplot.pdf")),
               width = 6, height = 6)
-qqplot.maha(x, qmix = "pareto", loc = MyFit21$loc, scale = MyFit21$scale, 
+qqplot_maha(x, qmix = "pareto", loc = MyFit21$loc, scale = MyFit21$scale, 
             alpha = MyFit21$nu)
 if(doPDF) dev.off()
 ```

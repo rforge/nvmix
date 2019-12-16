@@ -19,8 +19,8 @@ rgammamix(n, rmix = NULL, qmix = NULL, d, method = c("PRNG", "sobol", "ghalton")
 \arguments{
   \item{x}{\eqn{n}-\code{\link{vector}} of evaluation points.}
   \item{u}{\eqn{n}-\code{\link{vector}} of probabilities.}
-  \item{qmix}{see \code{?\link{pnvmix}()}}
-  \item{rmix}{see \code{?\link{rnvmix}()}}
+  \item{qmix}{see \code{\link{pnvmix}()}.}
+  \item{rmix}{see \code{\link{rnvmix}()}.}
   \item{d}{dimension of the underlying normal variance mixture, see also
            details below.}
   \item{n}{sample size \eqn{n} (positive integer).}
@@ -28,12 +28,12 @@ rgammamix(n, rmix = NULL, qmix = NULL, d, method = c("PRNG", "sobol", "ghalton")
     probabilities are \eqn{P(X<= x)}, otherwise \eqn{P(X > x)}.}
   \item{log}{\code{\link{logical}} indicating whether the log-density
     shall be returned.}
-  \item{q.only}{see \code{?\link{qnvmix}()}}
-  \item{stored.values}{see \code{?\link{qnvmix}()}}
-  \item{method}{see \code{?\link{rnvmix}()}}
-  \item{skip}{see \code{?\link{rnvmix}()}}
+  \item{q.only}{see \code{\link{qnvmix}()}.}
+  \item{stored.values}{see \code{\link{qnvmix}()}.}
+  \item{method}{see \code{\link{rnvmix}()}.}
+  \item{skip}{see \code{\link{rnvmix}()}.}
   \item{control}{\code{\link{list}} specifying algorithm specific
-    parameters; see \code{?\link{get.set.parameters}()}}
+    parameters; see \code{\link{get_set_param}()}.}
   \item{verbose}{
     \code{\link{logical}}
     indicating whether a warning is given if the required precision
@@ -77,8 +77,8 @@ rgammamix(n, rmix = NULL, qmix = NULL, d, method = c("PRNG", "sobol", "ghalton")
 }
 \seealso{
   \code{\link{dnvmix}()}, \code{\link{pnvmix}()}, \code{\link{qnvmix}()},
-  \code{\link{rnvmix}()}, \code{\link{get.set.parameters}()},
-  \code{\link{qqplot.maha}()}, \code{\link{fitnvmix}()}
+  \code{\link{rnvmix}()}, \code{\link{get_set_param}()},
+  \code{\link{qqplot_maha}()}, \code{\link{fitnvmix}()}
 }
 \examples{
 ## Specify inverse-gamma mixture => results in F(d, nu) dist'n,

@@ -22,9 +22,9 @@ importFrom("graphics",
 ### Exports ####################################################################
 
 export("dnvmix", "pnvmix", "rnvmix",
-       "fitnvmix", "qnvmix", "qqplot.maha",
+       "fitnvmix", "qnvmix", "qqplot_maha",
        "dStudent", "pStudent", "rStudent", "fitStudent",
        "dNorm", "pNorm", "rNorm", "fitNorm",
-       "get.set.parameters",
+       "get_set_param",
        "dnvmixcop", "pnvmixcop", "rnvmixcop",
        "dgammamix", "pgammamix", "qgammamix", "rgammamix")

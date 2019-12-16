@@ -6,8 +6,8 @@
 ##' @param lower see ?pnvmix
 ##' @param upper see ?pnvmix
 ##' @param scale see ?pnvmix. Has to be full rank here though!
-##' @param precond see ?get.set.parameters()
-##' @param mean.sqrt.mix see ?get.set.parameters()
+##' @param precond see ?get_set_param()
+##' @param mean.sqrt.mix see ?get_set_param()
 ##' @param return.all logical if all function evaluations should be returned.
 ##' @param ... additional parameters passed to qmix()
 ##' @return if return.all = TRUE a n-vector with g(U) values, otherwise a 2-vector
@@ -17,7 +17,7 @@
 ##' @author Erik Hintz
 ##' @note - This function is *only* needed for numerical experiments.
 ##'       - It corresponds to 'g' in the paper.
-pnvmix.g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
+pnvmix_g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
                      mean.sqrt.mix = NULL, return.all = FALSE, verbose = TRUE, ...)
 {
     ## Define the quantile function of the mixing variable
@@ -236,7 +236,7 @@ swap <- function(i, j, lower, upper, scale)
 ##'         have been switched according to perm
 ##' @author Erik Hintz
 ##' @note No input checking is done. This function is mostly for experimenting.
-reorder.limits.scale <- function(perm, upper, lower = rep(-Inf, d), scale = diag(d))
+reorder_limits_scale <- function(perm, upper, lower = rep(-Inf, d), scale = diag(d))
 {
     d <- length(upper)
     ## Vector to save current positions of original variables
@@ -271,7 +271,7 @@ reorder.limits.scale <- function(perm, upper, lower = rep(-Inf, d), scale = diag
 ##' @return l-vector
 ##' @author Erik Hintz
 ##' @note formula in Genz and Bretz (2009, p. 38)
-trunc.var <- function(a, b)
+trunc_var <- function(a, b)
 {
     p.diff <- pnorm(b) - pnorm(a)
     ## Cases -Inf * 0 and Inf * 0:
@@ -292,7 +292,7 @@ trunc.var <- function(a, b)
 ##' @param factor Cholesky factor (lower triangular matrix) of 'scale'
 ##' @param mean.sqrt.mix E(sqrt(W)) where W is the rv corresponding to 'qmix'
 ##' @param precond.method character, "ExpLength" (=> sorted by expected length),
-##'        otherwise sorted by 'trunc.var()'.
+##'        otherwise sorted by 'trunc_var()'.
 ##' @param tol if a calculated diagonal element of factor is < sqrt(tol),
 ##'        factor is deemed singular and preconditioning fails.
 ##' @return list of length 4 with reordered integration limits, scale matrix and
@@ -334,7 +334,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
                  which.min(pnorm(next.uppers) - pnorm(next.lowers)) + j - 1
              } else {
                  ## Find i = argmin { <truncated variance of variable j> }
-                 which.min(trunc.var(next.lowers, next.uppers)) + j - 1
+                 which.min(trunc_var(next.lowers, next.uppers)) + j - 1
              }
 
         ## Swap i and j if they are different
@@ -675,9 +675,8 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
     stopifnot(dim(lower) == c(n, d), length(loc) == d, # 'mean.sqrt.mix' is tested in pnvmix1()
               dim(scale) == c(d, d))
 
-    ## Deal with algorithm parameters, see also get.set.parameters():
-    ## get.set.parameters() also does argument checking, so not needed here.
-    control <- get.set.parameters(control)
+    ## Deal with algorithm parameters, see also ?get_set_param()
+    control <- get_set_param(control)
 
     ## Grab method, increment and mean.sqrt.mix
     method        <- control$method

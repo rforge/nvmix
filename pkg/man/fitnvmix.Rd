@@ -65,12 +65,12 @@ fitNorm(x)
     lead to faster run-times (as fewer log-densities need to be
     estimated) but also to an increase in bias and variance.}
   \item{control}{\code{\link{list}} specifying algorithm specific
-    parameters; see below under 'Details' and \code{?get.set.parameters}.}
+    parameters; see below under 'Details' and \code{\link{get_set_param}()}.}
   \item{verbose}{\code{\link{numeric}} or \code{\link{logical}} (in
     which case it is converted to \code{numeric}) specifying the
-    amount of tracing to be done. If 0 or \code{FALSE}, neither tracing
-    nor warnigns are communicated; if 1, only warnigns are communicated,
-    if 2 or 3, warnings and (shorter or longer) tracing information is
+    amount of tracing to be done. If \code{0} or \code{FALSE}, neither tracing
+    nor warnigns are communicated; if \code{1}, only warnigns are communicated,
+    if \code{2} or \code{3}, warnings and (shorter or longer) tracing information is
     provided.}
   \item{\dots}{additional arguments passed to the underlying
     \code{fitnvmix()}.}
@@ -93,7 +93,7 @@ fitNorm(x)
   covariance matrix).
 }
 \details{
-  The function \code{fitnvmix} uses an ECME algorithm to approximate the
+  The function \code{fitnvmix()} uses an ECME algorithm to approximate the
   MLEs of the parameters \code{nu}, \code{loc} and \code{scale} of a
   normal variance mixture specified by \code{qmix}. The underlying
   procedure successively estimates \code{nu} (with given \code{loc} and
@@ -102,7 +102,7 @@ fitNorm(x)
   string, in which case analytical formulas for the log-densities are
   used) and \code{scale} and \code{loc} (given \code{nu}) using weights
   (which again need to be approximated) related to the posterior
-  distribution, details can be found in (...).
+  distribution, details can be found in the first reference below. 
 
   It should be highlighted that (unless unless \code{qmix} is a
   \code{character} string), every log-likelihood and every weight needed
@@ -112,7 +112,7 @@ fitNorm(x)
 
   Various tolerances and convergence criteria can be changed by the user
   via the \code{control} argument. For more details, see
-  \code{\link{get.set.parameters}()}.
+  \code{\link{get_set_param}()}.
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
@@ -131,7 +131,8 @@ fitNorm(x)
   633--648.
 }
 \seealso{
-  \code{\link{dnvmix}()}, \code{\link{rnvmix}()}, \code{\link{pnvmix}()}
+  \code{\link{dnvmix}()}, \code{\link{rnvmix}()}, \code{\link{pnvmix}()},
+  \code{\link{qqplot_maha}()}, \code{\link{get_set_param}()}. 
 }
 \examples{
 ## Sampling parameters
@@ -161,8 +162,8 @@ x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
 stopifnot(all.equal(MyFit11$nu, MyFit12$nu, tol = 5e-2))
 
 ## Visual goodness-of-fit test: QQ Plot of Mahalanobis distances obtained
-## from fitted parameters using 'qqplot.maha()'
-qqplot.maha(x, qmix = "inverse.gamma", loc = MyFit11$loc, scale = MyFit11$scale,
+## from fitted parameters using 'qqplot_maha()'
+qqplot_maha(x, qmix = "inverse.gamma", loc = MyFit11$loc, scale = MyFit11$scale,
             df = MyFit11$nu)
 
 

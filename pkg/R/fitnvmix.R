@@ -11,7 +11,7 @@
 ##' @param special.mix either NA or string. Currently supported are 'inverse.gamma'
 ##'         and 'pareto' in which case analytical weights are calculated
 ##' @param control see ?fitnvmix()
-##' @param verbose see ?fitnvmix
+##' @param verbose see ?fitnvmix()
 ##' @return List of three:
 ##'         $weights n-vector with computed log-density values
 ##'         $numiter numeric, number of iterations needed
@@ -21,8 +21,7 @@
 ##'         (only if return.all = TRUE)
 ##' @author Erik Hintz, Marius Hofert, Christiane Lemieux
 ##' @note corresponds to delta_ki in the paper
-weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.mix, control,
-                             verbose)
+weights_ <- function(maha2.2, qW, nu, lrdet, d, special.mix, control, verbose)
 {
     verbose <- as.logical(verbose) # only logical needed here
     if(!is.na(special.mix)) { # weights are known analytically
@@ -50,7 +49,7 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.mix, control,
         ## lconst for the integrand
         lconst <- rep(-lrdet - d/2*log(2*pi), length(maha2.2))
         ## Call RQMC procedure without any stratification
-        rqmc.obj <- weights.internal.RQMC(maha2.2, qW = qW, nu = nu,
+        rqmc.obj <- weights_rqmc(maha2.2, qW = qW, nu = nu,
                                           lconst = lconst, d = d,
                                           max.iter.rqmc = control$dnvmix.max.iter.rqmc.pilot,
                                           control = control, return.all = TRUE)
@@ -63,14 +62,13 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.mix, control,
             ## => Use adaptive approach for those
             notRchd <- which(error > tol)
             qW. <- function(u) qW(u, nu = nu)
-            ldens.obj <- densmix.internal.adaptRQMC(qW., maha2.2 = maha2.2[notRchd],
-                                                    lconst = lconst[notRchd],
-                                                    d = d, UsWs = rqmc.obj$UsWs,
-                                                    control = control)
-            lcond.obj <- densmix.internal.adaptRQMC(qW., maha2.2 = maha2.2[notRchd],
-                                                    lconst = lconst[notRchd],
-                                                    d = d, k = d + 2, UsWs = rqmc.obj$UsWs,
-                                                    control = control)
+            ldens.obj <- densmix_adaptrqmc(qW., maha2.2 = maha2.2[notRchd],
+                                           lconst = lconst[notRchd], d = d, 
+                                           UsWs = rqmc.obj$UsWs, control = control)
+            lcond.obj <- densmix_adaptrqmc(qW., maha2.2 = maha2.2[notRchd],
+                                           lconst = lconst[notRchd], d = d, 
+                                           k = d + 2, UsWs = rqmc.obj$UsWs,
+                                           control = control)
             weights[notRchd]   <- exp(lcond.obj$ldensities - ldens.obj$ldensities)
             ## Which weights cannot be reliably estimated?
             which.errorNA     <- which(is.na(lcond.obj$error) | is.na(ldens.obj$error))
@@ -112,7 +110,7 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.mix, control,
 ##' @param maha2.2 squared maha distances divided by 2 (length n)
 ##' @param qW see ?fitnvmix() ('qmix' there)
 ##' @param nu parameter (vector) nu of W
-##' @param lconst see ?densmix.internal
+##' @param lconst see ?densmix_
 ##' @param d dimension
 ##' @param control see ?fitnvmix()
 ##' @param max.iter.rqmc maximum number of RQMC iterations
@@ -126,7 +124,7 @@ weights.internal <- function(maha2.2, qW, nu, lrdet, d, special.mix, control,
 ##'         (only if return.all = TRUE)
 ##' @author Erik Hintz
 ##' @note corresponds to delta_ki in the paper
-weights.internal.RQMC <- function(maha2.2, qW, nu, lconst, d, max.iter.rqmc,
+weights_rqmc <- function(maha2.2, qW, nu, lconst, d, max.iter.rqmc,
                                   control, return.all)
 {
     ## Define various quantites:
@@ -291,7 +289,7 @@ weights.internal.RQMC <- function(maha2.2, qW, nu, lconst, d, max.iter.rqmc,
 ##'                      $ll.counts (total number of calls to likelihood)
 ##'                      $opt.obj (object returned by underlying 'optim' call)
 ##' @author Erik Hintz, Marius Hofert, Christiane Lemieux
-estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
+estim_nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
                      special.mix = NA, control, control.optim, verbose)
 {
     ## Obtain 'factor' if not provided
@@ -322,7 +320,7 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
                        }
                    })
     } else {
-        ## Get various quantitites passed to 'densmix.internal'
+        ## Get various quantitites passed to 'densmix_'
         z        <- forwardsolve(factor, tx - loc, transpose = FALSE)
         maha2.2  <- sort(colSums(z^2)/2)
         lrdet    <- sum(log(diag(factor)))
@@ -335,8 +333,8 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
         neg.log.likelihood.nu <- function(nu) {
             .Random.seed <<- seed # reset seed => monotonicity (not bc of sobol shifts!)
             qmix. <- function(u) qW(u, nu = nu) # function of u only
-            ## Call 'densmix.internal' which by default returns the log-density
-            ldens.obj <- densmix.internal(qW = qmix., maha2.2 = maha2.2, lconst = lconst,
+            ## Call 'densmix_()' which by default returns the log-density
+            ldens.obj <- densmix_(qW = qmix., maha2.2 = maha2.2, lconst = lconst,
                                           d = d, control = control, verbose = verbose)
             if(verbose >= 3) cat(".") # print dot after each call to likelihood
             ll.counts <<- ll.counts + 1 # update 'll.counts' in parent environment
@@ -376,7 +374,7 @@ estim.nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
 ##' @param size.subsample numeric, <= nrow(x). Number of rows of 'x' used in ECME
 ##'        iteration to optimize the log-likelihood. Defaults to n
 ##'        (all datapoints are used)
-##' @param control list of algorithm specific parameters, see ?get.set.parameters
+##' @param control list of algorithm specific parameters, see ?get_set_param
 ##'        and ?fitnvmix
 ##' @param verbose numeric or logical. 0: No warnings; 1: Warnings;
 ##'        2: Warnings + short tracing; 3: Warnings + complete tracing.
@@ -401,8 +399,8 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
     if(!is.matrix(x))
         x <- rbind(x)
     ## Initialize various quantities
-    control <- get.set.parameters(control)
-    ## Get quantile function:
+    control <- get_set_param(control)
+    ## Get quantile function
     special.mix <- NA  # to record if we have a special dist'n (normal, t,...)
     ## Set up qW as function(u, nu)
     qW <- if(is.character(qmix)) {# 'qmix' is a character vector
@@ -616,7 +614,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                 if(iter.locscaleupdate == 1) {
                     ## Only in the first iteration do we approximate *all* weights by RQMC.
                     ## Get weights:
-                    weights <- weights.internal(maha2.2.new, qW = qW, nu = nu.est,
+                    weights <- weights_(maha2.2.new, qW = qW, nu = nu.est,
                                                 lrdet = lrdet, d = d,
                                                 special.mix = special.mix,
                                                 control = control, verbose = verbose)$weights
@@ -663,7 +661,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                     ## Now need to approximate weights for those maha in 'notInterpol'
                     if(notInterpolcounter > 1) {
                         notInterpol <- notInterpol[1:(notInterpolcounter-1)]
-                        weights.new[notInterpol] <- weights.internal(maha2.2.new[notInterpol],
+                        weights.new[notInterpol] <- weights_(maha2.2.new[notInterpol],
                                                                      qW = qW, nu = nu.est,
                                                                      lrdet = lrdet, d = d,
                                                                      special.mix = special.mix,
@@ -714,7 +712,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                 }
                 ## Optimize neg.log.likelihood over 'nu'
                 if(verbose >= 3) cat(paste0("    Optimizing likelihood over 'nu' with new 'loc' and 'scale'"))
-                est.obj <- estim.nu(tx, qW = qW, init.nu = nu.est,
+                est.obj <- estim_nu(tx, qW = qW, init.nu = nu.est,
                                     loc = loc.est, scale = scale.est,
                                     mix.param.bounds = mix.param.bounds,
                                     special.mix = special.mix, control = control,
@@ -764,7 +762,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
             cat(paste0("  Optimizing likelihood over 'nu' with new 'loc' and 'scale'"))
         ## One last nu update with the *full* sample and 'control.optim.laststep' as control
         ## (as oppsed to 'control.optim')
-        est.obj <- estim.nu(tx, qW = qW, init.nu = nu.est, loc = loc.est,
+        est.obj <- estim_nu(tx, qW = qW, init.nu = nu.est, loc = loc.est,
                             scale = scale.est, mix.param.bounds = mix.param.bounds,
                             special.mix = special.mix, control = control,
                             control.optim = control$control.optim.laststep,

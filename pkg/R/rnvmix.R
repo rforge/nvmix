@@ -24,7 +24,7 @@
 ##'         + "GIGrvg":  faster if n small and often called with several parameters
 ##'         see examples of 'GIGrvg' for both methods
 ##'       - user friendly wrappers are provided in 'rnvmix()' and 'rgammamix()'
-rmix.internal <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d),
+rnvmix_ <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d),
                           scale = diag(2), factor = NULL,
                           method = c("PRNG", "sobol", "ghalton"),
                           skip = 0, which = c("nvmix", "maha2"), ...)
@@ -246,7 +246,7 @@ rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2)
 {
     ## Get 'd':
     d <- if(is.null(factor)) dim(scale)[1] else nrow(factor <- as.matrix(factor))
-    ## Call 'rmix.internal'
-    rmix.internal(n, rmix = rmix, qmix = qmix, loc = loc, scale = scale,
+    ## Call 'rnvmix_()'
+    rnvmix_(n, rmix = rmix, qmix = qmix, loc = loc, scale = scale,
                   factor = factor, method = method, skip = skip, which = "nvmix", ...)
 }

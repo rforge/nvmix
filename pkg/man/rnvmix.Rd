@@ -112,9 +112,9 @@ rNorm(n, loc = rep(0, d), scale = diag(2), factor = NULL,
   \item{method}{\code{\link{character}} string indicating the method
     to be used to obtain the sample. Available are:
     \describe{
-      \item{\code{"PRNG"}:}{pseudo-random numbers}
-      \item{\code{"sobol"}:}{Sobol' sequence}
-      \item{\code{"ghalton"}:}{generalized Halton sequence}
+      \item{\code{"PRNG"}:}{pseudo-random numbers,}
+      \item{\code{"sobol"}:}{Sobol' sequence,}
+      \item{\code{"ghalton"}:}{generalized Halton sequence.}
     }
     If \code{method = "PRNG"}, either \code{qmix} or \code{rmix} can be
     provided. If both are provided, \code{rmix} is used and \code{qmix}

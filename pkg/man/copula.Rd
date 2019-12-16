@@ -19,7 +19,7 @@ rnvmixcop(n, qmix, scale = diag(2), factor = NULL,
 }
 \arguments{
   \item{u}{\eqn{(n, d)}-\code{\link{matrix}} of evaluation points.
-    Have to be in (0,1)}
+    Have to be in \eqn{(0,1)}.}
   \item{n}{sample size \eqn{n} (positive integer).}
   \item{qmix}{specification of the mixing variable \eqn{W}; see
   \code{\link{pnvmix}()} for details and examples.}
@@ -47,9 +47,9 @@ rnvmixcop(n, qmix, scale = diag(2), factor = NULL,
   \item{method}{\code{\link{character}} string indicating the method
     to be used to obtain the sample. Available are:
     \describe{
-      \item{\code{"PRNG"}:}{pseudo-random numbers}
-      \item{\code{"sobol"}:}{Sobol' sequence}
-      \item{\code{"ghalton"}:}{generalized Halton sequence}
+      \item{\code{"PRNG"}:}{pseudo-random numbers,}
+      \item{\code{"sobol"}:}{Sobol' sequence,}
+      \item{\code{"ghalton"}:}{generalized Halton sequence.}
     }
     If \code{method = "PRNG"}, either \code{qmix} or \code{rmix} can be
     provided. If both are provided, \code{rmix} is used and \code{qmix}
@@ -64,7 +64,7 @@ rnvmixcop(n, qmix, scale = diag(2), factor = NULL,
   \item{verbose}{
     \code{\link{logical}}
     indicating whether a warning is given if the required precision
-    \code{abstol} has not been reached}
+    \code{abstol} has not been reached.}
   \item{log}{\code{\link{logical}} indicating whether the logarithmic
     density is to be computed.}
   \item{\dots}{additional arguments (for example, parameters) passed to the

@@ -14,18 +14,18 @@ qnvmix(u, qmix, control = list(),
   \item{qmix}{specification of the mixing variable \eqn{W}; see
     \code{\link{pnvmix}()} for details and examples.}
   \item{control}{\code{\link{list}} specifying algorithm specific
-    parameters; see details below.}
-  \item{verbose}{\link{logical}, if \code{TRUE} a warning is printed if
-    one of the 'abstol' is not reached.}
-  \item{q.only}{\link{logical}. If \code{TRUE}, only the quantiles are
+    parameters; see \code{\link{get_set_param}()}.}
+  \item{verbose}{\code{\link{logical}}, if \code{TRUE} a warning is printed if
+    one of the error tolerances is not met.}
+  \item{q.only}{\code{\link{logical}}. If \code{TRUE}, only the quantiles are
     returned; if \code{FALSE}, see Section 'value' below.}
-  \item{stored.values}{\link{matrix} with 3 columns of the form
-    [x, F(x), logf(x)] where F and logf are the df and log-density
-    of the distribution specified in 'qmix'. If provided it will be used
-    to determine starting values for the internal newton proceudure.
+  \item{stored.values}{\code{\link{matrix}} with 3 columns of the form
+    \eqn{[x, F(x), logf(x)]} where \eqn{F()} and \eqn{logf()} are the distribution-
+    and log-density function of the distribution specified in \code{qmix}. 
+    If provided it is used to determine starting values for internal newton proceudures.
     Only very basic checking is done.}
   \item{\dots}{additional arguments containing parameters of
-    mixing distributions when \code{mix} is a \code{\link{character}}
+    mixing distributions when \code{qmix} is a \code{\link{character}}
     string.}
 }
 \value{
@@ -36,25 +36,26 @@ qnvmix(u, qmix, control = list(),
 
   if \code{q.only = FALSE} a list of four:
   \describe{
-    \item{\code{$q}:}{Vector of quantiles}
-    \item{\code{$log.density}:}{Vector log-density values at \code{q}}
+    \item{\code{$q}:}{Vector of quantiles,}
+    \item{\code{$log.density}:}{vector log-density values at \code{q},}
     \item{\code{$computed.values}:}{matrix with 3 columns [x, F(x), logf(x)];
-      see details above}
-    \item{\code{$newton.iterations}:}{Vector giving the number of Newton
-      iterations needed for \code{u[i]}}}
+      see details above,}
+    \item{\code{$newton.iterations}:}{vector giving the number of Newton
+      iterations needed for \code{u[i]}.}
+      }
 }
 \details{
   This function uses a Newton procedure to estimate the quantile of the
   specified univariate normal variance mixture distribution. Internally,
   a randomized quasi-Monte Carlo (RQMC) approach is used to estimate the
   distribution and (log)density function; the method is similar to the
-  one in \link{pnvmix} and \link{dnvmix}.  The result depends slightly
-  on \code{.random.seed}.
+  one in \code{\link{pnvmix}()} and \code{\link{dnvmix}()}. The result depends 
+  slightly on \code{.random.seed}.
 
   Internally, symmetry is used for \eqn{u \le 0.5}. Function values
-  (i.e. cdf and log-density values) are stored and reused to get good
+  (i.e., df and log-density values) are stored and reused to get good
   starting values. These values are returned if \code{q.only = FALSE}
-  and can be re-used by passing it to \code{qnvmix} via the argument
+  and can be re-used by passing it to \code{qnvmix()} via the argument
   \code{stored.values}; this can significantly reduce run-time.
 
   Accuracy and run-time depend on both the magnitude of \eqn{u} and on
@@ -62,50 +63,13 @@ qnvmix(u, qmix, control = list(),
   instabilities can occur for values of \eqn{u} close to 0 or 1,
   especially when the tail of the distribution is heavy.
 
-  If \code{q.only = TRUE} the log-density values of the underlying
+  If \code{q.only = FALSE} the log-density values of the underlying
   distribution evaluated at the estimated quantiles are returned as
   well: This can be useful for copula density evaluations where both
   quantities are needed.
-
-  \describe{
-    \item{\code{method}}{\code{\link{character}} string indicating the
-      method to be used to compute the integral. Available are:
-      \describe{
-	\item{\code{"sobol"}:}{Sobol' sequence (default).}
-	\item{\code{"ghalton"}:}{generalized Halton sequence.}
-	\item{\code{"PRNG"}:}{plain Monte Carlo based on a pseudo-random
-          number generator.}
-      }
-    }
-    \item{\code{abstol.cdf}}{abstol to estimate the df F(x)
-      internally. See also ?pnvmix.}
-    \item{abstol.logdensity}{abstol to estimate the log-density logf(x)
-      internally. See also ?dnvmix.}
-    \item{\code{abstol.newton}}{Convergence criterion for the internal
-      Newton method.}
-    \item{\code{max.iter.newton}}{Maximum number of iterations for the
-      internal Newton method for *each* entry of \code{u}}
-    \item{\code{max.iter.rqmc}}{\code{\link{numeric}}, providing the
-      maximum number of iterations allowed in the RQMC approach; the
-      default is 15.}
-    \item{\code{CI.factor}}{multiplier of the Monte Carlo confidence
-      interval bounds.  The algorithm runs until \code{CI.factor} times
-      the estimated standard error is less than \code{abstol}. If
-      \code{CI.factor = 3.3} (the default), one can expect the actual
-      absolute error to be less than \code{abstol} in 99.9\% of the
-      cases.}
-    \item{\code{n0}}{Size of initial point-set used to internally
-      approximate the df.}
-    \item{\code{B}}{number of randomizations for obtaining an error
-      estimate in the randomized quasi-Monte Carlo (RQMC) approach; the
-      default is 8.}
-
-    Care should be taken when changing the algorithm-specific parameters,
-    notably \code{method}, \code{precond}, \code{fun.eval[2]} and
-    \code{B}.  Error estimates will not be reliable for too small \code{B}
-    and the performance of the algorithm depends heavily on the
-    (quasi-)Monte Carlo point-set used.
-  }
+  
+  Underlying algorithm specific parameters can be changed via the \code{control}
+  argument, see \code{\link{get_set_param}()} for details. 
 }
 \seealso{
   \code{\link{dnvmix}()}, \code{\link{rnvmix}()}, \code{\link{pnvmix}()}

@@ -14,23 +14,20 @@
 ##' @param ... see ?qnvmix()
 ##' @return see ?qnvmix()
 ##' @author Erik Hintz, Marius Hofert and Christiane Lemieux
-quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
-                              control = list(), verbose = TRUE,
-                              q.only = FALSE, stored.values = NULL, ...)
+quantile_ <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1, 
+                      control = list(), verbose = TRUE, q.only = FALSE, 
+                      stored.values = NULL, ...)
 {
-    ## Basic input checking (stored.values is checked below)
+    ## Basic input checking ('stored.values' is checked below)
     stopifnot(!any(u>=1), !any(u<=0), is.logical(verbose), is.logical(q.only))
     if(!is.vector(u)) u <- as.vector(u)
-    ## Deal with algorithm parameters, see also get.set.parameters():
-    ## get.set.parameters() also does argument checking, so not needed here.
-    control <- get.set.parameters(control)
-
-    ## Grab method, B and n0
+    ## Deal with algorithm parameters, see also ?get_set_param()
+    control <- get_set_param(control)
+    ## Grab various quantities from 'control'
     method    <- control$method
     B         <- control$B
     n0        <- control$fun.eval[1]
-
-    ## Define the quantile function of the mixing variable:
+    ## Define the quantile function of the mixing variable
     special.mix <- NA
     qW <- if(is.character(qmix)) { # 'qmix' is a character vector
               qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma", "pareto"))
@@ -77,13 +74,11 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
               function(u)
                   qmix(u, ...)
           } else stop("'qmix' must be a character string, list or quantile function.")
-
     ## Build result vectors
     n               <- length(u)
     quantiles       <- rep(NA, n)
     log.density     <- rep(NA, n)
     num.iter.newton <- rep(0,  n)
-
     ## Deal with special distributions
     if(!is.na(special.mix)) {
         if(!(special.mix == "pareto")) {
@@ -132,14 +127,13 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
         }
     }
 
-    ## 2 Set up est.cdf.dens() #################################################
+    ## 2 Set up helper function 'est.cdf.dens()' ###############################
 
-    ## Initialize first pointset needed for rqmc approach:
+    ## Initialize first pointset needed for RQMC approach
     if(method == "sobol") {
         if(!exists(".Random.seed")) runif(1)
         seed <- .Random.seed
     }
-
     ## Get realizations of W and sqrt(W)
     ## Initial point-set with B columns (each column = one shift)
     U0 <- switch(method,
@@ -154,12 +148,10 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
                  "prng"    = {
                      matrix(runif(B*n0), ncol = B)
                  }) # (n0, B) matrix
-
     mixings      <- apply(U0, 2, qW) # qW() may be not 'matricized'
     sqrt.mixings <- sqrt(mixings) # (n0, B) matrix
-
-    ## Set up various quantities for est.cdf.dens():
-    CI.factor <- control$CI.factor/sqrt(B) # instead of dividing by sqrt(B) all the time
+    ## Set up various quantities for 'est.cdf.dens()':
+    CI.factor <- control$CI.factor/sqrt(B) # instead of dividing by 'sqrt(B)' all the time
     current.n <- n0 # will give ncol(mixings)
     ldensity.constant <- switch(which,
                                 "nvmix1" = {
@@ -168,25 +160,23 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
                                 "maha2" = {
                                     -d/2*log(2) - lgamma(d/2)
                                 }) # to avoid recomputation
-
     ## Function that estimates F(x) and logf(x) for *scalar* input x. Similar to
-    ## pnvmix() and dnvmix() with increment = "num.init", tailored to the
+    ## pnvmix() and dnvmix() with 'increment = "num.init"', tailored to the
     ## one - dimensional case. Previous realizations of the mixing variable are
-    ## reused (=> arguments mixings and sqrt.mixings)
+    ## reused (=> arguments 'mixings' and 'sqrt.mixings')
     est.cdf.dens <- function(x, mixings, sqrt.mixings) {
         ## Define various quantities:
         xx2 <- x*x/2
         rqmc.estimates.log.density <- rep(NA, B)
         rqmc.estimates.cdf         <- rep(NA, B)
         current.n <- dim(mixings)[1]
-
-        ## First we use 'mixings' and 'sqrt.mixings' that are already available.
+        ## First use 'mixings' and 'sqrt.mixings' that are already available
         for(l in 1:B) {
             ## Grab realizations corresponding to l'th shift and use exp-log trick
             log.dens <- switch(which,
                                "nvmix1" = {
                                    ldensity.constant - log(mixings[,l])/2 -
-                                       xx2 / mixings[,l] # length current.n
+                                       xx2 / mixings[,l] # length 'current.n'
                                },
                                "maha2" = {
                                    ldensity.constant - d/2*log(mixings[,l]) +
@@ -215,7 +205,7 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
             ## Set up while loop
             iter.rqmc <- 1
             while(!precision.reached && iter.rqmc < control$max.iter.rqmc) {
-                ## Reset seed and get n0 realizations:
+                ## Reset seed and get another n0 realizations
                 if(method == "sobol") .Random.seed <<- seed
 
                 U.next <- switch(method,
@@ -232,9 +222,7 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
                                  })
                 mixings.next <- apply(U.next, 2, qW) # (n0, B) matrix
                 sqrt.mixings.next <- sqrt(mixings.next ) # (n0, B) matrix
-
                 ## Update RQMC estimators
-                ## Note: Using C here did not really help, as x is only a scalar.
                 for (l in 1:B) {
                     ## Grab realizations corresponding to l'th shift and use exp-log trick
                     log.dens <- switch(which,
@@ -247,8 +235,7 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
                                                (d/2-1)*log(x) - x/(2*mixings.next[, l])
                                        })
                     log.dens.max <- max(log.dens)
-                    ## Previos estimate based on current.n samples, new one based on n0 samples
-
+                    ## Previous estimate based on 'current.n', new one based on 'n0' samples
                     rqmc.estimates.log.density[l] <-
                         (current.n*rqmc.estimates.log.density[l] +
                          n0*(-log(n0) + log.dens.max + log(sum(exp(log.dens - log.dens.max))))
@@ -265,7 +252,7 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
                                                shape = d/2, scale = 2)))/(current.n + n0)
                                })
                 }
-                ## Update mixings and sqrt.mixings so that they can be reused:
+                ## Update' mixings' and 'sqrt.mixings' so that they can be reused
                 mixings <- rbind(mixings, mixings.next)
                 sqrt.mixings <- rbind(sqrt.mixings, sqrt.mixings.next)
                 current.n <- current.n + n0
@@ -318,37 +305,24 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
             switch(which,
                    "nvmix1" = {
                        cbind(x,
-                             pnvmix(x, qmix = qW, scale = as.matrix(1), control = control),
-                             dnvmix(x, qmix = qW, scale = as.matrix(1), control = control, log = TRUE))
+                             pnvmix(x, qmix = qW, scale = as.matrix(1), 
+                                    control = control),
+                             dnvmix(x, qmix = qW, scale = as.matrix(1), 
+                                    control = control, log = TRUE))
                    },
                    "maha2" = {
                        cbind(x,
                              pgammamix(x, qmix = qW, d = d, control = control),
-                             dgammamix(x, qmix = qW, d = d, control = control, log = TRUE))
+                             dgammamix(x, qmix = qW, d = d, control = control, 
+                                       log = TRUE))
                    })
-        ## stored.values <-
-        ##    switch(which,
-        ##        "nvmix1" = {
-        ##           ## First element corresponds x = 0 so that F(x) = 0.5
-        ##           ## Note: est.cdf.dens(0)[1] = 0.5 (i.e. no error here), but need log-density
-        ##           cdf.dens.mixings <- est.cdf.dens(0, mixings, sqrt.mixings)
-        ##           matrix(c(0, cdf.dens.mixings$estimates), nrow = 1)
-        ##        },
-        ##        "maha2" = {
-        ##           ## First element corresponds x = d, need to estimate df and pdf
-        ##           ## (larger starting value to avoid numerical issues as density
-        ##           ## is very close to 0 for small x when d is large)
-        ##           cdf.dens.mixings <- est.cdf.dens(d, mixings, sqrt.mixings)
-        ##           matrix(c(d, cdf.dens.mixings$estimates), nrow = 1)
-        ##        })
-
     } else {
         ## Some very basic checking if stored.values was provided
         stopifnot(is.matrix(stored.values), dim(stored.values)[2] == 3,
                   !any(stored.values[,2] > 1 | stored.values[,2] < 0))
     }
 
-    ## Main loop for Newton's method:
+    ## Main loop for Newton's method
     for (i in 1:n) {
         ## Initialize error and counter for Newton
         error <- control$newton.conv.abstol+ 42
@@ -365,30 +339,29 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
         closest.ind     <- which.min(abs(stored.values[, 2] - current.u))
         current.qu      <- stored.values[closest.ind, 1]
         current.funvals <- stored.values[closest.ind, 2:3] # (F(x), log f(x))
-
         ## Main loop for Newton procedure
         while (error > control$newton.conv.abstol && iter.newton < control$max.iter.newton)
-    {
-            ## Update quantile:
+           {
+            ## Update quantile
             next.qu <- current.qu - sign(current.funvals[1]-current.u)*
                 exp(log( abs(current.funvals[1]-current.u)) - current.funvals[2])
             ## Quantiles > 0 here (since u>=0.5 for 'nvmix1')
             if(next.qu < ZERO) next.qu <- current.qu/2
             diff.qu <- (current.qu - (current.qu <- next.qu))
-            ## Call est.cdf.dens:
+            ## Call 'est.cdf.dens()'
             cdf.dens.mixings <- est.cdf.dens(current.qu, mixings, sqrt.mixings)
             current.funvals  <-  cdf.dens.mixings$estimates
-            ## Store these values in stored.values
+            ## Store these values in 'stored.values'
             stored.values    <- rbind( stored.values, c(current.qu, current.funvals),
                                       deparse.level = 0)
-            ## Update mixings and sqrt.mixings
+            ## Update 'mixings' and 'sqrt.mixings'
             mixings <- cdf.dens.mixings$mixings
             sqrt.mixings <- cdf.dens.mixings$sqrt.mixings
             ## Update error and increase counter
             error <- abs(diff.qu)
             iter.newton <- iter.newton + 1
         }
-        ## Safe result
+        ## Store result
         quantiles[i]       <- current.qu
         log.density[i]     <- current.funvals[2]
         num.iter.newton[i] <- iter.newton
@@ -429,7 +402,7 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
 ##'           with prefix "q", the other elements denote additional parameters
 ##'           passed to this "rmix" random number generator.
 ##'        3) a function being interpreted as the quantile function F_W^-.
-##' @param control see ?get.set.parameters()
+##' @param control see ?get_set_param()
 ##' @param verbose logical if warnings should be thrown
 ##' @param q.only if TRUE, only quantiles will be returned, ow additional quantites (see return )
 ##' @param stored.values matrix with 3 columns of the form [x, F(x), logf(x)] where
@@ -449,6 +422,6 @@ quantile.internal <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
 ##' @note - If only the quantiles are needed, abstol.logdensity does not need to be as small.
 qnvmix <- function(u, qmix, control = list(), verbose = TRUE, q.only = TRUE,
                    stored.values = NULL, ...)
-    quantile.internal(u, qmix = qmix, which = "nvmix1", d = 1, control = control,
+    quantile_(u, qmix = qmix, which = "nvmix1", d = 1, control = control,
                       verbose = verbose, q.only = q.only,
                       stored.values = stored.values, ...)
