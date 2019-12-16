@@ -61,7 +61,7 @@ function of a normal variance mixture distribution, so
 $$	F(\mathbf{x})=P(\mathbf{X}\le\mathbf{x})=P(X_1\le x_1,\dots,X_d\le x_d),\quad \mathbf{x}\in\mathbb{R}^d. $$
 In fact, the function `pnvmix()` can be used to estimate more general probabilities
 of the form
-$$	F(\mathbf{a},\mathbf{a} )=P(\mathbf{a} < \mathbf{X}\le\mathbf{b})=P(a_1 < X_1\le b_1,\dots, a_d < X_d\le b_d),\quad \mathbf{a},\mathbf{b}\in\mathbb{R}^d $$
+$$	F(\mathbf{a},\mathbf{b} )=P(\mathbf{a} < \mathbf{X}\le\mathbf{b})=P(a_1 < X_1\le b_1,\dots, a_d < X_d\le b_d),\quad \mathbf{a},\mathbf{b}\in\mathbb{R}^d, $$
 where $\mathbf{a}<\mathbf{b}$ (interpreted componentwise) and entries of 
 $\mathbf{a},\mathbf{b}$ are allowed to be $\pm\infty$. 
 To this end, the function `pnvmix()` internally approximates the $d$-dimensional
