@@ -36,13 +36,14 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
    errors     <- rep(NA, n)
    numiters   <- rep(NA, n)
    ## Grab 'UsWs'; store them in vectors and sort
-   ordering.U   <- order(UsWs[, 1, drop = FALSE])
+   ordering.U <- order(UsWs[, 1, drop = FALSE])
    ## Will store length(U/W/l.integrand) when appending elements in 'numObs'
-   numObs       <- dim(UsWs)[1] + 2 # will add 'ZERO' and 'ONE'
+   numObs     <- dim(UsWs)[1] + 2 # will add 'ZERO' and 'ONE'
    ## Set up matrix of the form  U | qW(U) | l.integrand
-   U.W.lint     <- matrix(NA, ncol = 3, nrow = numObs)
-   U.W.lint[,1] <- c(ZERO, UsWs[ordering.U, 1], ONE)
-   U.W.lint[,2] <- qW(U.W.lint[,1])
+   U.W.lint       <- matrix(NA, ncol = 3, nrow = numObs)
+   U.W.lint[, 1]  <- c(ZERO, UsWs[ordering.U, 1], ONE)
+   U.W.lint[, 2]  <- qW(U.W.lint[,1])
+   U.W.lint[1, 2] <- max(U.W.lint[1, 2], ZERO) # ensure qW(ZERO) > 0 
    ## Check if W is bounded
    W.max <- qW(1) # <= inf
    W.min <- qW(0) # >= 0

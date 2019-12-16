@@ -443,8 +443,6 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
     }
 
     ## Check inputs, get dimensions
-    ## TODO: More checking (INFs, ...)
-    if(!is.matrix(x)) x <- rbind(x)
     notNA <- rowSums(is.na(x)) == 0
     x     <- x[notNA,, drop = FALSE] # non-missing data (rows)
     tx    <- t(x)
@@ -614,10 +612,10 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                 if(iter.locscaleupdate == 1) {
                     ## Only in the first iteration do we approximate *all* weights by RQMC.
                     ## Get weights:
-                    weights <- weights_(maha2.2.new, qW = qW, nu = nu.est,
-                                                lrdet = lrdet, d = d,
-                                                special.mix = special.mix,
-                                                control = control, verbose = verbose)$weights
+                    weights <- weights_(maha2.2.new, qW = qW, nu = nu.est, 
+                                        lrdet = lrdet, d = d, 
+                                        special.mix = special.mix, 
+                                        control = control, verbose = verbose)$weights
                     weights.new <- weights[order(order.maha2.2.new)]
                     maha2.2     <- maha2.2.new # need to store maha-distances for interpolation
                     length.maha <- n # store length of 'maha2.2' and 'weights'
@@ -728,7 +726,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
             }
             ## Did we converge?
             converged <- if(iter.ECME >= control$ECME.miniter) {
-                             (abs(nu.est.rel.diff) < control$ECME.rel.conv.tol[3])
+                             prod(abs(nu.est.rel.diff) < control$ECME.rel.conv.tol[3])
                          } else FALSE
             ## Update counter and 'nu.Ests'
             iter.ECME <- iter.ECME + 1
