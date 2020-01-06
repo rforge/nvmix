@@ -27,4 +27,5 @@ export("dnvmix", "pnvmix", "rnvmix",
        "dNorm", "pNorm", "rNorm", "fitNorm",
        "get_set_param",
        "dnvmixcop", "pnvmixcop", "rnvmixcop",
-       "dgammamix", "pgammamix", "qgammamix", "rgammamix")
+       "dgammamix", "pgammamix", "qgammamix", "rgammamix",
+       "ESnvmix", "VaRnvmix")

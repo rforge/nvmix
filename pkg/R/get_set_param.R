@@ -29,7 +29,7 @@ get_set_param <- function(control = list())
         ## For qnvmix():
         max.iter.newton = 45,
         newton.conv.abstol = 5e-4,
-        newton.df.reltol = 5e-3,
+        newton.df.reltol = 1e-4,
         newton.logdens.abstol = 1e-2,
         ## For fitnvmix():
         ## Algorithm specifications:
@@ -48,6 +48,9 @@ get_set_param <- function(control = list())
         ## For the underlying 'optim':
         control.optim = list(maxit = 10),
         control.optim.laststep = list(),
+        ## For riskmeasures:
+        riksmeasures.abstol = 1e-2,
+        riksmeasures.reltol = 1e-2,
         ## For all (randomized) algorithms:
         method = "sobol",
         increment = "doubling", # "doubling" or "num.init"
@@ -95,7 +98,7 @@ get_set_param <- function(control = list())
     }
     ## Define 'max.iter.rqmc': If it was not provided (=> NA), set defaults
     if(is.na(ctrl$max.iter.rqmc)) {
-        ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 12 else 100
+        ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 15 else 100
     } else {
         ## If it was provided (=> not NA), check if it's reasonable
         stopifnot(ctrl$max.iter.rqmc > 1)
