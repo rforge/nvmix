@@ -65,17 +65,21 @@ qqplot_maha(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE,
 }
 \examples{
 ## Setup
-n     <- 50
-d     <- 3
-nu    <- 4 # degree-of-freedom parameter
+n     <- 20
+d     <- 2
+df    <- 5 # degree-of-freedom parameter
 loc   <- rep(0, d)
 scale <- diag(d)
 ## Define the quantile function of an IG(nu/2, nu/2) distribution
-qmix <- function(u, nu) 1 / qgamma(1 - u, shape = nu/2, rate = nu/2)
+qmix <- function(u, df) 1 / qgamma(1 - u, shape = df/2, rate = df/2)
 ## Sample data
 set.seed(1) # for reproducibility
-x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
-## QQ Plot of empirical quantiles vs true quantiles
-qqplot_maha(x, qmix = qmix, loc = loc, scale = scale, nu = nu)
+x <- rnvmix(n, qmix = qmix, df = df, loc = loc, scale = scale)
+## QQ Plot of empirical quantiles vs true quantiles, all values estimated 
+## via RQMC:
+qqplot_maha(x, qmix = qmix, loc = loc, scale = scale, df = df)
+## Same could be obtained by specifying 'qmix' as string in which case
+## qqplot_maha() calls qf()
+qqplot_maha(x, qmix = "inverse.gamma", loc = loc, scale = scale, df = df)
 }
 \keyword{distribution}

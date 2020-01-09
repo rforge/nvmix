@@ -204,14 +204,16 @@ quantile_ <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
         if(!precision.reached) {
             ## Set up while loop
             iter.rqmc <- 1
-            while(!precision.reached && iter.rqmc < control$max.iter.rqmc) {
+            while(!precision.reached && 
+                  iter.rqmc < control$newton.df.max.iter.rqmc) {
                 ## Reset seed and get another n0 realizations
                 if(method == "sobol") .Random.seed <<- seed
 
                 U.next <- switch(method,
                                  "sobol"   = {
                                      sapply(1:B, function(i)
-                                         sobol(n0, d = 1, randomize = TRUE, skip = current.n))
+                                         sobol(n0, d = 1, randomize = TRUE, 
+                                               skip = current.n))
                                  },
                                  "gHalton" = {
                                      sapply(1:B, function(i)
@@ -220,7 +222,7 @@ quantile_ <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
                                  "prng"    = {
                                      matrix(runif(B*n0), ncol = B)
                                  })
-                mixings.next <- apply(U.next, 2, qW) # (n0, B) matrix
+                mixings.next      <- apply(U.next, 2, qW) # (n0, B) matrix
                 sqrt.mixings.next <- sqrt(mixings.next ) # (n0, B) matrix
                 ## Update RQMC estimators
                 for (l in 1:B) {
@@ -238,18 +240,21 @@ quantile_ <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
                     ## Previous estimate based on 'current.n', new one based on 'n0' samples
                     rqmc.estimates.log.density[l] <-
                         (current.n*rqmc.estimates.log.density[l] +
-                         n0*(-log(n0) + log.dens.max + log(sum(exp(log.dens - log.dens.max))))
-                        )/(current.n + n0)
+                         n0*(-log(n0) + log.dens.max + 
+                                log(sum(exp(log.dens - log.dens.max)))))/
+                       (current.n + n0)
                     rqmc.estimates.cdf[l] <-
                         switch(which,
                                "nvmix1" = {
                                    (current.n * rqmc.estimates.cdf[l] +
-                                    sum(pnorm(x/sqrt.mixings.next[,l])))/(current.n + n0)
+                                    sum(pnorm(x/sqrt.mixings.next[,l])))/
+                                     (current.n + n0)
                                },
                                "maha2" = {
                                    (current.n * rqmc.estimates.cdf[l] +
                                     sum(pgamma(x/mixings.next[,l],
-                                               shape = d/2, scale = 2)))/(current.n + n0)
+                                               shape = d/2, scale = 2)))/
+                                     (current.n + n0)
                                })
                 }
                 ## Update' mixings' and 'sqrt.mixings' so that they can be reused
@@ -267,11 +272,9 @@ quantile_ <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
         }
         if(verbose) {
             if(error[1] > control$newton.df.reltol)
-                warning("'newton.df.reltol' not reached; consider increasing 'max.iter.rqmc'
-                          in the 'control' argument.")
+                warning("'newton.df.reltol' not reached; consider increasing 'newton.df.max.iter.rqmc' in the 'control' argument.")
             if(error[2] > control$newton.logdens.abstol && !q.only)
-                warning("'abstol.logdensity' not reached; consider increasing 'max.iter.rqmc'
-                          in the 'control' argument.")
+                warning("'abstol.logdensity' not reached; consider increasing 'newton.df.max.iter.rqmc' in the 'control' argument.")
         }
         ## Return
         return(list(estimates = c(mean(rqmc.estimates.cdf), mean(rqmc.estimates.log.density)),

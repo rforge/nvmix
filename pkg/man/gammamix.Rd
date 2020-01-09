@@ -81,7 +81,7 @@ rgammamix(n, rmix = NULL, qmix = NULL, d, method = c("PRNG", "sobol", "ghalton")
   \code{\link{qqplot_maha}()}, \code{\link{fitnvmix}()}
 }
 \examples{
-## Specify inverse-gamma mixture => results in F(d, nu) dist'n,
+## Specify inverse-gamma mixture => results in d * F(d, nu) dist'n,
 ## handled correctly when 'qmix = "inverse.gamma"' is specified
 qmix <- function(u, nu) 1/qgamma(1 - u, shape = nu/2, rate = nu/2)
 
@@ -93,19 +93,26 @@ d  <- 5
 x  <- rgammamix(n, qmix = qmix, d = d, nu = nu)
 
 ## Evaluate distribution function at 'x'
-p.true <- pgammamix(x, qmix = "inverse.gamma", d = d, df = nu)
-p.est  <- pgammamix(x, qmix = qmix, d = d, nu = nu)
-stopifnot(all.equal(p.true, p.est, tol = 5e-4, check.attributes = FALSE))
+p.true_1 <- pgammamix(x, qmix = "inverse.gamma", d = d, df = nu) # calls pf(...)
+p.true_2 <- pf(x/d, df1 = d, df2 = nu) 
+p.estim  <- pgammamix(x, qmix = qmix, d = d, nu = nu)
+stopifnot(all.equal(p.true_1, p.true_2, p.estim, tol = 1e-3, 
+                    check.attributes = FALSE))
 
 ## Evaluate density function at 'x'
-d.true <- dgammamix(x, qmix = "inverse.gamma", d = d, df = nu)
+d.true_1 <- dgammamix(x, qmix = "inverse.gamma", d = d, df = nu)
+d.true_2 <- df(x/d, df1 = d, df2 = nu)/d
 d.est  <- dgammamix(x, qmix = qmix, d = d, nu = nu)
-stopifnot(all.equal(p.true, p.est, tol = 5e-4, check.attributes = FALSE))
+stopifnot(all.equal(d.true_1, d.true_2, d.est, tol = 5e-4, 
+                    check.attributes = FALSE))
 
 ## Evaluate quantile function
 u <- seq(from = 0.5, to = 0.9, by = 0.1)
-q.true <- qgammamix(u, qmix = "inverse.gamma", d = d, df = nu)
+q.true_1 <- qgammamix(u, qmix = "inverse.gamma", d = d, df = nu)
+q.true_2 <- qf(u, df1 = d, df2 = nu) * d
 q.est  <- qgammamix(u, qmix = qmix, d = d, nu = nu)
-stopifnot(all.equal(q.true, q.est, tol = 5e-4, check.attributes = FALSE))
+stopifnot(all.equal(q.true_1, q.true_2, q.est, tol = 5e-4, 
+                    check.attributes = FALSE))
+
 }
 \keyword{distribution}

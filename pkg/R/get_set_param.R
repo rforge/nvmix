@@ -31,6 +31,8 @@ get_set_param <- function(control = list())
         newton.conv.abstol = 5e-4,
         newton.df.reltol = 1e-4,
         newton.logdens.abstol = 1e-2,
+        newton.df.max.iter.rqmc = 50, # 'doubling' used here!
+        qqplot.df.reltol = 1e-2,
         ## For fitnvmix():
         ## Algorithm specifications:
         ECMEstep = TRUE,
@@ -98,7 +100,7 @@ get_set_param <- function(control = list())
     }
     ## Define 'max.iter.rqmc': If it was not provided (=> NA), set defaults
     if(is.na(ctrl$max.iter.rqmc)) {
-        ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 15 else 100
+        ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 15 else 200
     } else {
         ## If it was provided (=> not NA), check if it's reasonable
         stopifnot(ctrl$max.iter.rqmc > 1)
