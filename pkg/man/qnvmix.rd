@@ -96,7 +96,7 @@ qmix. <- function(u) 1/qgamma(1-u, shape = df/2, rate = df/2)
 qt1 <- qnvmix(u, qmix = "inverse.gamma", df = df)
 ## Estimate quantiles (without using qt())
 qt1. <- qnvmix(u, qmix = qmix., q.only = FALSE)
-stopifnot(all.equal(qt1, qt1.$q, tolerance = 1e-3))
+stopifnot(all.equal(qt1, qt1.$q, tolerance = 2.5e-3))
 ## Look at absolute error:
 abs.error <- abs(qt1 - qt1.$q)
 plot(u, abs.error, type = "l", xlab = "u", ylab = "qt(u)")

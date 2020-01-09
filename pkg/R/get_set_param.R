@@ -29,7 +29,7 @@ get_set_param <- function(control = list())
         ## For qnvmix():
         max.iter.newton = 45,
         newton.conv.abstol = 5e-4,
-        newton.df.reltol = 1e-4,
+        newton.df.reltol = 2.5e-4,
         newton.logdens.abstol = 1e-2,
         newton.df.max.iter.rqmc = 50, # 'doubling' used here!
         qqplot.df.reltol = 1e-2,

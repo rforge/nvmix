@@ -65,9 +65,9 @@ qqplot_maha(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE,
 }
 \examples{
 ## Setup
-n     <- 20
+n     <- 15
 d     <- 2
-df    <- 5 # degree-of-freedom parameter
+df    <- 3.1 # degree-of-freedom parameter
 loc   <- rep(0, d)
 scale <- diag(d)
 ## Define the quantile function of an IG(nu/2, nu/2) distribution
