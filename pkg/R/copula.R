@@ -5,7 +5,7 @@
 ##' @param qmix see ?pnvmix
 ##' @param scale (d, d)-covariance matrix (scale matrix).
 ##' @param factor Cholesky factor (lower triangular matrix) of 'scale'
-##' @param control see ?pnvmixcop()
+##' @param control see ?get_set_param()
 ##' @param verbose logical (or integer: 0 = FALSE, 1 = TRUE, 2 = more output)
 ##'        indicating whether a warning is given if the required precision
 ##'        'abstol' has not been reached.
@@ -53,7 +53,7 @@ dnvmixcop <- function(u, qmix, scale = diag(d), factor = NULL, control = list(),
 ##' @param u (n,d) matrix of evaluation points. Have to be in (0,1)
 ##' @param qmix see ?pnvmix
 ##' @param scale (d, d)-covariance matrix (scale matrix).
-##' @param control see ?pnvmixcop()
+##' @param control see ?get_set_param()
 ##' @param verbose logical (or integer: 0 = FALSE, 1 = TRUE, 2 = more output)
 ##'        indicating whether a warning is given if the required precision
 ##'        'abstol' has not been reached.
@@ -90,7 +90,7 @@ pnvmixcop <- function(u, qmix, scale = diag(d), control = list(),
 ##'         needs to be provided. If both are provided, qmix() is ignored and
 ##'         rmix() is used.
 ##' @param skip numeric integer. How many points should be skipped when method='sobol'?
-##' @param control see ?pnvmixcop()
+##' @param control see ?get_set_param()
 ##' @param verbose indicating whether a warning is given if the required precision
 ##'        in the underlying pnvmix() is not reached.
 ##' @author Erik Hintz and Marius Hofert

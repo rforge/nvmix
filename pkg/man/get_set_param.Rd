@@ -3,8 +3,9 @@
 \title{Algorithm-specific Parameters}
 \description{
   Algorithm specific parameters for functionalities in the \code{nvmix}
-  package, notably for \code{\link{fitnvmix}}, \code{\link{dnvmix}} and
-  \code{\link{pnvmix}}.
+  package, notably for \code{\link{fitnvmix}()}, \code{\link{dnvmix}()}, 
+  \code{\link{pnvmix}()}, \code{\link{qnvmix}()}, \code{\link{pgammamix}()}, 
+  \code{\link{dgammamix}()} and \code{\link{ESnvmix}()}.
 }
 \usage{
 get_set_param(control = list())
@@ -16,7 +17,9 @@ get_set_param(control = list())
 \value{
   \code{get_set_param()} returns a \code{\link{list}} with more
   than 30 elements specifying algorithm specific parameters for the
-  functions \code{\link{fitnvmix}}, \code{\link{dnvmix}} and \code{\link{pnvmix}}.
+  functions \code{\link{fitnvmix}()}, \code{\link{dnvmix}()}, 
+  \code{\link{pnvmix}()}, \code{\link{qnvmix}()}, \code{\link{pgammamix}()}, 
+  \code{\link{dgammamix}()} and \code{\link{ESnvmix}()}.
   Parameter values passed to \code{get_set_param()} via the
   \code{control} argument overwrite the defaults; for parameters not
   specified in the \code{control} argument, the default values are being
@@ -190,6 +193,41 @@ get_set_param(control = list())
           \code{list()} (so no defaults of \code{\link{optim}()} changed).}
       }    
     }
+    \item{For \code{qnvmix()}:}{
+      \describe{
+        \item{\code{max.iter.newton}}{\code{\link{numeric}}, maximum number
+        of Newton iterations allowed to approximate the quantile; defaults 
+        to \code{45}.}
+        \item{\code{newton.conv.abstol}}{\code{\link{numeric}}, convergence
+        tolerance for the Newton proceudre; convergence is detected once
+        the difference of estimated quantiles in two successive iterations
+        is smaller than \code{newton.conv.abstol}; defaults to \code{5e-4}.}
+        \item{\code{newton.df.reltol}}{\code{\link{numeric}}, relative error
+        tolerance for estimating the univariate distribution function; 
+        defaults to \code{2.5e-4}.}
+        \item{\code{newton.logdens.abstol}}{\code{\link{numeric}}, absolute error
+        tolerance for the internal estimation of the log-density needed for the
+        update; defaults to \code{1e-2}.}
+        \item{\code{newton.df.max.iter.rqmc}}{\code{\link{numeric}}, maximum
+        number of iterations to estimate the univariate distribution function
+        required in the Newton update; defaults to \code{50}. Note that here,
+        internally used is \code{increment = "doubling"}.}
+       }
+    }
+    \item{For \code{qqplot_maha()}:}{
+      \describe{
+        \item{\code{qqplot.df.reltol}}{\code{\link{numeric}}, corresponds to
+        \code{newton.df.reltol}. Defaults to \code{5e-3}.}
+       }
+    }
+    \item{For \code{ESnvmix()}:}{
+      \describe{
+        \item{\code{riksmeasures.abstol, riksmeasures.reltol}}{
+        \code{\link{numeric}}, absolute or relative error tolerance for 
+        estimating riskmeasures, notably via \code{ESnvmix()}. By default,
+        an absolute error tolerance of \code{1e-2} is used.}
+       }
+    }
   }
   Care should be taken when changing algorithm specific parameters, notably
   tolerances, as the accuracy of the result is heavily influenced by those.
@@ -201,8 +239,9 @@ get_set_param(control = list())
   \url{https://arxiv.org/abs/1911.03017}.
 }
 \seealso{
-  \code{\link{dnvmix}()}, \code{\link{pnvmix}()}, \code{\link{fitnvmix}()},
-  \code{\link{rnvmix}()}
+  \code{\link{fitnvmix}()}, \code{\link{dnvmix}()}, 
+  \code{\link{pnvmix}()}, \code{\link{qnvmix}()}, \code{\link{pgammamix}()}, 
+  \code{\link{dgammamix}()}, \code{\link{ESnvmix}()}
 }
 \examples{
 get_set_param() # obtain defaults

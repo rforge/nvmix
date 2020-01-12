@@ -1,7 +1,7 @@
 ### Risk measures ###############################################################
 
 ##' @title Estimating value-at-risk for univariate normal variance mixtures
-##' @param alpha vector of confidence levels
+##' @param level vector of confidence levels
 ##' @param qmix see ?pnvmix()
 ##' @param loc see ?pnvmix()
 ##' @param scale see ?pnvmix()
@@ -11,12 +11,12 @@
 ##' @return vector of expected shortfall estimates with attributes 'error'
 ##'         and 'numiter' 
 ##' @author Erik Hintz, Marius Hofert and Christiane Lemieux
-ESnvmix <- function(alpha, qmix, loc = 0, scale = 1, control = list(), 
+ESnvmix <- function(level, qmix, loc = 0, scale = 1, control = list(), 
                     verbose = TRUE, ...){
    ## 1. Checks and variable declarations ######################################
    stopifnot(scale > 0)
-   if(!is.vector(alpha)) alpha <- as.vector(alpha)
-   if(any(alpha >= 1) | any(alpha <= 0)) stop("All levels in 'alpha' must be in (0,1)")
+   if(!is.vector(level)) level <- as.vector(level)
+   if(any(level >= 1) | any(level <= 0)) stop("All levels in 'level' must be in (0,1)")
    ## Deal with algorithm parameters, see also ?get_set_param()
    control <- get_set_param(control)
    ## Define the quantile function of the mixing variable #######################
@@ -31,7 +31,10 @@ ESnvmix <- function(alpha, qmix, loc = 0, scale = 1, control = list(),
              "inverse.gamma" = {
                 if(hasArg(df)) {
                    df <- list(...)$df
-                } else {
+                } else if(hasArg(nu)) { 
+                   nu <- list(...)$nu
+                   df <- nu
+                } else { 
                    stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
                 }
                 ## Still allow df = Inf (normal distribution)
@@ -48,7 +51,10 @@ ESnvmix <- function(alpha, qmix, loc = 0, scale = 1, control = list(),
              "pareto"= {
                 if(hasArg(alpha)) {
                    alpha <- list(...)$alpha
-                } else {
+                } else if(hasArg(nu)){
+                   nu <- list(...)$nu
+                   alpha <- nu
+                } else { 
                    stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
                 }
                 special.mix <- "pareto"
@@ -71,17 +77,17 @@ ESnvmix <- function(alpha, qmix, loc = 0, scale = 1, control = list(),
    if(!is.na(special.mix) && !(special.mix == "pareto")){
       res <- switch(special.mix,
                     "inverse.gamma" = {
-                       loc + sqrt(scale)*dt(qt(alpha, df = df), df = df)/(1-alpha)*
-                          ((df + qt(alpha, df = df)^2)/(df-1))},
+                       loc + sqrt(scale)*dt(qt(level, df = df), df = df)/(1-level)*
+                          ((df + qt(level, df = df)^2)/(df-1))},
                     "constant" = {
-                       loc + sqrt(scale)*dnorm(qnorm(alpha))/(1-alpha)
+                       loc + sqrt(scale)*dnorm(qnorm(level))/(1-level)
                     })
       numiter <- 0
-      error   <- rep(0, length(alpha)) 
+      error   <- rep(0, length(level)) 
    } else {
       ## Otherwise use RQMC to estimate the expected shortfall
       ## Estimate/compute VaR_alpha first 
-      VaRs <- qnvmix(alpha, qmix = qmix, control = control, ...) 
+      VaRs <- qnvmix(level, qmix = qmix, control = control, ...) 
       ## Initialize various quanitities 
       total.fun.evals <- 0
       numiter <- 0
@@ -109,8 +115,8 @@ ESnvmix <- function(alpha, qmix, loc = 0, scale = 1, control = list(),
          if(method == "sobol") useskip <- 0
          denom <- 1
       }
-      ## Matrix to store RQMC estimates for all levels in the vector 'alpha'
-      rqmc.estimates <- matrix(0, ncol = length(alpha), nrow = B)
+      ## Matrix to store RQMC estimates for all levels in the vector 'level'
+      rqmc.estimates <- matrix(0, ncol = length(level), nrow = B)
       ## Will be needed a lot:
       CI.factor.sqrt.B <- control$CI.factor / sqrt(B)
       sqrt.scale <- sqrt(scale) 
@@ -120,7 +126,7 @@ ESnvmix <- function(alpha, qmix, loc = 0, scale = 1, control = list(),
       ## 2. Actual computation #################################################
       ## while() runs until precision 'tol' is reached or the number of function
       ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
-      ## the expected shortfall are computed; if 'alpha' is a vector,
+      ## the expected shortfall are computed; if 'level' is a vector,
       ## the same mixing realizations are used for all levels 
       while(max(error) > tol && total.fun.evals < control$fun.eval[2] && 
             numiter < control$max.iter.rqmc)
@@ -157,7 +163,7 @@ ESnvmix <- function(alpha, qmix, loc = 0, scale = 1, control = list(),
             next.estimate <- sqrt.scale * 
                .colMeans(sqrt.mixings*exp(-tcrossprod(1/sqrt.mixings, VaRs)^2/2)/
                             sqrt.two.pi, 
-                         m = current.n, n = length(alpha))/(1-alpha)
+                         m = current.n, n = length(level))/(1-level)
             
             ## 2.3 Update RQMC estimates #######################################
             rqmc.estimates[b, ] <-
@@ -192,11 +198,11 @@ ESnvmix <- function(alpha, qmix, loc = 0, scale = 1, control = list(),
             CI.factor.sqrt.B * apply(rqmc.estimates, 2, sd)
          } else { # relative error
             CI.factor.sqrt.B * apply(rqmc.estimates, 2, sd)/
-               .colMeans(rqmc.estimates, m = B, n = length(alpha))
+               .colMeans(rqmc.estimates, m = B, n = length(level))
          }
          numiter <- numiter + 1 # update counter
       } # while ()
-      res <- loc + .colMeans(rqmc.estimates, m = B, n = length(alpha))
+      res <- loc + .colMeans(rqmc.estimates, m = B, n = length(level))
       ## Handle warnings
       reached <- (error <= tol)
       if(any(!reached) && verbose > 0) {
@@ -224,7 +230,7 @@ ESnvmix <- function(alpha, qmix, loc = 0, scale = 1, control = list(),
 
 
 ##' @title Estimating value-at-risk for univariate normal variance mixtures
-##' @param alpha vector of confidence levels
+##' @param level vector of confidence levels
 ##' @param qmix see ?pnvmix()
 ##' @param loc see ?pnvmix()
 ##' @param scale see ?pnvmix() 
@@ -233,10 +239,10 @@ ESnvmix <- function(alpha, qmix, loc = 0, scale = 1, control = list(),
 ##' @param ... see ?pnvmix()
 ##' @return vector of value at risk estimates
 ##' @author Erik Hintz, Marius Hofert and Christiane Lemieux
-VaRnvmix <- function(alpha, qmix, loc = 0, scale = 1, control = list(),
+VaRnvmix <- function(level, qmix, loc = 0, scale = 1, control = list(),
                      verbose = TRUE, ...){
-   ## This is called by qnvmix(alpha, ...) 
-   loc + sqrt(scale) * quantile_(alpha, qmix = qmix, which = "nvmix1", d = 1, 
+   ## This is called by qnvmix(level, ...) 
+   loc + sqrt(scale) * quantile_(level, qmix = qmix, which = "nvmix1", d = 1, 
                                control = control, verbose = verbose, 
                                q.only = TRUE, stored.values = NULL, ...)
 }

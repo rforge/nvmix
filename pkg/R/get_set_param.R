@@ -32,7 +32,7 @@ get_set_param <- function(control = list())
         newton.df.reltol = 2.5e-4,
         newton.logdens.abstol = 1e-2,
         newton.df.max.iter.rqmc = 50, # 'doubling' used here!
-        qqplot.df.reltol = 1e-2,
+        qqplot.df.reltol = 5e-3,
         ## For fitnvmix():
         ## Algorithm specifications:
         ECMEstep = TRUE,
@@ -80,19 +80,31 @@ get_set_param <- function(control = list())
                                      choices = c("doubling", "num.init"))
         ## Now some more checkings: ('max.iter.rqmc' checked at the end)
         stopifnot(is.logical(ctrl$precond),
+                  ctrl$cholesky.tol > 0,
                   ctrl$dnvmix.max.iter.rqmc.pilot >= 1,
+                  is.logical(ctrl$dnvmix.doAdapt),
                   ctrl$dnvmix.tol.int.lower > 0,
-                  ctrl$dnvmix.tol.bisec.w >0,
+                  ctrl$dnvmix.order.lower > 0,
+                  ctrl$dnvmix.tol.bisec >0,
                   ctrl$dnvmix.tol.stratlength > 0,
-                  ctrl$dnvmix.max.iter.bisec.w > 0,
+                  ctrl$dnvmix.max.iter.bisec > 0,
                   ctrl$max.iter.newton >= 0,
                   ctrl$newton.conv.abstol >= 0,
-                  ctrl$newton.df.abstol >= 0,
+                  ctrl$newton.df.reltol >= 0,
                   ctrl$newton.logdens.abstol >= 0,
-                  ctrl$weights.abstol >= 0,
+                  ctrl$newton.df.max.iter.rqmc > 0,
+                  ctrl$qqplot.df.reltol > 0,
+                  is.logical(ctrl$ECMEstep),
                   is.logical(ctrl$ECMEstep.do.nu),
                   is.logical(ctrl$laststep.do.nu),
-                  ctrl$ECME.maxiter >= 0,
+                  is.logical(ctrl$resample),
+                  ctrl$ECME.maxiter > 0,
+                  ctrl$ECME.miniter >= 0,
+                  ctrl$ECME.maxiter >= ctrl$ECME.miniter,
+                  ctrl$max.iter.locscaleupdate > 0,
+                  ctrl$weights.abstol > 0 | ctrl$weights.reltol > 0, 
+                  ctrl$weights.interpol.reltol > 0,
+                  ctrl$riskmeasures.reltol > 0 | ctrl$riskmeasures.abstol > 0,
                   length(ctrl$ECME.rel.conv.tol) == 3, ctrl$ECME.rel.conv.tol >= 0,
                   ctrl$CI.factor >= 0,
                   length(ctrl$fun.eval) == 2, ctrl$fun.eval >= 0,
@@ -100,7 +112,7 @@ get_set_param <- function(control = list())
     }
     ## Define 'max.iter.rqmc': If it was not provided (=> NA), set defaults
     if(is.na(ctrl$max.iter.rqmc)) {
-        ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 15 else 200
+        ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 17 else 200
     } else {
         ## If it was provided (=> not NA), check if it's reasonable
         stopifnot(ctrl$max.iter.rqmc > 1)

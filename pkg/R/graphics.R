@@ -18,8 +18,9 @@
 qqplot_maha <- function(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE,
                         control = list(), ...)
 {
-   ## Initialize and check inputs:
+   ## Initialize and check inputs
    control <- get_set_param(control)
+   control$newton.df.reltol <- control$qqplot.df.reltol
    if(!is.matrix(x)) x <- rbind(x)
    notNA <- rowSums(is.na(x)) == 0
    x     <- x[notNA,, drop = FALSE] # non-missing data (rows)

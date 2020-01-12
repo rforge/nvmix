@@ -233,7 +233,8 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
                ## Store values generated
                additionalVals[numiter, ] <- c(u.next, w.next, l.int.next)
                ## Update 'curr.candid' depending on sign of 'diff' and check convergence:
-               if(diff > 0) curr.candid[2] <- u.next else curr.candid[1] <- u.next
+               if(diff > 0) curr.candid[2] <- u.next else 
+                  curr.candid[1] <- u.next
                convd <- (abs(diff) < tol.bisec[3])  || (diff(curr.candid) < tol.bisec[1])
             }
             ## Update U.W.lint[]:
@@ -322,11 +323,12 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
                weights <- c(U.W.lint[ (firstUsed+1):numObs, 1] -
                                U.W.lint[firstUsed:(numObs-1), 1],
                             .Machine$double.neg.eps)
-               upper.sum <- logsumexp(as.matrix(log(weights) +
-                                                   U.W.lint[firstUsed:numObs, 3],
-                                                ncol = 1))
-               lower.sum <- logsumexp(as.matrix(log(weights) +
-                                                   c(U.W.lint[(firstUsed+1):numObs, 3], -Inf),
+               upper.sum <- 
+                  logsumexp(as.matrix(log(weights) + U.W.lint[firstUsed:numObs, 3],
+                                      ncol = 1))
+               lower.sum <- 
+                  logsumexp(as.matrix(
+                     log(weights) + c(U.W.lint[(firstUsed+1):numObs, 3], -Inf),
                                                 ncol = 1))
                (lower.sum + upper.sum) / 2
             } else {
@@ -437,7 +439,8 @@ densmix_rqmc <- function(qW, maha2.2, lconst, d, k = d, control,
    max.error <- tol + 42
    ## Matrix to store U, W values => nrows = maximal number of funevals
    if(return.all) {
-      max.nrow <- if(dblng) current.n*B*2^(max.iter.rqmc-1) else max.iter.rqmc*B*current.n
+      max.nrow <- if(dblng) current.n*B*2^(max.iter.rqmc-1) else 
+         max.iter.rqmc*B*current.n
       UsWs <- matrix(NA, ncol = 2, nrow = max.nrow)
       curr.lastrow <- 0 # will count row-index additional points are being inserted after
    }
@@ -532,7 +535,6 @@ densmix_rqmc <- function(qW, maha2.2, lconst, d, k = d, control,
       ## Update error. The following is slightly faster than 'apply(..., 2, var)'
       ldensities <- logsumexp(rqmc.estimates) - log(B) # performs better than .colMeans
       vars <- .colMeans((rqmc.estimates - rep(ldensities, each = B))^2, B, n, 0)
-      #vars <- apply(rqmc.estimates, 2, var)
       errors <- if(!do.reltol) { # absolute error
          sqrt(vars)*CI.factor.sqrt.B
       } else { # relative error
@@ -684,6 +686,9 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
              "inverse.gamma" = {
                 if(hasArg(df)) {
                    df <- list(...)$df
+                } else if(hasArg(nu)){
+                   nu <- list(...)$nu
+                   df <- nu
                 } else {
                    stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
                 }
@@ -704,6 +709,9 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
              "pareto"= {
                 if(hasArg(alpha)) {
                    alpha <- list(...)$alpha
+                } else if(hasArg(nu)) {
+                   nu <- list(...)$nu
+                   alpha <- nu
                 } else {
                    stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
                 }
@@ -754,16 +762,17 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
    if(!is.na(special.mix)) {
       lres[notNA] <- switch(special.mix,
                             "inverse.gamma" = {
-                               lgamma((df + d) / 2) - lgamma(df/2) - (d/2) * log(df * pi) -
-                                  lrdet - (df + d) / 2 * log1p(maha2 / df)
+                               lgamma((df + d) / 2) - lgamma(df/2) - (d/2) * 
+                                  log(df*pi) - lrdet - (df+d)/2 * log1p(maha2/df)
                             },
                             "constant" = {
                                -(d/2) * log(2 * pi) - lrdet - maha2/2
                             },
                             "pareto" = {
-                               log(alpha)-d/2*log(2*pi)-lrdet-(alpha+d/2)*log(maha2/2) +
-                                  pgamma(maha2/2, scale = 1, shape = alpha+d/2, log.p = TRUE) +
-                                  lgamma(alpha+d/2)
+                               log(alpha) - d/2*log(2*pi) - lrdet - 
+                                  (alpha+d/2)*log(maha2/2) +
+                                  pgamma(maha2/2, scale = 1, shape = alpha+d/2, 
+                                         log.p = TRUE) + lgamma(alpha+d/2)
                             })
       if(!log) lres <- exp(lres) # already exponentiate
       error <- rep(0, length(maha2))

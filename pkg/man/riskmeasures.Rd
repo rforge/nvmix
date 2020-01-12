@@ -7,11 +7,11 @@
   normal variance mixtures
 }
 \usage{
-VaRnvmix(alpha, qmix, loc = 0, scale = 1, control = list(), verbose = TRUE, ...)
-ESnvmix(alpha, qmix, loc = 0, scale = 1, control = list(), verbose = TRUE, ...)
+VaRnvmix(level, qmix, loc = 0, scale = 1, control = list(), verbose = TRUE, ...)
+ESnvmix(level, qmix, loc = 0, scale = 1, control = list(), verbose = TRUE, ...)
 }
 \arguments{
-  \item{alpha}{\eqn{n}-\code{\link{vector}} of confidence levels.}
+  \item{level}{\eqn{n}-\code{\link{vector}} of confidence levels.}
   \item{qmix}{see \code{\link{pnvmix}()}.}
   \item{loc}{\code{\link{numeric}} location, see also \code{\link{pnvmix}()}}
   \item{scale}{\code{\link{numeric}} scale, see also \code{\link{pnvmix}()}}
@@ -59,13 +59,13 @@ ESnvmix(alpha, qmix, loc = 0, scale = 1, control = list(), verbose = TRUE, ...)
 ## Example for inverse-gamma mixture (resulting in a t distribution) for
 ## which the expected shortfall admits a closed formula
 set.seed(42) # reproducibility
-alpha <- seq(from = 0.9, to = 0.95, by = 0.01)
+level <- seq(from = 0.9, to = 0.95, by = 0.01)
 df <- 4
 ## If 'qmix' is provided as string, ESnvmix() uses the closed formula
-ES1 <- ESnvmix(qmix = "inverse.gamma", alpha, df = df)
+ES1 <- ESnvmix(level, qmix = "inverse.gamma", df = df)
 ## If 'qmix' is provided as function, the expected shortfall is estimated
-ES2 <- ESnvmix(qmix = function(u, df) 1/qgamma(1-u, shape = df/2, rate = df/2), 
-               alpha, df = df)
+ES2 <- ESnvmix(level, qmix = function(u, df) 1/qgamma(1-u, shape = df/2, rate = df/2), 
+       df = df)
 stopifnot(all.equal(ES1, ES2, tol = 1e-2, check.attributes = FALSE))
 }
 \keyword{distribution}
