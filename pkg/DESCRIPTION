@@ -1,5 +1,5 @@
 Package: nvmix
-Version: 0.0-3
+Version: 0.0-4
 Encoding: UTF-8
 Title: Multivariate Normal Variance Mixtures
 Description: Functions for working with multivariate normal variance mixture
