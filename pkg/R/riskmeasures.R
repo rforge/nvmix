@@ -100,14 +100,14 @@ ESnvmix <- function(level, qmix, loc = 0, scale = 1, control = list(),
          seed <- .Random.seed
       }
       ## Absolte/relative precision?
-      if(is.na(control$riksmeasures.abstol)) {
+      if(is.na(control$riskmeasures.abstol)) {
          ## Use relative error
-         stopifnot(control$riksmeasures.reltol > 0)
-         tol <- control$riksmeasures.reltol
+         stopifnot(control$riskmeasures.reltol > 0)
+         tol <- control$riskmeasures.reltol
          do.reltol <- TRUE
       } else {
          ## Use absolute error
-         tol <- control$riksmeasures.abstol
+         tol <- control$riskmeasures.abstol
          do.reltol <- FALSE
       }
       ## Additional variables needed if the increment chosen is "doubling"

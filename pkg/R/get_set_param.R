@@ -51,8 +51,8 @@ get_set_param <- function(control = list())
         control.optim = list(maxit = 10),
         control.optim.laststep = list(),
         ## For riskmeasures:
-        riksmeasures.abstol = 1e-2,
-        riksmeasures.reltol = 1e-2,
+        riskmeasures.abstol = NA,
+        riskmeasures.reltol = 1e-2,
         ## For all (randomized) algorithms:
         method = "sobol",
         increment = "doubling", # "doubling" or "num.init"

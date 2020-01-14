@@ -222,10 +222,11 @@ get_set_param(control = list())
     }
     \item{For \code{ESnvmix()}:}{
       \describe{
-        \item{\code{riksmeasures.abstol, riksmeasures.reltol}}{
+        \item{\code{riskmeasures.abstol, riskmeasures.reltol}}{
         \code{\link{numeric}}, absolute or relative error tolerance for 
-        estimating riskmeasures, notably via \code{ESnvmix()}. By default,
-        an absolute error tolerance of \code{1e-2} is used.}
+        estimating riskmeasures, notably for \code{ESnvmix()}. By default,
+         \code{riskmeasures.reltol=1e-2} and \code{riskmeasures.abstol=NA},
+         so that a relative tolerance is used.}
        }
     }
   }
