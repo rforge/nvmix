@@ -42,13 +42,13 @@ get_set_param <- function(control = list())
         ## Tolerances:
         ECME.maxiter = 20,
         ECME.miniter = 3,
-        max.iter.locscaleupdate = 20,
-        weights.abstol = 1e-1, # currently not used
+        max.iter.locscaleupdate = 50,
+        weights.abstol = NA, # currently not used
         weights.reltol = 5e-2,
         weights.interpol.reltol = 1e-2,
         ECME.rel.conv.tol = c(1e-2, 1e-2, 5e-3), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
         ## For the underlying 'optim':
-        control.optim = list(maxit = 10),
+        control.optim = list(maxit = 15),
         control.optim.laststep = list(),
         ## For riskmeasures:
         riskmeasures.abstol = NA,
