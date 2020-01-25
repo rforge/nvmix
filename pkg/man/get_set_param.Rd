@@ -66,8 +66,8 @@ get_set_param(control = list())
 	  (typically a power of 2) and the maximal number of function
           evaluations. \code{fun.eval} defaults to \code{c(2^7, 1e8)}.}
         \item{\code{max.iter.rqmc}}{\code{\link{numeric}}, providing the maximum
-          number of iterations allowed in the RQMC approach; the default is \code{15}
-          if \code{increment = "doubling"} and \code{100} otherwise.}
+          number of iterations allowed in the RQMC approach; the default is \code{17}
+          if \code{increment = "doubling"} and \code{200} otherwise.}
         \item{\code{B}}{number of randomizations for obtaining an error estimate
           in the RQMC approach; the default is \code{15}.}
       }
@@ -166,11 +166,12 @@ get_set_param(control = list())
           subsample of \code{x} is taken in each optimization over \eqn{nu} in
           the ECME iterations. Only relevant when \code{size.subsample} is
           smaller than the number of observations. Defaults to \code{FALSE}.}
-        \item{\code{ECME.maxiter}}{\code{\link{numeric}} positive, maximum number
-          of ECME iterations. Defaults to \code{20}.}
+        \item{\code{ECME.miniter}, \code{ECME.maxiter}}{\code{\link{numeric}} 
+        positive, minimum and maximum number
+          of ECME iterations. Default to \code{5} and \code{25}, respectively.}
         \item{\code{max.iter.locscaleupdate}}{\code{\link{numeric}} positive.
           Maximum number of location-scale updates (while helding \eqn{nu} fixed)
-          in each individual ECME iteration; defaults to \code{25}.}
+          in each individual ECME iteration; defaults to \code{50}.}
         \item{\code{weights.reltol}}{\code{numeric} non-negative. Relative
           tolerance to estimate internal weights used to update
 	  \eqn{loc} and \eqn{scale} estimates in the ECME iterations. Defaults to 
@@ -186,7 +187,7 @@ get_set_param(control = list())
         \item{\code{control.optim}}{\code{\link{list}} of control parameters
           passed to the underlying \code{optim} in the initial step as well as
           in the ECME iterations. See \code{\link{optim}()} for details; defaults to
-          \code{list(maxit=10)}.}
+          \code{list(maxit=15)}.}
         \item{\code{control.optim.laststep}}{like \code{control.optim};
           this list of control arguments is passed to \code{optim} in the last-step. 
           Only relevant when \code{laststep.do.nu = TRUE} and defaults to

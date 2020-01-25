@@ -14,7 +14,7 @@ get_set_param <- function(control = list())
         pnvmix.reltol = NA,
         cholesky.tol = 1e-9,
         ## For dnvmix():
-        dnvmix.abstol = 1e-3,
+        dnvmix.abstol = NA,
         dnvmix.reltol = 1e-2, # If !NA, 'reltol' is used instead of 'abstol'
         dnvmix.max.iter.rqmc.pilot = 4,
         dnvmix.doAdapt = TRUE,
@@ -40,11 +40,11 @@ get_set_param <- function(control = list())
         laststep.do.nu = FALSE,
         resample = FALSE,
         ## Tolerances:
-        ECME.maxiter = 20,
-        ECME.miniter = 3,
+        ECME.maxiter = 25,
+        ECME.miniter = 5,
         max.iter.locscaleupdate = 50,
         weights.abstol = NA, # currently not used
-        weights.reltol = 5e-2,
+        weights.reltol = 1e-2,
         weights.interpol.reltol = 1e-2,
         ECME.rel.conv.tol = c(1e-2, 1e-2, 5e-3), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
         ## For the underlying 'optim':
