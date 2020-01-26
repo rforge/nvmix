@@ -16,7 +16,7 @@ Author: Marius Hofert [aut, cre], Erik Hintz [aut], Christiane Lemieux [aut]
 Maintainer: Marius Hofert <marius.hofert@uwaterloo.ca>
 Depends: R (>= 3.2.0)
 Imports: stats, methods, qrng, Matrix
-Suggests: knitr, RColorBrewer, lattice, qrmdata, QRM, xts
+Suggests: knitr, RColorBrewer, lattice, qrmdata,  xts
 Enhances:
 License: GPL (>= 3) | file LICENCE
 NeedsCompilation: yes

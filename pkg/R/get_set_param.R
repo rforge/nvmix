@@ -14,7 +14,7 @@ get_set_param <- function(control = list())
         pnvmix.reltol = NA,
         cholesky.tol = 1e-9,
         ## For dnvmix():
-        dnvmix.abstol = NA,
+        dnvmix.abstol = 1e-3,
         dnvmix.reltol = 1e-2, # If !NA, 'reltol' is used instead of 'abstol'
         dnvmix.max.iter.rqmc.pilot = 4,
         dnvmix.doAdapt = TRUE,
