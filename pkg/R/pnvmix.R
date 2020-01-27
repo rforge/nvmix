@@ -21,62 +21,10 @@ pnvmix_g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
                      mean.sqrt.mix = NULL, return.all = FALSE, verbose = TRUE, ...)
 {
    ## Define the quantile function of the mixing variable
-   special.mix <- NA
-   qW <- if(is.character(qmix)) { # 'qmix' is a character vector
-      qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma", "pareto"))
-      switch(qmix,
-             "constant" = {
-                special.mix <- "constant"
-                function(u) rep(1, length(u))
-             },
-             "inverse.gamma" = {
-                if(hasArg(df)) {
-                   df <- list(...)$df
-                } else if(hasArg(nu)) {
-                   nu <- list(...)$nu
-                   df <- nu
-                } else {
-                   stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
-                }
-                ## Still allow df = Inf (normal distribution)
-                stopifnot(is.numeric(df), length(df) == 1, df > 0)
-                if(is.finite(df)) {
-                   special.mix <- "inverse.gamma"
-                   df2 <- df / 2
-                   mean.sqrt.mix <- sqrt(df) * gamma(df2) /
-                      (sqrt(2) * gamma((df+1)/2)) # used for preconditioning
-                   function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
-                } else {
-                   special.mix <- "constant"
-                   mean.sqrt.mix <- 1 # used for preconditioning
-                   function(u) rep(1, length(u))
-                }
-             },
-             "pareto"= {
-                if(hasArg(alpha)) {
-                   alpha <- list(...)$alpha
-                } else if(hasArg(nu)) {
-                   nu <- list(...)$nu
-                   alpha <- nu
-                } else { 
-                   stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
-                }
-                special.mix   <- "pareto"
-                mean.sqrt.mix <- if(alpha > 0.5) alpha/(alpha-0.5) else NULL
-                function(u) (1-u)^(-1/alpha)
-             },
-             stop("Currently unsupported 'qmix'"))
-   } else if(is.list(qmix)) { # 'mix' is a list of the form (<character string>, <parameters>)
-      stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
-      qmix. <- paste0("q", distr)
-      if(!existsFunction(qmix.))
-         stop("No function named '", qmix., "'.")
-      function(u)
-         do.call(qmix., append(list(u), qmix[-1]))
-   } else if(is.function(qmix)) { # 'mix' is the quantile function F_W^- of F_W
-      function(u)
-         qmix(u, ...)
-   } else stop("'qmix' must be a character string, list or quantile function.")
+   mix_list <- get_mix_(qmix = qmix, callingfun = "pnvmix", ...) # function(u)
+   qW <- mix_list[[1]]
+   special.mix <- mix_list[[2]]
+   mean.srt.mix <- mix_list[[3]]
    ## Dimension of the problem and number of evaluations
    d <- dim(scale)[1]
    n <- dim(U)[1]
@@ -702,64 +650,11 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
       do.reltol <- FALSE
       control$pnvmix.abstol
    }
-   
-   ## Define the quantile function of the mixing variable #######################
-   special.mix <- NA
-   qW <- if(is.character(qmix)) { # 'qmix' is a character vector
-      qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma", "pareto"))
-      switch(qmix,
-             "constant" = {
-                special.mix <- "constant"
-                mean.sqrt.mix <- 1
-                function(u) rep(1, length(u))
-             },
-             "inverse.gamma" = {
-                if(hasArg(df)) {
-                   df <- list(...)$df
-                } else if(hasArg(nu)) {
-                   nu <- list(...)$nu
-                   df <- nu
-                } else { 
-                   stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
-                }
-                ## Still allow df = Inf (normal distribution)
-                stopifnot(is.numeric(df), length(df) == 1, df > 0)
-                if(is.finite(df)) {
-                   special.mix <- "inverse.gamma"
-                   df2 <- df / 2
-                   mean.sqrt.mix <- sqrt(df) * gamma(df2) / (sqrt(2) * gamma((df+1)/2)) # used for preconditioning
-                   function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
-                } else {
-                   special.mix <- "constant"
-                   mean.sqrt.mix <- 1 # used for preconditioning
-                   function(u) rep(1, length(u))
-                }
-             },
-             "pareto"= {
-                if(hasArg(alpha)) {
-                   alpha <- list(...)$alpha
-                } else if(hasArg(nu)){
-                   nu <- list(...)$nu
-                   alpha <- nu
-                } else { 
-                   stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
-                }
-                special.mix <- "pareto"
-                mean.sqrt.mix <- if(alpha > 0.5) alpha/(alpha-0.5) else NULL
-                function(u) (1-u)^(-1/alpha)
-             },
-             stop("Currently unsupported 'qmix'"))
-   } else if(is.list(qmix)) { # 'mix' is a list of the form (<character string>, <parameters>)
-      stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
-      qmix. <- paste0("q", distr)
-      if(!existsFunction(qmix.))
-         stop("No function named '", qmix., "'.")
-      function(u)
-         do.call(qmix., append(list(u), qmix[-1]))
-   } else if(is.function(qmix)) { # 'mix' is the quantile function F_W^- of F_W
-      function(u)
-         qmix(u, ...)
-   } else stop("'qmix' must be a character string, list or quantile function.")
+   ## Prepare mixing variable 
+   mix_list      <- get_mix_(qmix = qmix, callingfun = "pnvmix", ... )
+   qW            <- mix_list[[1]] # function(u)
+   special.mix   <- mix_list[[2]]
+   mean.sqrt.mix <- mix_list[[3]]
    
    ## In the special case d = 1 we call pnvmix1d which is truly *vectorized*
    ## as there is no conditioning to be done. The case of a normal / t distribution
@@ -912,6 +807,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
             res1[[i]] <- list(value = value, error = 0, numiter = 0)
             next
          } else if(special.mix == "inverse.gamma") {
+            df <- mix_list$param # returned by get_mix_()
             value <- pt(up, df = df) - pt(low, df = df)
             res1[[i]] <- list(value = value, error = 0, numiter = 0)
             next

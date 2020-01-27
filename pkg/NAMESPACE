@@ -7,7 +7,7 @@ importFrom("stats",
            "runif", "rnorm", "pt", "qt", "dt", "pgamma", "rgamma", "pnorm",
            "sd", qchisq, "qnorm", "dnorm", "qgamma", "uniroot", "cov2cor",
            "cor", "cov", "cov.wt", "optim", "var", "pchisq",
-           "dgamma", "mahalanobis", "pf", "ppoints", "qf")
+           "dgamma", "mahalanobis", "pf", "ppoints", "qf", "df")
 importFrom("methods",
            "existsFunction", "hasArg")
 importFrom("qrng",

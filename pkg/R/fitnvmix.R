@@ -400,32 +400,10 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
         x <- rbind(x)
     ## Initialize various quantities
     control <- get_set_param(control)
-    ## Get quantile function
-    special.mix <- NA  # to record if we have a special dist'n (normal, t,...)
-    ## Set up qW as function(u, nu)
-    qW <- if(is.character(qmix)) {# 'qmix' is a character vector
-              qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma", "pareto"))
-              switch(qmix,
-                     "constant" = {
-                         special.mix <- "constant"
-                         function(u, nu) rep(1, length(u))
-                     },
-                     "inverse.gamma" = {
-                         special.mix <- "inverse.gamma"
-                         function(u, nu) 1 / qgamma(1 - u, shape = nu/2, rate = nu/2)
-                     },
-                     "pareto" = {
-                         special.mix <- "pareto"
-                         function(u, nu) (1-u)^(-1/nu)
-                     },
-                     stop("Currently unsupported 'qmix'"))
-          } else if(is.list(qmix)) { # 'mix' is a list of the form (<character string>, <parameters>)
-              ## Not supported yet
-              stop("'qmix' cannot be a list when passed to 'fitnvmix'")
-          } else if(is.function(qmix)) { # 'mix' is the quantile function F_W^- of F_W
-              function(u, nu)
-                  qmix(u, nu)
-          } else stop("'qmix' must be a character string, list or quantile function.")
+    ## Prepare mixing variable 
+    mix_list      <- get_mix_(qmix = qmix, callingfun = "fitnvmix")
+    qW            <- mix_list[[1]] # function(u, nu) 
+    special.mix   <- mix_list[[2]]
 
     ## Case of MVN: MLEs are sample mean and sample cov matrix
     if(is.character(special.mix) && special.mix == "constant") {

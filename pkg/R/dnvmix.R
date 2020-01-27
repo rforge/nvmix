@@ -658,7 +658,7 @@ densmix_ <- function(qW, maha2.2, lconst, d, control, verbose)
 ##' @author Erik Hintz and Marius Hofert
 dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
                    factor = NULL, # needs to be lower triangular!
-                   control = list(), log = FALSE, verbose = TRUE,...)
+                   control = list(), log = FALSE, verbose = TRUE, ...)
 {
    ## Checks
    if(!is.matrix(x)) x <- rbind(x)
@@ -666,71 +666,17 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
    if(!is.matrix(scale)) scale <- as.matrix(scale)
    stopifnot(length(loc) == d, dim(scale) == c(d, d))
    verbose <- as.logical(verbose)
-   ## Deal with algorithm parameters, see also get_set_param():
+   ## Deal with algorithm parameters, see also get_set_param();
    ## get_set_param() also does argument checking, so not needed here.
    control <- get_set_param(control)
    ## If factor is not provided, determine it here as a *lower* triangular matrix
    if(is.null(factor)) factor <- t(chol(scale)) # lower triangular
    
    ## 1 Define the quantile function of the mixing variable ###################
+   mix_list      <- get_mix_(qmix = qmix, callingfun = "dnvmix", ... ) 
+   qW            <- mix_list[[1]] # function(u)
+   special.mix   <- mix_list[[2]] # string or NA
    
-   ## If 'mix' is "constant", "inverse.gamma" or "pareto", we use the analytical formulas
-   special.mix <- NA
-   qW <- if(is.character(qmix)) { # 'qmix' is a character vector
-      qmix <- match.arg(qmix, choices = c("constant", "inverse.gamma", "pareto"))
-      switch(qmix,
-             "constant" = {
-                special.mix <- "constant"
-                function(u) rep(1, length(u))
-             },
-             "inverse.gamma" = {
-                if(hasArg(df)) {
-                   df <- list(...)$df
-                } else if(hasArg(nu)){
-                   nu <- list(...)$nu
-                   df <- nu
-                } else {
-                   stop("'qmix = \"inverse.gamma\"' requires 'df' to be provided.")
-                }
-                ## Still allow df = Inf (normal distribution)
-                stopifnot(is.numeric(df), length(df) == 1, df > 0)
-                if(is.finite(df)) {
-                   special.mix <- "inverse.gamma"
-                   df2 <- df / 2
-                   mean.sqrt.mix <- sqrt(df) * gamma(df2) /
-                      (sqrt(2) * gamma((df+1)/2)) # used for preconditioning
-                   function(u) 1 / qgamma(1 - u, shape = df2, rate = df2)
-                } else {
-                   special.mix <- "constant"
-                   mean.sqrt.mix <- 1 # used for preconditioning
-                   function(u) rep(1, length(u))
-                }
-             },
-             "pareto"= {
-                if(hasArg(alpha)) {
-                   alpha <- list(...)$alpha
-                } else if(hasArg(nu)) {
-                   nu <- list(...)$nu
-                   alpha <- nu
-                } else {
-                   stop("'qmix = \"pareto\"' requires 'alpha' to be provided.")
-                }
-                special.mix <- "pareto"
-                mean.sqrt.mix <- if(alpha > 0.5) alpha/(alpha-0.5) else NULL
-                function(u) (1-u)^(-1/alpha)
-             },
-             stop("Currently unsupported 'qmix'"))
-   } else if(is.list(qmix)) { # 'mix' is a list of the form (<character string>, <parameters>)
-      stopifnot(length(qmix) >= 1, is.character(distr <- qmix[[1]]))
-      qmix. <- paste0("q", distr)
-      if(!existsFunction(qmix.))
-         stop("No function named '", qmix., "'.")
-      function(u)
-         do.call(qmix., append(list(u), qmix[-1]))
-   } else if(is.function(qmix)) { # 'mix' is the quantile function F_W^- of F_W
-      function(u)
-         qmix(u, ...)
-   } else stop("'qmix' must be a character string, list or quantile function.")
    ## Build result object (log-density)
    n <- nrow(x)
    lres <- rep(-Inf, n) # n-vector of results
@@ -762,6 +708,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
    if(!is.na(special.mix)) {
       lres[notNA] <- switch(special.mix,
                             "inverse.gamma" = {
+                               df <- mix_list$param
                                lgamma((df + d) / 2) - lgamma(df/2) - (d/2) * 
                                   log(df*pi) - lrdet - (df+d)/2 * log1p(maha2/df)
                             },
@@ -769,6 +716,7 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
                                -(d/2) * log(2 * pi) - lrdet - maha2/2
                             },
                             "pareto" = {
+                               alpha <- mix_list$param
                                log(alpha) - d/2*log(2*pi) - lrdet - 
                                   (alpha+d/2)*log(maha2/2) +
                                   pgamma(maha2/2, scale = 1, shape = alpha+d/2, 
