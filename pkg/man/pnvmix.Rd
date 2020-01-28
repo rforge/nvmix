@@ -8,7 +8,7 @@
   (including Student \emph{t} and normal distributions).
 }
 \usage{
-pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix,
+pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix = NULL, rmix = NULL,
       loc = rep(0, d), scale = diag(d), standardized = FALSE,
       control = list(), verbose = TRUE, ...)
 
@@ -23,7 +23,8 @@ pNorm(upper, lower = matrix(-Inf, nrow = n, ncol = d), loc = rep(0, d),
   \item{lower}{\eqn{(n, d)}-\code{\link{matrix}} of lower integration limits
     (componentwise less than or equal to \code{upper});
     each row represents a \eqn{d}-vector of lower integration limits.}
-  \item{qmix}{specification of the mixing variable \eqn{W}; see McNeil et
+  \item{qmix, rmix}{specification of the mixing variable \eqn{W} via a quantile 
+  function (\code{qmix}) or random number generator (\code{rmix}) ; see McNeil et
     al. (2015, Chapter 6). Supported are the following types of
     specification (see also the examples below):
     \describe{\item{\code{\link{character}}:}{\code{\link{character}} string
@@ -43,13 +44,14 @@ pNorm(upper, lower = matrix(-Inf, nrow = n, ncol = d), loc = rep(0, d),
       \item{\code{\link{list}}:}{\code{\link{list}} of length at least
 	one, where the first component is a \code{\link{character}}
 	string specifying the base name of a distribution whose
-	quantile function can be accessed via the prefix \code{"q"};
+	quantile function or random number generator can be accessed via the prefix
+	\code{"q"} and \code{"r"}, respectively. 
 	an example is \code{"exp"} for which \code{"qexp"} exists.
 	If the list is of length larger than one, the remaining elements
 	contain additional parameters of the distribution; for \code{"exp"},
         for example, this can be the parameter \code{rate}.}
       \item{\code{\link{function}}:}{\code{\link{function}}
-	interpreted as the quantile function of the mixing
+	interpreted as the quantile function or random number generator of the mixing
 	variable \eqn{W}.}
     }
   }
@@ -109,7 +111,7 @@ pNorm(upper, lower = matrix(-Inf, nrow = n, ncol = d), loc = rep(0, d),
   iteration until the pre-specified absolute error tolerance
   \code{control$pnvmix.abstol} (or relative error tolerance
   \code{control$pnvmix.reltol} which is used only when
-  \code{control$pnvmix.reltol = NA}) is reached.  The attribute
+  \code{control$pnvmix.abstol = NA}) is reached.  The attribute
   \code{"numiter"} gives the number of such iterations needed.
   Algorithm specific parameters (such as the above mentioned
   \code{control$pnvmix.abstol}) can be passed as a list
@@ -118,6 +120,13 @@ pNorm(upper, lower = matrix(-Inf, nrow = n, ncol = d), loc = rep(0, d),
   \code{verbose = TRUE}, a warning is thrown. If provided \code{scale}
   is singular, \code{pnvmix()} estimates the correct probability but
   throws a warning if \code{verbose = TRUE}.
+  
+  It is recommended to supply a quantile function via \code{qmix}, if available,
+  as in this case efficient RQMC methods are used to approximate the probability. 
+  If \code{rmix} is provided, internally used is 
+  plain MC integration, typically leading to slower convergence. 
+  If both \code{qmix} and \code{rmix} are provided, the latter
+  is ignored. 
 
   \code{pStudent()} and \code{pNorm()} are wrappers of
   \code{pnvmix(, qmix = "inverse.gamma", df = df)} and

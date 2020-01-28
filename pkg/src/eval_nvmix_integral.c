@@ -56,8 +56,9 @@ void eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int d
     for(j = 0; j < n; j++){
         /* initialize current_limit */
         current_limit = 0;
-        /* Grab the realizations of sqrt(mix) = sqrt(W) */
+        /* Grab the realization of sqrt(mix) = sqrt(W) */
         sqrtmixorg = U[j];
+        /* Grab antithetic realization */
         sqrtmixant = U[r*n+j];
         
         /* Grab 'lower' and 'upper' */
@@ -128,6 +129,7 @@ void eval_nvmix_integral_c(double *lower, double *upper, double *U, int n, int d
                 diffant = exp(ldiffant);
             }
         }
+        
 
         /* Go through all r-1 columns (without first and last) */
         /* For better readability, we start at i = 0 */

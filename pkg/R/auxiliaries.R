@@ -13,6 +13,7 @@ get_set_param <- function(control = list())
       pnvmix.abstol = 1e-3,
       pnvmix.reltol = NA,
       cholesky.tol = 1e-9,
+      do.ant = TRUE,
       ## For dnvmix():
       dnvmix.abstol = 1e-3,
       dnvmix.reltol = 1e-2, # If !NA, 'reltol' is used instead of 'abstol'
@@ -81,6 +82,7 @@ get_set_param <- function(control = list())
       ## Now some more checkings: ('max.iter.rqmc' checked at the end)
       stopifnot(is.logical(ctrl$precond),
                 ctrl$cholesky.tol > 0,
+                is.logical(ctrl$do.ant), 
                 ctrl$dnvmix.max.iter.rqmc.pilot >= 1,
                 is.logical(ctrl$dnvmix.doAdapt),
                 ctrl$dnvmix.tol.int.lower > 0,
