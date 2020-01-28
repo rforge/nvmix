@@ -197,6 +197,17 @@ set.seed(1)
 pt3 <- pnvmix(b, lower = a, qmix = qmix, df = df, scale = P)
 stopifnot(all.equal(pt3, pt1, tol = 7e-4, check.attributes = FALSE))
 
+## Here are two versions providing a RNG for the mixing distribution
+## Note the significantly larger number of iterations in the attribute 'numiter'
+## compared to when 'qmix' was provided (=> plain MC versus RQMC)
+set.seed(1)
+pt4 <- pnvmix(b, lower = a, 
+              rmix = function(n, df) 1/rgamma(n, shape = df/2, rate = df/2),
+              df = df, scale = P)
+set.seed(1)
+pt5 <- pnvmix(b, lower = a, rmix = "inverse.gamma", df = df, scale = P)
+stopifnot(all.equal(pt4, pt5, pt1, tol = 1e-3, check.attributes = FALSE))
+
 ## Case with missing data and a matrix of lower and upper bounds
 a. <- matrix(rep(a, each = 4), ncol = d)
 b. <- matrix(rep(b, each = 4), ncol = d)

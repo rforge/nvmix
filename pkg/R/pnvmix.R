@@ -697,7 +697,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
       do.ant <- FALSE # if 'rmix' provided, cannot do antithetic variates
       if(method != "PRNG"){
          method <- "PRNG" # set method correctly 
-         warning("When 'rmix' provided only available method is 'PRNG'")
+         # warning("When 'rmix' provided only available method is 'PRNG'")
       }
    } 
    
