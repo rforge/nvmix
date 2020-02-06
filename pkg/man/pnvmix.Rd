@@ -8,7 +8,7 @@
   (including Student \emph{t} and normal distributions).
 }
 \usage{
-pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix = NULL, rmix = NULL,
+pnvmix(upper, lower = matrix(-Inf, nrow = n, ncol = d), qmix, rmix,
       loc = rep(0, d), scale = diag(d), standardized = FALSE,
       control = list(), verbose = TRUE, ...)
 
@@ -24,7 +24,7 @@ pNorm(upper, lower = matrix(-Inf, nrow = n, ncol = d), loc = rep(0, d),
     (componentwise less than or equal to \code{upper});
     each row represents a \eqn{d}-vector of lower integration limits.}
   \item{qmix, rmix}{specification of the mixing variable \eqn{W} via a quantile 
-  function (\code{qmix}) or random number generator (\code{rmix}) ; see McNeil et
+  function (\code{qmix}) *or* random number generator (\code{rmix}) ; see McNeil et
     al. (2015, Chapter 6). Supported are the following types of
     specification (see also the examples below):
     \describe{\item{\code{\link{character}}:}{\code{\link{character}} string

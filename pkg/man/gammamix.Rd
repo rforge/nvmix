@@ -13,7 +13,7 @@ dgammamix(x, qmix, d, control = list(), verbose = TRUE, log = FALSE, ...)
 pgammamix(x, qmix, d, lower.tail = TRUE, control = list(), verbose = TRUE, ...)
 qgammamix(u, qmix, d, control = list(), verbose = TRUE, q.only = TRUE,
           stored.values = NULL, ...)
-rgammamix(n, rmix = NULL, qmix = NULL, d, method = c("PRNG", "sobol", "ghalton"),
+rgammamix(n, rmix, qmix, d, method = c("PRNG", "sobol", "ghalton"),
           skip = 0, ...)
 }
 \arguments{

@@ -365,6 +365,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
 ##' @param fun.eval see details in ?pnvmix
 ##' @param increment see details in ?pnvmix
 ##' @param B see details in ?pnvmix
+##' @param pnvmix.rmix.qmethod see ?get_set_param()
 ##' @param verbose see ?pnvmix
 ##' @param ... see details in ?pnvmix
 ##' @return list of length 3:
@@ -381,7 +382,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
                     method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
                     tol = 1e-3, do.reltol = FALSE, CI.factor,
                     fun.eval, max.iter.rqmc, increment = c("doubling", "num.init"),
-                    B = 15, verbose = TRUE, ...)
+                    B = 15, pnvmix.rmix.qmethod = "allB", verbose = TRUE, ...)
 {
    rank <- length(k.factor)
    d    <- sum(k.factor)
@@ -439,8 +440,11 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
    ## If method == sobol, we want the same random shifts in each iteration below,
    ## this is accomplished by reseting to the "original" seed
    if(method == "sobol") {
-      if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
-      seed <- .Random.seed
+      #if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
+      #seed <- .Random.seed
+      #if(!use.q) seeds_ <- sample(1:(100*B*max.iter.rqmc), size = B*max.iter.rqmc)
+      #index.seed <- 1
+      seeds_ <- sample(1:(1e2*B), B) # B seeds for 'sobol()'
    }
    
    ## Additional variables needed if the increment chosen is "doubling"
@@ -449,6 +453,11 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
       denom <- 1
    }
    
+   if(!use.q & method != "PRNG" & pnvmix.rmix.qmethod == "build"){
+      use.q <- TRUE # as we will use estimated quantile function
+      rmix_ <- mix_ # copy 'mix_' as 'mix_' overwritten below 
+      old.sample <- NULL
+   }
    ## 2 Major while() loop ####################################################
    
    ## while() runs until precision 'tol' is reached or the number of function
@@ -456,8 +465,28 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
    ## In each iteration, B RQMC estimates of the desired probability are calculated.
    while(error > tol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
    {
-      if(method == "sobol" && numiter > 0)
-         .Random.seed <<- seed # reset seed to have the same shifts in sobol(...)
+      
+      if(!use.q & pnvmix.rmix.qmethod == "allB" & method == "sobol"){
+         # set.seed(seeds_[index.seed]) # destroy reseted seed 
+         set.seed(NULL)
+         sqrt.mixings_ <- sort(sqrt(mix_(B*current.n)))
+         ## (current.n, B) matrix of first dimension of the Sobol points in
+         ## each of the B repetitions
+         all.U.1 <- sapply(1:B, function(i) 
+            qrng::sobol(n = current.n, d = 1, randomize = "digital.shift",
+                        seed = seeds_[i],
+                        skip = (useskip * current.n)))
+         sqrt.mixings_ <- matrix(sqrt.mixings_[order(all.U.1)], ncol = B) # empirical quantiles
+      }
+      
+      if(method != "PRNG" & pnvmix.rmix.qmethod == "build"){
+         eqmix.obj  <- build_eqmix(rmix_, n = B*current.n, sample = old.sample)
+         old.sample <- eqmix.obj$sample # numeric vector with realizations of rmix_
+         mix_       <- eqmix.obj$eqmix # function(u)
+      }
+      
+      # if(method == "sobol")
+      #   .Random.seed <<- seed # reset seed to have the same shifts in sobol(...)
       
       ## Get B RQCM estimates
       for(b in 1:B)
@@ -471,11 +500,13 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
                         "sobol" = {
                            if(increment == "doubling") {
                               qrng::sobol(n = current.n, d = rank - 1,
-                                          randomize = TRUE,
+                                          randomize = "digital.shift",
+                                          seed = seeds_[b],
                                           skip = (useskip * current.n))
                            } else {
                               qrng::sobol(n = current.n, d = rank - 1,
-                                          randomize = TRUE,
+                                          randomize = "digital.shift",
+                                          seed = seeds_[b],
                                           skip = (numiter * current.n))
                            }
                         },
@@ -491,25 +522,27 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
             if(do.ant) cbind(rep(1, current.n), U, rep(1, current.n)) else
                cbind(rep(1, current.n), U)
          } else {
-            dim. <- if(use.q) rank else rank - 1 # if !use.q, use RNG => no inversion for W
+            # dim. <- if(use.q) rank else rank - 1 # if !use.q, use RNG => no inversion for W
             U <- switch(method,
                         "sobol" = {
                            if(increment == "doubling") {
-                              qrng::sobol(n = current.n, d = dim.,
-                                          randomize = TRUE,
+                              qrng::sobol(n = current.n, d = rank,
+                                          randomize = "digital.shift",
+                                          seed = seeds_[b],
                                           skip = (useskip * current.n))
                            } else {
-                              qrng::sobol(n = current.n, d = dim.,
-                                          randomize = TRUE,
+                              qrng::sobol(n = current.n, d = rank,
+                                          randomize = "digital.shift",
+                                          seed = seeds_[b],
                                           skip = (numiter * current.n))
                            }
                         },
                         "ghalton" = {
-                           qrng::ghalton(n = current.n, d = dim.,
+                           qrng::ghalton(n = current.n, d = rank,
                                          method = "generalized")
                         },
                         "PRNG" = {
-                           matrix(runif( current.n * dim.), ncol = dim.)
+                           matrix(runif( current.n * rank), ncol = rank)
                         })
             
             ## Case d = 1 somewhat special again, as then only realizations
@@ -531,9 +564,14 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
                      ## [sqrt(W), uniforms]
                      cbind(sqrt(mix_(U[, 1])), U[, 2:rank])
                   }
-               } else {
-                  ## [sqrt(W), uniforms]
-                  cbind(sqrt(mix_(current.n)), U)
+               } else if(method == "sobol" & pnvmix.rmix.qmethod == "allB"){ # do.ant = FALSE for use.q = FALSE
+                  cbind(sqrt.mixings_[, b], U[, 2:rank])
+               } else if(method == "PRNG"){
+                  cbind(sqrt(mix_(current.n)), U[, 2:rank]) # [sqrt(W), uniforms]
+               } else { # method == "ghalton" or method == "sobol" with different 'rmix.qmethod'
+                  set.seed(NULL) # destroy seed 
+                  mixings_ <- sort(mix_(current.n)) # mix_ is a RNG
+                  cbind(sqrt(mixings_[order(U[, 1])]), U[, 2:rank])
                }
             }
          }
@@ -651,7 +689,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
 ##'         (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), 
-                   qmix = NULL, rmix = NULL, 
+                   qmix, rmix, 
                    loc = rep(0, d), scale = diag(d), standardized = FALSE,
                    control = list(), verbose = TRUE, ...)
 {
@@ -665,15 +703,39 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    stopifnot(dim(lower) == c(n, d), length(loc) == d, # 'mean.sqrt.mix' is tested in pnvmix1()
              dim(scale) == c(d, d))
    
-   ## Deal with algorithm parameters, see also ?get_set_param()
-   control <- get_set_param(control)
    
+   ## Prepare mixing variable 
+   ## Set [q/r]mix to NULL if not provided (needed for 'get_mix_()')
+   if(!hasArg(qmix)) qmix <- NULL
+   if(!hasArg(rmix)) rmix <- NULL
+   mix_list      <- get_mix_(qmix = qmix, rmix = rmix, callingfun = "pnvmix", ... )
+   mix_          <- mix_list$mix_ # function(u) or function(n) depeneding on 'use.q'
+   special.mix   <- mix_list$special.mix
+   mean.sqrt.mix <- mix_list$mean.sqrt.mix
+   use.q         <- mix_list$use.q
+   ## Check 'method': The default depends on wether 'rmix' or 'qmix' was provided
+   meth.prov <- if(!use.q & length(control)>0 & any(names(control) == "method")){
+      control$method
+   } else NULL # provided method
+   ## Get/overwrite defaults
+   control <- get_set_param(control)
+   if(!use.q){
+      do.ant <- FALSE # if 'rmix' provided, cannot do antithetic variates
+      ## Set method to "PRNG" *unless* a method was provided
+      control$method <- if(is.null(meth.prov)) "PRNG" else meth.prov
+      pnvmix.rmix.qmethod <- control$pnvmix.rmix.qmethod # method to incorporate RQMC with 'rmix'
+      # if(method != "PRNG"){
+      #    method <- "PRNG" # set method correctly 
+      #    # warning("When 'rmix' provided only available method is 'PRNG'")
+      # }
+   } else {
+      pnvmix.rmix.qmethod <- "none"
+   }
    ## Grab the following variables for readability
    method        <- control$method
    increment     <- control$increment
    mean.sqrt.mix <- control$mean.sqrt.mix
-   do.ant        <- control$do.ant
-   
+   if(use.q) do.ant <- control$pnvmix.do.ant # otherwise already set 
    ## Absolute or relative precision required?
    tol <- if(is.null(control$pnvmix.abstol)) {
       ## Set tol to <0 so that algorithm runs until 'fun.eval[2]'
@@ -687,20 +749,6 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
       do.reltol <- FALSE
       control$pnvmix.abstol
    }
-   ## Prepare mixing variable 
-   mix_list      <- get_mix_(qmix = qmix, rmix = rmix, callingfun = "pnvmix", ... )
-   mix_          <- mix_list$mix_ # function(u) or function(n) depeneding on 'use.q'
-   special.mix   <- mix_list$special.mix
-   mean.sqrt.mix <- mix_list$mean.sqrt.mix
-   use.q         <- mix_list$use.q
-   if(!use.q){
-      do.ant <- FALSE # if 'rmix' provided, cannot do antithetic variates
-      if(method != "PRNG"){
-         method <- "PRNG" # set method correctly 
-         # warning("When 'rmix' provided only available method is 'PRNG'")
-      }
-   } 
-   
    ## In the special case d = 1 we call pnvmix1d which is truly *vectorized*
    ## as there is no conditioning to be done. The case of a normal / t distribution
    ## will be handled correctly below (using pnorm() and pt())
@@ -878,7 +926,8 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
                            fun.eval = control$fun.eval,
                            max.iter.rqmc = control$max.iter.rqmc,
                            increment = increment,
-                           B = control$B, verbose = as.logical(verbose), ...)
+                           B = control$B, pnvmix.rmix.qmethod = pnvmix.rmix.qmethod,
+                           verbose = as.logical(verbose), ...)
       
       ## Check if desired precision was reached
       reached[i] <- res1[[i]]$error <= tol
@@ -1095,4 +1144,39 @@ pnvmix1d <- function(upper, lower = rep(-Inf, n), mix_, use.q = TRUE, do.ant = T
    
    ## Return
    res
+}
+
+
+
+
+##' @title Build quantile function estimate via inter and extrapolation
+##' @param mix_ function of one variable, interpreted as RNG 
+##' @param n sample size used to build quantile function estimate
+##' @param sample NULL or vector sample of realizations from mix_ that will 
+##'        be used in addition to 'mix_(n)' to build quantile function estimate
+##' @return list with two elements: a function of one variable returning
+##'         the estimated  quantile and a *sorted* vector of realizations of 'mix_'
+##'         and 'sample' used to build the quantile function (can be passed 
+##'         to 'sample' in the next run, for instance)
+##' @author Erik Hintz and Marius Hofert
+build_eqmix <- function(mix_, n, sample = NULL){
+   mixings <- if(is.null(sample)) mix_(n) else c(mix_(n), sample)
+   mixings <- sort(mixings) # TODO: mergesort as 'sample' is already sorted
+   if(mixings[1] != 0) mixings <- c(0, mixings) # add '0' 
+   n <- length(mixings)
+   n. <- n + 1
+   
+   eqmix <- function(u){
+      res        <- double(length(u)) # initialize result vector 
+      extrap     <- (u >= (n-1)/n.) # extrapolation for these indices 
+      interp     <- !extrap # interpolation for these indices
+      ind.interp <- floor(n.*u[interp]) + 1 # indices used to interpolate 
+      ## Interpolate between 'ind.interp' and 'ind.interp+1'
+      res[interp] <- mixings[ind.interp] + (ind.interp + 1 - u[interp]*(n+1))*
+         (mixings[ind.interp+1] - mixings[ind.interp])
+      res[extrap] <- mixings[n] + (u[extrap]*(n+1) - n)*
+         (mixings[n] - mixings[n-1])
+      res
+   }
+   list(eqmix = eqmix, sample = mixings)
 }

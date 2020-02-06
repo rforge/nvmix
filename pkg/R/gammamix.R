@@ -209,19 +209,10 @@ qgammamix <- function(u, qmix, d, control = list(), verbose = TRUE, q.only = TRU
 ##' @param ... n-vector or realizations
 ##' @return n-vector of samples of W*X where W~qmix/rmix and X~chi^2_d = Gamma(shape = d/2, scale = 2)
 ##' @author Marius Hofert and Erik Hintz
-##' @note - For the Student t distribution, W ~ df/rchisq(n, df = df) but
-##'         rchisq() simply calls rgamma(); see ./src/nmath/rchisq.c
-##'         => W ~ 1/rgamma(n, shape = df/2, rate = df/2)
-##'       - For a generalized inverse Gaussian distribution one could use:
-##'         + "Runuran": faster if n large and parameters fixed; based on density
-##'         + "GIGrvg":  faster if n small and often called with several parameters
-##'         see examples of 'GIGrvg' for both methods
-##'       - user friendly wrappers are provided in 'rnvmix()' and 'rgammamix()'
-rgammamix <- function(n, rmix = NULL, qmix = NULL, d,
-                      method = c("PRNG", "sobol", "ghalton"), skip = 0, ...)
+rgammamix <- function(n, rmix, qmix, d, method = c("PRNG", "sobol", "ghalton"), 
+                      skip = 0, ...)
     rnvmix_(n, rmix = rmix, qmix = qmix, loc = rep(0, d), scale = diag(d),
-                  factor = diag(d), method = method, skip = skip, which = "maha2",
-                  ...)
+            factor = diag(d), method = method, skip = skip, which = "maha2", ...)
 
 
 ### dgammamix() ################################################################
@@ -246,26 +237,22 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
     verbose <- as.logical(verbose)
     ## Deal with algorithm parameters, see also get_set_param()
     control <- get_set_param(control)
-
     ## Build result object (log-density)
     lres  <- rep(-Inf, n) # n-vector of results
     notNA <- which(!is.na(x))
     lres[!notNA] <- NA
     x <- x[notNA, drop = FALSE] # non-missing data (rows)
-
     ## Define the quantile function of the mixing variable 
+    if(!hasArg(qmix)) qmix <- NULL # needed for 'get_mix_()'
     mix_list      <- get_mix_(qmix = qmix, callingfun = "dgammamix", ... ) 
     qW            <- mix_list[[1]] # function(u)
-    special.mix   <- mix_list[[2]]
-   
+    special.mix   <- mix_list[[2]] # NA or string 
     ## Counter
     numiter <- 0 # initialize counter (0 for 'inv.gam' and 'is.const.mix')
-    ## Deal with the different distributions
-
     ## Deal with special distributions
     if(!is.na(special.mix)) {
         if(!(special.mix == "pareto")) {
-            ## Only for "inverse.gamma" and "constant" do we have analytical forms:
+            ## Only for "inverse.gamma" and "constant" do we have analytical forms
             lres[notNA] <- switch(special.mix,
                                   "inverse.gamma" = {
                                       ## D^2 ~ d* F(d, nu)
@@ -282,7 +269,7 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
             if(log) return(lres) else return(exp(lres))
         }
     }
-    ## General case of a multivariate normal variance mixture (RQMC)
+    ## General case of a multivariate normal variance mixture (=> RQMC procedure)
     ## Prepare inputs for 'densmix_()'
     ## Sort input 'x' increasingly and store ordering for later
     ordering.x <- order(x)
@@ -301,7 +288,6 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
                  ests$error[order(ordering.x)]*pmax(lres[notNA], 1)
              }
     numiter <- ests$numiter
-
     ## Return
     ## Note that 'lres' was exponentiated already if necessary.
     attr(lres, "error")   <- error # these are absolute errors, no matter what!

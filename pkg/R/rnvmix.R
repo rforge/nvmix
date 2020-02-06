@@ -11,7 +11,7 @@
 ##' @param method ?rnvmix()
 ##' @param skip ?rnvmix()
 ##' @param which string, either "nvmix" for generating NVM(loc, scale, F_W) samples
-##'        or "maha2" for generating samples of the squared maha distances of
+##'        or "maha2" for generating samples from the squared maha distances of
 ##'        NVM(loc, scale, F_W)
 ##' @param ... ?rnvmix()
 ##' @return ?rnvmix()
@@ -24,16 +24,17 @@
 ##'         + "GIGrvg":  faster if n small and often called with several parameters
 ##'         see examples of 'GIGrvg' for both methods
 ##'       - user friendly wrappers are provided in 'rnvmix()' and 'rgammamix()'
-rnvmix_ <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d),
-                          scale = diag(2), factor = NULL,
-                          method = c("PRNG", "sobol", "ghalton"),
-                          skip = 0, which = c("nvmix", "maha2"), ...)
+rnvmix_ <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2), factor = NULL,
+                    method = c("PRNG", "sobol", "ghalton"), skip = 0, 
+                    which = c("nvmix", "maha2"), ...)
 {
     ## Basic checks
     stopifnot(n >= 1)
     method <- match.arg(method)
-
-    ## Dealing with 'factor' (more general here than in dnvmix() and pnvmix1())
+    ## Set [q/r]mix to NULL if not provided (needed for 'get_mix_()' below)
+    if(!hasArg(qmix)) qmix <- NULL
+    if(!hasArg(rmix)) rmix <- NULL
+    ## Deal with 'factor' (more general here than in dnvmix() and pnvmix1())
     if(is.null(factor)) { # => let 'factor' (internally here) be an *upper* triangular matrix
         factor <- chol(scale) # *upper* triangular; by this we avoid t() internally here and below around Z
         d <- nrow(factor)
@@ -43,18 +44,17 @@ rnvmix_ <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d),
         k <- ncol(factor)
         factor <- t(factor) # ... converted to a (k, d)-matrix to avoid t() below around Z
     }
-
     ## Determine if inversion is to be used
     inversion <- FALSE
     ## This is the case if the method used is "sobol" or "ghalton"
     if(method != "PRNG") inversion <- TRUE
-    ## Or if the method is  "PRNG" but rmix was not provivded
+    ## Or if the method is  "PRNG" but 'rmix' was not provivded
     if(method == "PRNG" && is.null(rmix)) inversion <- TRUE
-    ## Check
+    ## Check if 'qmix' provided for inversion based methods
     if(inversion & is.null(qmix)) 
        stop("'qmix' needs to be provided for methods 'sobol' and 'ghalton'")
     ## Logical if supplied 'rmix' is a vector of realizations
-    rmix.sample <- (is.numeric(rmix) & length(rmix) == n & all(rmix >= 0))
+    rmix.sample <- (is.numeric(rmix) & length(rmix) == n & all(rmix > 0))
     if(!rmix.sample){
        mix_list      <- get_mix_(qmix = qmix, rmix = rmix, 
                                  callingfun = "rnvmix", ... ) 
@@ -66,17 +66,18 @@ rnvmix_ <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d),
     W <- if(inversion){
        ## Get low discrepancy pointset
        ## For 'which = "nvmix"' need k-dim normal distribution later => k+1 uniforms;
-       ## otherwise 2 (one for 'W', one for the chi-squared)
+       ## otherwise 2 (one for 'W', one for the gamma)
        dim. <- if(which == "nvmix") k + 1 else 2
        U <- switch(method,
                    "sobol" = {
-                      qrng::sobol(n, d = dim., randomize = TRUE, skip = skip)
+                      qrng::sobol(n, d = dim., randomize = "digital.shift", 
+                                  skip = skip)
                    },
                    "ghalton" = {
                       qrng::ghalton(n, d = dim., method = "generalized")
                    },
                    "PRNG" = {
-                      matrix(runif( n* dim.), ncol = dim.)
+                      matrix(runif(n* dim.), ncol = dim.)
                    })  # (n, dim.) matrix
        ## Get quasi realizations of W via 'mix_()' (quantile function here)
        mix_(U[, 1])
@@ -84,10 +85,11 @@ rnvmix_ <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d),
        ## A sample was provided
        rmix
     } else {
-       ## A RNG was provided
+       ## Call provided RNG 
        mix_(n)
-    }
-    ## Generate normals or chi-squared variates 
+    } 
+    
+    ## Generate normals or gamma variates 
     if(which == "nvmix") {
         ## Generate Z ~ N(0, I_k)
         Z <- if(!inversion) {
@@ -158,21 +160,14 @@ rnvmix_ <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d),
 ##'         or n-vector with samples of the squared mahalanobis distance of
 ##'         NVM(loc,scale, F_W)
 ##' @author Marius Hofert and Erik Hintz
-##' @note - For the Student t distribution, W ~ df/rchisq(n, df = df) but
-##'         rchisq() simply calls rgamma(); see ./src/nmath/rchisq.c
-##'         => W ~ 1/rgamma(n, shape = df/2, rate = df/2)
-##'       - For a generalized inverse Gaussian distribution one could use:
-##'         + "Runuran": faster if n large and parameters fixed; based on density
-##'         + "GIGrvg":  faster if n small and often called with several parameters
-##'         see examples of 'GIGrvg' for both methods
-##'       - user friendly wrappers are provided in 'rnvmix()' and 'rgammamix()'
-rnvmix <- function(n, rmix = NULL, qmix = NULL, loc = rep(0, d), scale = diag(2),
+
+rnvmix <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2),
                    factor = NULL, method = c("PRNG", "sobol", "ghalton"),
                    skip = 0, ...)
 {
     ## Get 'd':
     d <- if(is.null(factor)) dim(scale)[1] else nrow(factor <- as.matrix(factor))
-    ## Call 'rnvmix_()'
+    ## Call internal 'rnvmix_()' 
     rnvmix_(n, rmix = rmix, qmix = qmix, loc = loc, scale = scale,
-                  factor = factor, method = method, skip = skip, which = "nvmix", ...)
+            factor = factor, method = method, skip = skip, which = "nvmix", ...)
 }
