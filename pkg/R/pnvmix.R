@@ -18,16 +18,62 @@
 ##' @note - This function is *only* needed for numerical experiments.
 ##'       - It corresponds to 'g' in the paper.
 pnvmix_g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
-                     mean.sqrt.mix = NULL, return.all = FALSE, verbose = TRUE, ...)
+                     mean.sqrt.mix = NULL, return.all = FALSE, verbose = TRUE, 
+                     do.ant = TRUE, ...)
 {
    ## Define the quantile function of the mixing variable
    mix_list <- get_mix_(qmix = qmix, callingfun = "pnvmix", ...) # function(u)
    qW <- mix_list[[1]]
    special.mix <- mix_list[[2]]
    mean.srt.mix <- mix_list[[3]]
+   ## Deal with 'mean.sqrt.mix'
+   if(precond & is.null(mean.sqrt.mix)){
+      ## 'mean.sqrt.mix' not provided but needed => Estimate it 
+      mean.sqrt.mix <- 
+         mean(sqrt(qW(qrng::sobol(n = 2^12, d = 1, randomize = TRUE))))
+   }
+   if(!is.matrix(U)) U <- as.matrix(U)
+   d <- dim(scale)[1]
+   ## Generate 'U' depending on 'do.ant'
+   ## (Either [ sqrt(W), uniforms, sqrt(W) ant] or [sqrt(W), uniforms])
+   U <- if(do.ant) cbind(sqrt(qW(U[, 1])), U[, 2:d], sqrt(qW(1 - U[, 1]))) else {
+      cbind(sqrt(qW(U[, 1])), U[, 2:d])
+   }
+   ## Call pnvmix_g_() to do the calculation
+   pnvmix_g_(U, upper = upper, lower = lower, scale = scale, precond = precond,
+             mean.sqrt.mix = mean.sqrt.mix, return.all = return.all, 
+             verbose = verbose, do.ant = do.ant)
+}
+
+##' @title Evaluate Integrand of pnvmix()
+##' @param U (n, k) matrix where k=d if do.ant = FALSE and k=d+1 if do.ant=TRUE
+##'        first column: Realizations of sqrt(W), 2nd to d'th column: uniforms,
+##'        d+1'st column (if available) antithetic realizations of sqrt(W)
+##' @param lower see ?pnvmix
+##' @param upper see ?pnvmix
+##' @param scale see ?pnvmix. Has to be full rank here though!
+##' @param precond see ?get_set_param()
+##' @param mean.sqrt.mix see ?get_set_param()
+##' @param return.all logical if all function evaluations should be returned.
+##' @param verbose logical if wanrnings shall be returned
+##' @param do.ant logical of antithetic variates are to be used 
+##' @return if return.all = TRUE a n-vector with g(U) values, otherwise a 2-vector
+##' with estimated mean(g(U)) and estimated var(g(U))
+##' @note if return.all = TRUE, all computations are done in R, so can be slow.
+##'       if return.all = FALSE, this function calls underlying C code.
+##' @author Erik Hintz
+##' @note - This function is *only* needed for numerical experiments and is not
+##'         called by any other function in the package 'nvmix' 
+pnvmix_g_ <- function(U, upper, lower = rep(-Inf, d), scale, precond,
+                     mean.sqrt.mix, return.all = FALSE, verbose = TRUE,
+                     do.ant = TRUE)
+{
+   if(!is.matrix(U)) U <- as.matrix(U)
    ## Dimension of the problem and number of evaluations
    d <- dim(scale)[1]
    n <- dim(U)[1]
+   ## Sanity check
+   if(do.ant) stopifnot(dim(U)[2] == d + 1) else stopifnot(dim(U)[2] == d)
    ## Factor (lower triangular)
    C        <- t(chol(scale))
    rank     <- d # only consider full rank case here
@@ -35,8 +81,6 @@ pnvmix_g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
    
    ## Precondition?
    if(precond && d > 2) {
-      if(is.null(mean.sqrt.mix))
-         mean.sqrt.mix <- mean(sqrt(qW(qrng::sobol(n = 2^12, d = 1, randomize = TRUE))))
       ## Check if provided/approximated' mean.sqrt.mix' is strictly positive
       if(mean.sqrt.mix <= 0)
          stop("'mean.sqrt.mix' has to be positive (possibly after being generated in pnvmix())")
@@ -60,40 +104,53 @@ pnvmix_g <- function(U, qmix, upper, lower = rep(-Inf, d), scale, precond,
    ## For evaluating qnorm() close to 0 and 1
    ONE <- 1-.Machine$double.neg.eps
    ZERO <- .Machine$double.eps
-   ## Transform inputs to realizations of the mixing variable
-   ## U will be a matrix with *d+1* columns: Column 1: Realizations of sqrt(mix),
-   ## Columns 2 to d: uniforms, Column d+1: Antithetic realization of Column 1
-   if(!is.matrix(U)) U <- as.matrix(U)
-   U <- cbind(sqrt(qW(U[, 1])), U[, 2:d], sqrt(qW(1 - U[, 1])))
    
    if(return.all) {
       ## Matrix to store results (y_i from paper)
       Yorg <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
-      Yant <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
       ## First 'iteration' (d1, e1 in the paper)
       dorg <- pnorm(a[1] / (U[, 1] * C[1, 1]))
-      dant <- pnorm(a[1] / (U[, d+1] * C[1, 1]))
       eorg <- pnorm(b[1] / (U[, 1] * C[1, 1]))
-      eant <- pnorm(b[1] / (U[, d+1] * C[1, 1]))
       forg <- eorg - dorg
-      fant <- eant - dant
+      if(do.ant){
+         ## Antithetic values
+         Yant <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
+         dant <- pnorm(a[1] / (U[, d+1] * C[1, 1]))
+         eant <- pnorm(b[1] / (U[, d+1] * C[1, 1]))
+         fant <- eant - dant
+      }
       ## Recursively calculate (e_i - d_i)
       for(i in 2:d) {
          ## Store realization:
          Yorg[,(i-1)] <- qnorm( pmax( pmin(dorg + U[, i]*(eorg-dorg), ONE), ZERO))
-         Yant[,(i-1)] <- qnorm( pmax( pmin(dant + (1-U[, i])*(eant-dant), ONE), ZERO))
          ## Update d__, e__, f___:
          dorg <- pnorm((a[i]/U[,1]   - Yorg[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
-         dant <- pnorm((a[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
          eorg <- pnorm((b[i]/U[,1]   - Yorg[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
-         eant <- pnorm((b[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
          forg <- forg*(eorg-dorg)
-         fant <- fant*(eant-dant)
+         if(do.ant){
+            ## Antithetic values
+            Yant[,(i-1)] <- qnorm( pmax( pmin(dant + (1-U[, i])*(eant-dant), ONE), ZERO))
+            dant <- pnorm((a[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+            eant <- pnorm((b[i]/U[,d+1] - Yant[,1: (i-1)] %*% as.matrix(C[i, 1:(i-1)]))/C[i,i])
+            fant <- fant*(eant-dant)
+         }
       }
       ## Return:
-      (forg+fant)/2
-   } else {
+      if(do.ant) (forg+fant)/2 else forg 
+   } else if(do.ant){ # return,all = FALSE, do.ant = TRUE
       .Call("eval_nvmix_integral",
+            lower    = as.double(a),
+            upper    = as.double(b),
+            U        = as.double(U),
+            n        = as.integer(n),
+            d        = as.integer(d),
+            r        = as.integer(rank),
+            kfactor  = as.integer(k.factor),
+            factor   = as.double(C),
+            ZERO     = as.double(ZERO),
+            ONE      = as.double(ONE))
+   } else { # return,all = FALSE, do.ant = FALSE
+      .Call("eval_nvmix_integral_nonant",
             lower    = as.double(a),
             upper    = as.double(b),
             U        = as.double(U),
@@ -406,8 +463,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
       if(is.null(temp)) {
          ## Preconditioning did not work, continue with original inputs
          if(verbose)
-            warning("Preconditioning led to (numerically) singular 'scale',
-                           continuing with original input.")
+            warning("Preconditioning led to (numerically) singular 'scale', continuing with original input.")
       } else {
          lower <- temp$lower
          upper <- temp$upper
@@ -468,7 +524,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d),
       
       if(!use.q & pnvmix.rmix.qmethod == "allB" & method == "sobol"){
          # set.seed(seeds_[index.seed]) # destroy reseted seed 
-         set.seed(NULL)
+         set.seed(NULL) # destroy seed for 'mix_()' 
          sqrt.mixings_ <- sort(sqrt(mix_(B*current.n)))
          ## (current.n, B) matrix of first dimension of the Sobol points in
          ## each of the B repetitions
@@ -730,12 +786,12 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
       # }
    } else {
       pnvmix.rmix.qmethod <- "none"
+      do.ant <- control$pnvmix.do.ant 
    }
    ## Grab the following variables for readability
    method        <- control$method
    increment     <- control$increment
    mean.sqrt.mix <- control$mean.sqrt.mix
-   if(use.q) do.ant <- control$pnvmix.do.ant # otherwise already set 
    ## Absolute or relative precision required?
    tol <- if(is.null(control$pnvmix.abstol)) {
       ## Set tol to <0 so that algorithm runs until 'fun.eval[2]'
