@@ -83,36 +83,22 @@ pNorm <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
 rNorm <- function(n, loc = rep(0, d), scale = diag(2), factor = NULL, # needs to be triangular!
                   method = c("PRNG", "sobol", "ghalton"), skip = 0)
 {
-    d <- if(!is.null(factor)) { # for 'loc', 'scale'
-             nrow(factor <- as.matrix(factor))
-         } else {
-             nrow(scale <- as.matrix(scale))
-         }
-    rnvmix(n, qmix = "constant", rmix = "constant",
-           loc = loc, scale = scale, factor = factor,
-           method = method, skip = skip)
-}
-
-
-##' @title Random Number Generator for the Multivariate Normal Distribution
-##' @param n sample size
-##' @param loc d-vector (location = mean vector here)
-##' @param scale (d, d)-covariance matrix (scale = covariance matrix here)
-##' @param factor factor R of the covariance matrix 'scale' with d rows
-##'        such that R R^T = 'scale'.
-##' @return (n, d)-matrix with N(loc, scale) samples
-##' @author Erik Hintz and Marius Hofert
-rNorm <- function(n, loc = rep(0, d), scale = diag(2), factor = NULL, # needs to be triangular!
-                  method = c("PRNG", "sobol", "ghalton"), skip = 0)
-{
    d <- if(!is.null(factor)) { # for 'loc', 'scale'
       nrow(factor <- as.matrix(factor))
    } else {
       nrow(scale <- as.matrix(scale))
    }
-   rnvmix(n, qmix = "constant", rmix = "constant",
-          loc = loc, scale = scale, factor = factor,
-          method = method, skip = skip)
+   method <- match.arg(method) 
+   if(method == "PRNG"){
+      ## Provide 'rmix' and no 'qmix' => typically faster
+      rnvmix(n, rmix = "constant", loc = loc, scale = scale, factor = factor, 
+             method = method, skip = skip)
+   } else {
+      ## Provide 'qmix' for inversion based methods (needed internally 
+      ## even though mixing rv is constant)
+      rnvmix(n, qmix = "constant", loc = loc, scale = scale, factor = factor, 
+             method = method, skip = skip)
+   }
 }
 
 
@@ -135,6 +121,7 @@ rNorm_sumconstr <- function(n, weights, s,
 {
    ## Basic checks
    stopifnot(n >= 1, all(weights != 0))
+   method <- match.arg(method) 
    if(!is.vector(weights)) weights <- as.vector(weights)
    d <- length(weights) # dimension
    method <- match.arg(method)

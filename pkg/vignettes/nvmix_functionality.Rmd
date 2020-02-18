@@ -289,9 +289,11 @@ our estimation procedure, as illustrated here:
 n <- 40 # sample size 
 x <- matrix(1:n, ncol = 2) # n/2 - two dimensional evaluation points 
 m <- mahalanobis(x, center = c(0,0), cov = diag(2)) # for plotting
-d3.1 <- dStudent(x, df = 2, log = TRUE) # true value
+df <- 2
+d3.1 <- dStudent(x, df = df, log = TRUE) # true value
 ## Specify 'qmix' as function to force estimation of log-density via RQMC
-d3.2 <- dnvmix(x, qmix = function(u) 1/qgamma(1-u, shape = 1, rate = 1), log = TRUE)
+d3.2 <- dnvmix(x, qmix = function(u) 1/qgamma(1-u, shape = df/2, rate = df/2), 
+               log = TRUE)
 rel.err <- (d3.2-d3.1)/d3.1
 stopifnot(max(abs(rel.err)) < 5e-3) # check 
 cols <- pal(2)

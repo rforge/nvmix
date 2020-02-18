@@ -49,18 +49,21 @@ rnvmix_ <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2), factor = NU
     ## This is the case if the method used is "sobol" or "ghalton"
     if(method != "PRNG") inversion <- TRUE
     ## Or if the method is  "PRNG" but 'rmix' was not provivded
-    if(method == "PRNG" && is.null(rmix)) inversion <- TRUE
-    ## Check if 'qmix' provided for inversion based methods
+    if(method == "PRNG" & is.null(rmix)) inversion <- TRUE
+    ## Check if 'qmix' was provided for inversion based methods
     if(inversion & is.null(qmix)) 
        stop("'qmix' needs to be provided for methods 'sobol' and 'ghalton'")
     ## Logical if supplied 'rmix' is a vector of realizations
-    rmix.sample <- (is.numeric(rmix) & length(rmix) == n & all(rmix > 0))
-    if(!rmix.sample){
-       mix_list      <- get_mix_(qmix = qmix, rmix = rmix, 
-                                 callingfun = "rnvmix", ... ) 
+    is.rmix.sample <- (is.numeric(rmix) & length(rmix) == n)
+    if(!is.rmix.sample){
+       mix_list <- 
+          get_mix_(qmix = qmix, rmix = rmix, callingfun = "rnvmix", ... ) 
        mix_          <- mix_list[[1]] # function(u) or function(n)
        special.mix   <- mix_list[[2]] # string or NA
        use.q         <- mix_list$use.q # logical if 'mix_' is a quantile function
+       inversion     <- use.q 
+    } else {
+       stopifnot(all(rmix > 0)) # sanity check when 'rmix' is a sample
     }
     ## Obtain n realizations of the mixing rv 
     W <- if(inversion){
@@ -81,13 +84,8 @@ rnvmix_ <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2), factor = NU
                    })  # (n, dim.) matrix
        ## Get quasi realizations of W via 'mix_()' (quantile function here)
        mix_(U[, 1])
-    } else if(rmix.sample){
-       ## A sample was provided
-       rmix
-    } else {
-       ## Call provided RNG 
-       mix_(n)
-    } 
+    } else if(is.rmix.sample) rmix else mix_(n) 
+       ## Otherwise a sample was provided (=> rmix) or mix_() is a RNG 
     
     ## Generate normals or gamma variates 
     if(which == "nvmix") {
@@ -165,8 +163,9 @@ rnvmix <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2),
                    factor = NULL, method = c("PRNG", "sobol", "ghalton"),
                    skip = 0, ...)
 {
-    ## Get 'd':
+    ## Get 'd' and 'method'
     d <- if(is.null(factor)) dim(scale)[1] else nrow(factor <- as.matrix(factor))
+    method <- match.arg(method) 
     ## Call internal 'rnvmix_()' 
     rnvmix_(n, rmix = rmix, qmix = qmix, loc = loc, scale = scale,
             factor = factor, method = method, skip = skip, which = "nvmix", ...)

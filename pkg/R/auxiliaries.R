@@ -198,7 +198,8 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL, ...)
    } else {
       if(is.character(mix_usr)){
          ## 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
-         mix_usr <- match.arg(mix_usr, choices = c("constant", "inverse.gamma", "pareto"))
+         mix_usr <- match.arg(mix_usr, 
+                              choices = c("constant", "inverse.gamma", "pareto"))
          special.mix <- mix_usr # for later
          switch(mix_usr,
                 "constant" = {
@@ -235,7 +236,7 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL, ...)
                       nu <- list(...)$nu
                       alpha <- nu
                    } else { 
-                      stop(paste(mix_prov, " = \"inverse.gamma\"' requires 'alpha' to be provided.", sep = ""))
+                      stop(paste(mix_prov, " = \"pareto\"' requires 'alpha' to be provided.", sep = ""))
                    }
                    param <- alpha
                    mean.sqrt.mix <- if(alpha > 0.5) alpha/(alpha-0.5) else NULL

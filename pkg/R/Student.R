@@ -47,7 +47,7 @@ dStudent <- function(x, df, loc = rep(0, d), scale = diag(d),
 ##'        If abstol = 0, algorithm will run until total number of function
 ##'        evaluations exceeds fun.eval[2].
 ##' @param CI.factor Monte Carlo confidence interval multiplier. Algorithm runs
-##'        CI.factor * (estimated standard error) < abstol. If CI.factor = 3.3
+##'        CI.factor * (estimated standard error) < abstol. If CI.factor = 3.5
 ##'        (default), one can expect the actual absolute error to be less than
 ##'        abstol in 99.9% of the cases
 ##' @param fun.eval 2-vector giving the initial function evaluations (in the
@@ -85,16 +85,27 @@ pStudent <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Erik Hintz and Marius Hofert
 rStudent <- function(n, df, loc = rep(0, d), scale = diag(2),
-                     factor = NULL, method = c("PRNG", "sobol", "ghalton"), skip = 0)
+                     factor = NULL, method = c("PRNG", "sobol", "ghalton"), 
+                     skip = 0)
 {
-    d <- if(!is.null(factor)) { # for 'loc', 'scale'
+   method <- match.arg(method) 
+   d <- if(!is.null(factor)) { # for 'loc', 'scale'
              nrow(factor <- as.matrix(factor))
          } else {
              nrow(scale <- as.matrix(scale))
          }
-    rnvmix(n, qmix = "inverse.gamma", rmix = "inverse.gamma",
-           loc = loc, scale = scale, factor = factor, df = df,
-           method = method, skip = skip)
+    
+    if(method == "PRNG"){
+       ## Provide 'rmix' and no 'qmix' => typically faster
+       rnvmix(n, rmix = "inverse.gamma", 
+              loc = loc, scale = scale, factor = factor, df = df,
+              method = method, skip = skip)
+    } else {
+       ## Provide 'qmix' for inversion based methods
+       rnvmix(n, qmix = "inverse.gamma", 
+              loc = loc, scale = scale, factor = factor, df = df,
+              method = method, skip = skip)
+    }
 }
 
 
