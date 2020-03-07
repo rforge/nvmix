@@ -8,7 +8,7 @@
   particular also Multivariate \emph{t} distributions) via an ECME algorithm.
 }
 \usage{
-fitnvmix(x, qmix, mix.param.bounds, nu.init = NA,
+fitnvmix(x, qmix, mix.param.bounds, nu.init = NA, loc = NULL, scale = NULL, 
          init.size.subsample = min(n, 100), size.subsample = n,
          control = list(), verbose = TRUE)
 
@@ -55,6 +55,10 @@ fitNorm(x)
     calculated by the algorithm. If \code{nu.init} is provided, the
     algorithm often converges faster; the better the starting value,
     the faster convergence.}
+  \item{loc}{\eqn{d}-\code{\link{vector}}; if provided, taken as the 'true' 
+    location vector in which case \code{loc} is not estimated.}
+  \item{scale}{positive definite \eqn{(d, d)}-\code{\link{matrix}}; if provided, 
+    taken as the 'true' scale matrix in which case \code{scale} is not estimated.}
   \item{init.size.subsample}{\code{\link{numeric}}, non-negative,
     giving the sub-samplesize used to get an initial estimate for
     \eqn{nu}. Only used if \code{is.na(nu.init)}, otherwise ignored.}

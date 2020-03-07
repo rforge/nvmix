@@ -1,5 +1,47 @@
 ### dnvmix() ###################################################################
 
+##' @title Merge two matrices that are sorted in one of their columns
+##' @param A (n, k) matrix, column 'sort.by' sorted increasingly 
+##' @param B (m, k) matrix, column 'sort.by' sorted increasingly 
+##' @param sort.by column which is sorted and should be sorted by 
+##' @return (n+m, k) matrix with rows from A and B so that 
+##'          column 'sort.by' is sorted increasingly 
+##' @author Erik Hintz 
+##' @note k = 1 is allowed 
+merge_m <- function(A, B, sort.by = 1){
+   ## Checks
+   if(!is.matrix(A)) A <- as.matrix(A)
+   if(!is.matrix(B)) B <- as.matrix(B) 
+   dimA <- dim(A)
+   dimB <- dim(B)
+   stopifnot(dimA[2] == dimB[2]) # A and B have the same number of columns 
+   n <- dimA[1] # number of rows of A
+   m <- dimB[1] # number of rows of B
+   res <- matrix(NA, ncol = dimA[2], nrow = n + m) # result matrix
+   p.A <- 1 # pointer to current element in 'A'
+   p.B <- 1 # pointer to current element in 'B'
+   for(i in 1:(n+m)){
+      res[i, ] <- if(A[p.A, sort.by] < B[p.B, sort.by]){
+         p.A <- p.A + 1 
+         A[p.A-1, , drop = FALSE]
+      } else {
+         p.B <- p.B + 1
+         B[p.B-1, , drop = FALSE]
+      }
+      ## Arrived at the end of 'A'
+      if(p.A == n + 1){
+         res[(i+1):(n+m), ] <- B[p.B:m, , drop = FALSE]
+         break
+      }
+      ## Arrived at the end of 'B'
+      if(p.B == m + 1){
+         res[(i+1):(n+m), ] <- A[p.A:n, , drop = FALSE]
+         break
+      }
+   }
+   res
+}
+
 ##' @title Exp - log trick for log(sum_i exp(a_i))
 ##' @param M (n1, n2) matrix
 ##' @return n2-vector log(colSums(exp(M)))
@@ -238,12 +280,11 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
                convd <- 
                   (abs(diff) < tol.bisec[3]) || (diff(curr.candid) < tol.bisec[1])
             }
-            ## Update U.W.lint[]:
-            ## First, add additional values
-            U.W.lint <- rbind(U.W.lint, addvalues[1:numiter,, drop = FALSE])
-            ## Destroyed the ordering => sort again
-            ordering.new <- order(U.W.lint[, 1]) # all columns have the same ordering
-            U.W.lint <- U.W.lint[ordering.new, ]
+            ## Update U.W.lint[]: First sort additional values
+            addvals_ <- addvalues[1:numiter,, drop = FALSE]
+            addvals_ <- addvals_[order(addvals_[, 1]),, drop = FALSE]
+            ## Now merge
+            U.W.lint <- merge_m(U.W.lint, addvals_)
             ## Update length (=nrow) of 'U.W.lint'
             numObs <- numObs + numiter
             u.next
@@ -263,14 +304,11 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
          } else if(u.left == 1) {
             ## => Special case where no obs > threshold
             ## => Use all obs and Riemann for this region
-            weights <- c(U.W.lint[1, 1], U.W.lint[2:numObs, 1] -
-                            U.W.lint[1:(numObs-1), 1])
-            upper.sum <- logsumexp(
-               as.matrix(log(weights) + U.W.lint[1:numObs, 3], ncol = 1))
-            lower.sum <- logsumexp(
-               as.matrix(log(weights) + c(-Inf, U.W.lint[1:(numObs-1), 3]),
-                         ncol = 1))
-            (lower.sum + upper.sum) / 2
+            weights <- abs(c(U.W.lint[1, 1], U.W.lint[2:numObs, 1] -
+                            U.W.lint[1:(numObs-1), 1]))
+            logsumexp(as.matrix(log(weights) + 
+                                   (c(-Inf, U.W.lint[1:(numObs-1), 3]) + 
+                                       U.W.lint[1:numObs, 3])/2, ncol = 1))
          } else {
             ## 0 < u.left < 1 => Find obs in (0, u.left)
             u_sml <- (U.W.lint[, 1] <= u.left)
@@ -278,15 +316,12 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
             if(sum_u_sml > 1) {
                ## Case 1: We have >1 observations in (0, u.left)
                last_sml <- which(u_sml)[sum_u_sml]
-               weights <- c(U.W.lint[1, 1],
+               weights <- abs(c(U.W.lint[1, 1],
                             U.W.lint[2:last_sml, 1] -
-                               U.W.lint[1:(last_sml-1), 1])
-               upper.sum <- logsumexp(
-                  as.matrix(log(weights) + U.W.lint[1:last_sml, 3], ncol = 1))
-               lower.sum <- logsumexp(
-                  as.matrix(log(weights) + c(-Inf, U.W.lint[1:(last_sml-1), 3]),
-                                                ncol = 1))
-               (lower.sum + upper.sum) / 2
+                               U.W.lint[1:(last_sml-1), 1]))
+               logsumexp(as.matrix(log(weights) + 
+                                      (c(-Inf, U.W.lint[1:(last_sml-1), 3]) + 
+                                          U.W.lint[1:last_sml, 3])/2, ncol = 1))
             } else {
                ## Case 2: No observations in (0, u.left) 
                log(u.left) + l.tol.int.lower - log(2)
@@ -305,13 +340,10 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
             ## => Special case where no obs > threshold
             ## => Use all obs and Riemann for this region
             weights <- 
-               c(U.W.lint[1, 1], U.W.lint[2:numObs, 1]-U.W.lint[1:(numObs-1), 1])
-            upper.sum <- logsumexp(
-               as.matrix(log(weights) + U.W.lint[1:numObs, 3], ncol = 1))
-            lower.sum <- logsumexp(
-               as.matrix(log(weights) + c(-Inf, U.W.lint[1:(numObs-1), 3]), 
-                         ncol = 1))
-            (lower.sum + upper.sum) / 2
+               abs(c(U.W.lint[1, 1], U.W.lint[2:numObs, 1]-U.W.lint[1:(numObs-1), 1]))
+            logsumexp(as.matrix(log(weights) + 
+                                   (c(-Inf, U.W.lint[1:(numObs-1), 3]) + 
+                                       U.W.lint[1:numObs, 3])/2, ncol = 1))
          } else {
             ## 0 < u.right < 1 => Find obs in (u.right, 1)
             u_gtr <- (U.W.lint[,1] >= u.right)
@@ -319,17 +351,12 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
             if(sum_u_gtr > 1) { 
                ## Case 1: We have >1 observations in (u.right, 1)
                first_gtr <- which(u_gtr)[1]
-               weights <- c(U.W.lint[ (first_gtr+1):numObs, 1] -
+               weights <- abs(c(U.W.lint[ (first_gtr+1):numObs, 1] -
                                U.W.lint[first_gtr:(numObs-1), 1],
-                            .Machine$double.neg.eps)
-               upper.sum <- 
-                  logsumexp(as.matrix(log(weights) + U.W.lint[first_gtr:numObs, 3],
-                                      ncol = 1))
-               lower.sum <- 
-                  logsumexp(as.matrix(
-                     log(weights) + c(U.W.lint[(first_gtr+1):numObs, 3], -Inf),
-                                                ncol = 1))
-               (lower.sum + upper.sum) / 2
+                            .Machine$double.neg.eps))
+               logsumexp(as.matrix(log(weights) + 
+                                      (c(U.W.lint[(first_gtr+1):numObs, 3], -Inf) + 
+                                          U.W.lint[first_gtr:numObs, 3])/2, ncol = 1))
             } else {
                ## Case 2: No observations in (u.right, 1) 
                log1p(-u.right) + l.tol.int.lower - log(2)

@@ -6,7 +6,7 @@ useDynLib(nvmix, .registration = TRUE)
 importFrom("stats",
            "runif", "rnorm", "pt", "qt", "dt", "pgamma", "rgamma", "pnorm",
            "sd", qchisq, "qnorm", "dnorm", "qgamma", "uniroot", "cov2cor",
-           "cor", "cov", "cov.wt", "optim", "var", "pchisq",
+           "cor", "cov", "cov.wt", "optim", "optimize", "var", "pchisq",
            "dgamma", "mahalanobis", "pf", "ppoints", "qf", "df")
 importFrom("methods",
            "existsFunction", "hasArg")
