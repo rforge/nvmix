@@ -50,7 +50,7 @@ get_set_param <- function(control = list())
       weights.interpol.reltol = 1e-2,
       ECME.rel.conv.tol = c(1e-2, 1e-2, 5e-3), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
       ## For the underlying 'optim':
-      control.optim = list(maxit = 15),
+      control.optim = list(maxit = 50),
       control.optim.laststep = list(),
       ## For riskmeasures:
       riskmeasures.abstol = NA,

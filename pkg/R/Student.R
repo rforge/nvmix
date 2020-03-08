@@ -115,7 +115,7 @@ rStudent <- function(n, df, loc = rep(0, d), scale = diag(2),
 ##' @param ... additional arguments passed to the underlying fitnvmix()
 ##' @return see ?fitnvmix
 ##' @author Marius Hofert
-fitStudent <- function(x, mix.param.bounds = c(1e-3, 1e3), ...)
+fitStudent <- function(x, mix.param.bounds = c(1e-3, 1e2), ...)
 {
     fit <- fitnvmix(x, qmix = "inverse.gamma", mix.param.bounds = mix.param.bounds, ...)
     ## Consistency with other *Student() functions

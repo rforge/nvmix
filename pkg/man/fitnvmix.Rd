@@ -12,7 +12,7 @@ fitnvmix(x, qmix, mix.param.bounds, nu.init = NA, loc = NULL, scale = NULL,
          init.size.subsample = min(n, 100), size.subsample = n,
          control = list(), verbose = TRUE)
 
-fitStudent(x, mix.param.bounds = c(1e-3, 1e3), ...)
+fitStudent(x, mix.param.bounds = c(1e-3, 1e2), ...)
 fitNorm(x)
 }
 \arguments{
@@ -141,15 +141,14 @@ fitNorm(x)
 \examples{
 ## Sampling parameters
 set.seed(274) # for reproducibility
-nu               <- 3 # parameter used to sample data
-d                <- 4 # dimension
-n                <- 50 # small sample size to have examples run fast
+nu               <- 2.8 # parameter used to sample data
+d                <- 5 # dimension
+n                <- 75 # small sample size to have examples run fast
 loc              <- rep(0, d) # location vector
 A                <- matrix(runif(d * d), ncol = d)
 diag_vars        <- diag(runif(d, min = 2, max = 5))
 scale            <- diag_vars \%*\% cov2cor(A \%*\% t(A)) \%*\% diag_vars # scale matrix
 mix.param.bounds <- c(1, 5) # nu in [1, 5]
-
 
 ### Example 1: Fitting a multivariate t distribution ###########################
 
@@ -161,28 +160,31 @@ x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
 (MyFit11 <- fitnvmix(x, qmix = qmix, mix.param.bounds = mix.param.bounds))
 ## Call 'fitnvmix' with 'qmix = "inverse.gamma"' in which case analytical formulas
 ## for weights and densities are used:
-(MyFit12 <- fitnvmix(x, qmix = "inverse.gamma", mix.param.bounds = mix.param.bounds))
+(MyFit12 <- fitnvmix(x, qmix = "inverse.gamma", 
+                     mix.param.bounds = mix.param.bounds))
+## Alternatively, use the wrapper 'fitStudent()' 
+(MyFit13 <- fitStudent(x))
 ## Check
-stopifnot(all.equal(MyFit11$nu, MyFit12$nu, tol = 5e-2))
+stopifnot(all.equal(MyFit11$nu, MyFit12$nu, MyFit13$nu, tol = 5e-2))
+## Can also provide 'loc' and 'scale' in which case only 'nu' is estimated
+(MyFit13 <- fitnvmix(x, qmix = "inverse.gamma", mix.param.bounds = mix.param.bounds,
+                     loc = loc, scale = scale))
+(MyFit14 <- fitStudent(x, loc = loc, scale = scale))
+stopifnot(all.equal(MyFit13$nu, MyFit14$df, tol = 1e-6))
 
-## Visual goodness-of-fit test: QQ Plot of Mahalanobis distances obtained
-## from fitted parameters using 'qqplot_maha()'
-qqplot_maha(x, qmix = "inverse.gamma", loc = MyFit11$loc, scale = MyFit11$scale,
-            df = MyFit11$nu)
-
-
-\dontrun{
 ### Example 2: Fitting a Pareto mixture ########################################
 
-## Define 'qmix' as the quantile function of a Par(nu, 1) distribution
-qmix <- function(u, nu) (1-u)^(-1/nu)
-## Sample data using 'rnvmix':
-x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
-## Call 'fitvnmix' with 'qmix' as function (so all densities/weights are estimated)
-(MyFit21 <- fitnvmix(x, qmix = qmix, mix.param.bounds = mix.param.bounds))
-## Call 'fitnvmix' with 'qmix = "pareto"' in which case an analytical formula
-## for the density is used:
-(MyFit22 <- fitnvmix(x, qmix = "pareto", mix.param.bounds = mix.param.bounds))
-stopifnot(all.equal(MyFit21$nu, MyFit22$nu, tol = 5e-2))}
+if(FALSE){
+   ## Define 'qmix' as the quantile function of a Par(nu, 1) distribution
+   qmix <- function(u, nu) (1-u)^(-1/nu)
+   ## Sample data using 'rnvmix':
+   x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
+   ## Call 'fitvnmix' with 'qmix' as function (=> densities/weights estimated)
+   (MyFit21 <- fitnvmix(x, qmix = qmix, mix.param.bounds = mix.param.bounds))
+   ## Call 'fitnvmix' with 'qmix = "pareto"' in which case an analytical formula
+   ## for the density is used
+   (MyFit22 <- fitnvmix(x, qmix = "pareto", mix.param.bounds = mix.param.bounds))
+   stopifnot(all.equal(MyFit21$nu, MyFit22$nu, tol = 5e-2))  
+}
 }
 \keyword{distribution}
