@@ -129,6 +129,7 @@ get_set_param <- function(control = list())
 ##' @param qmix see calling function (string, list or function)
 ##' @param rmix see calling function (string, list or function)
 ##' @param callingfun string, name of calling function (eg "pnvmix")
+##' @param groupings d-vector giving grouping in case of generalized NVM dist'n 
 ##' @return list with three elements. First element is a 'function<args> 'where 
 ##'         <args> is
 ##             * (u) for qmix + callingfun =
@@ -153,49 +154,62 @@ get_set_param <- function(control = list())
 ##          The fourth element 'param' is either special mixing parameter ('df' or
 ##          'alpha' for mix = "inverse.gamma" or "pareto") or NA
 ##' @author Erik Hintz
-get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL, ...)
+get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL, 
+                     groupings = NULL, ...)
 {
-   ## Determine if 'qmix' or 'rmix' used; 
-   ## qmix' always has priority over 'rmix'.
+   ## Grab ellipsis argument
+   ell.args   <- list(...)
+   n.ell.args <- names(ell.args)
+   ## Determine if generalized or non-generalized normal variance mixture 
+   is.grpd <- if(!is.null(groupings)){
+      d <- length(groupings <- as.vector(groupings))
+      stopifnot(all(groupings %in% 1:d)) 
+      num.groups <- length(unique(groupings)) # number of different groups 
+      (num.groups > 1) 
+   } else {
+      ## Groupings is null => non-generalized normal variance mixture
+      num.groups <- 1
+      FALSE
+   }
+   ## Determine if 'qmix' or 'rmix' used; 'qmix' always has priority over 'rmix'
    use.q <- !is.null(qmix) # logical if quantile function to be used
    ## If 'qmix' not provided, check if 'rmix' provided
    if(!use.q & is.null(rmix)) stop("Either 'qmix' or 'rmix' must be provided")
    mix_usr <- if(use.q){ # relevant 'qmix' or 'rmix'
-      mix.prov <- "qmix" # for potential error messages further below
+      mix.prov <- "qmix" # for potential error/warning messages further below
       qmix
    } else {
-      mix.prov <- "rmix" # for potential error messages further below
+      mix.prov <- "rmix" # for potential error/warning messages further below
       rmix 
    }
-   mix_prov <- if(use.q) "qmix" else "rmix" # for warnings etc
    ## Calling functions for which 'qmix' *must* be provided (due to adaptiveness)
    need.qmix <- c("dnvmix", "dgammamix", "fitnvmix", "qnvmix", "qgammamix", "ESnvmix")
    if(any(callingfun == need.qmix) & !use.q) 
       stop(paste(callingfun, "()", " needs argument 'qmix' to be provided", sep = ""))
-   special.mix   <- NA # special mixing variable? tbd below
-   param         <- NA # special parameter? tbd below
+   special.mix   <- NA # special mixing variable? TBD below
+   param         <- NA # special parameter? TBD below
    mean.sqrt.mix <- NULL # E(sqrt(W)) for 'pnvmix()'
-   ## 'mix_' is one of: function(u, nu), function(u), function(n) depending
+   ## 'mix_' is one of {function(u, nu), function(u), function(n)} depending
    ## on provided 'qmix'/'rmix' and 'callingfun'
    mix_ <-  if(callingfun == "fitnvmix"){ # 'mix_usr' is definitely a 'qmix' 
       if(is.character(mix_usr)){
          mix_usr <- match.arg(mix_usr, choices = c("constant", "inverse.gamma", "pareto"))
          special.mix <- mix_usr # for later
          switch(mix_usr,
-               "constant" = {
-                  function(u, nu) rep(1, length(u))},
-               "inverse.gamma" = {
-                  function(u, nu) 1 / qgamma(1 - u, shape = nu/2, rate = nu/2)},
-               "pareto" = {
-                  function(u, nu) (1-u)^(-1/nu)
-               },
-               stop(paste0("Currently unsupported '", mix_prov,"'")))
+                "constant" = {
+                   function(u, nu) rep(1, length(u))},
+                "inverse.gamma" = {
+                   function(u, nu) 1 / qgamma(1 - u, shape = nu/2, rate = nu/2)},
+                "pareto" = {
+                   function(u, nu) (1-u)^(-1/nu)
+                },
+                stop(paste0("Currently unsupported '", mix.prov,"'")))
       } else if(is.function(mix_usr)){  # 'mix_usr is the quantile function of F_W
          function(u, nu) mix_usr(u, nu)
       } else {
          stop("fitnvmix() needs 'qmix' provided as a string or function")
       }
-   } else {
+   } else if(!is.grpd) { # case of a normal variance mixture (not generalized)
       if(is.character(mix_usr)){
          ## 'qmix' is a character vector specifying supported mixture distributions (utilizing '...')
          mix_usr <- match.arg(mix_usr, 
@@ -204,7 +218,7 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL, ...)
          switch(mix_usr,
                 "constant" = {
                    mean.sqrt.mix <- 1
-                   if(use.q) function(u) rep(1, length(u)) else function(n) rep(1, n)
+                   function(u) rep(1, length(u)) # also works for 'rmix' 
                 },
                 "inverse.gamma" = {
                    if(hasArg(df)) {
@@ -213,7 +227,7 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL, ...)
                       nu <- list(...)$nu
                       df <- nu
                    } else { 
-                      stop(paste(mix_prov, " = \"inverse.gamma\"' requires 'df' to be provided.", sep = ""))
+                      stop(paste(mix.prov, " = \"inverse.gamma\"' requires 'df' to be provided.", sep = ""))
                    }
                    ## Still allow df = Inf (normal distribution)
                    stopifnot(is.numeric(df), length(df) == 1, df > 0)
@@ -226,7 +240,7 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL, ...)
                    } else {
                       special.mix <- "constant"
                       mean.sqrt.mix <- 1
-                      if(use.q) function(u) rep(1, length(u)) else function(n) rep(1, n)
+                      function(u) rep(1, length(u)) # also works for 'rmix' 
                    }
                 },
                 "pareto" = {
@@ -236,15 +250,14 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL, ...)
                       nu <- list(...)$nu
                       alpha <- nu
                    } else { 
-                      stop(paste(mix_prov, " = \"pareto\"' requires 'alpha' to be provided.", sep = ""))
+                      stop(paste(mix.prov, " = \"pareto\"' requires 'alpha' to be provided.", sep = ""))
                    }
                    param <- alpha
                    mean.sqrt.mix <- if(alpha > 0.5) alpha/(alpha-0.5) else NULL
                    if(use.q) function(u) (1-u)^(-1/alpha) else 
                       function(n) (1 - runif(n))^(-1/alpha)
-                   
                 },
-                stop(paste0("Currently unsupported '", mix_prov,"'")))
+                stop(paste0("Currently unsupported '", mix.prov,"'")))
       } else if(is.list(mix_usr)) {
          ## 'mix_usr' is a list of the form (<character string>, <parameters>)
          stopifnot(length(mix_usr) >= 1, is.character(distr <- mix_usr[[1]]))
@@ -256,8 +269,124 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL, ...)
       } else if(is.function(mix_usr)){
          ## 'mix_usr' is the quantile function or a RNG for W 
          if(use.q) function(u) mix_usr(u, ...) else function(n) mix_usr(n, ...)
-      } else stop(paste(mix_prov, "must be a character string, list or quantile function."))
-   } # else()
+      } else stop(paste(mix.prov, "must be a character string, list or quantile function."))
+   } else if(is.grpd){
+      ## Case 1: 'mix_usr' is one string => all mixing rv's of same type
+      if(is.character(mix_usr)){
+         mix_usr <- match.arg(mix_usr, 
+                              choices = c("inverse.gamma", "pareto"))
+         special.mix <- mix_usr # for later
+         switch(mix_usr, # note: no "constant" here! 
+                "inverse.gamma" = {
+                   if(hasArg(df)) {
+                      df <- list(...)$df
+                   } else if(hasArg(nu)) {
+                      nu <- list(...)$nu
+                      df <- nu
+                   } else { 
+                      stop(paste(mix.prov, " = \"inverse.gamma\"' requires 'df' to be provided.", sep = ""))
+                   }
+                   param <- df
+                   ## Still allow df = Inf (normal distribution)
+                   stopifnot(is.numeric(df), length(df) == num.groups, all(df > 0))
+                   fin.df <- is.finite(df)
+                   ## Construct 'mean.sqrt.mix'
+                   mean.sqrt.mix <- rep(1, d)
+                   mean.sqrt.mix[fin.df] <- sqrt(df[fin.df]) * gamma(df[fin.df]/2) / 
+                      (sqrt(2) * gamma((df[fin.df] + 1)/2)) 
+                   ## Quantile fun or rng as function of (u, df) or (n, df)
+                   mixfun <- if(use.q){
+                      function(u, df){
+                         if(is.finite(df)){
+                            1/qgamma(1 - u, shape = df/2, rate = df/2)
+                         } else rep(1, length(u))} 
+                   } else {
+                      function(n, df){
+                         if(is.finite(df)){
+                            1/rgamma(n, shape = df/2, rate = df/2)
+                         } else rep(1, n)} 
+                   }
+                   ## Construct grouped quantile fun/RNG
+                   function(u) sapply(1:d, function(i) 
+                      mixfun(u, df = df[groupings[i]])) # also works with 'rmix'
+                },
+                "pareto" = {
+                   if(hasArg(alpha)) {
+                      alpha <- list(...)$alpha
+                   } else if(hasArg(nu)){
+                      nu <- list(...)$nu
+                      alpha <- nu
+                   } else { 
+                      stop(paste(mix.prov, " = \"pareto\"' requires 'alpha' to be provided.", sep = ""))
+                   }
+                   param <- alpha
+                   stopifnot(is.numeric(alpha), length(alpha) == num.groups, 
+                             all(alpha > 0))
+                   alpha.gr <- (alpha > 0.5)
+                   ## Construct 'mean.sqrt.mix'
+                   mean.sqrt.mix <- rep(1, d)
+                   mean.sqrt[alpha.gr] <- alpha[alpha.gr]/(alpha[alpha.gr]-0.5)
+                   ## Quantile fun or rng as function of (u, df) or (n, df)
+                   mixfun <- if(use.q){
+                      function(u, alpha) (1-u)^(-1/alpha)
+                   } else {
+                      function(n, alpha) (1 - runif(n))^(-1/alpha)
+                   }
+                   ## Construct grouped quantile fun/RNG
+                   function(u) sapply(1:d, function(i) 
+                      mixfun(u, df = df[groupings[i]])) # also works with 'rmix'
+                },
+                stop(paste0("Currently unsupported '", mix.prov,"'")))
+      } else {
+         ## 'mix_usr' must be a list with 'num.groups' elements
+         stopifnot(is.list(mix_usr), length(mix_usr) == num.groups)
+         ## Element of 'mix_usr' can be functions or lists;
+         addArgs <- vector("list", num.groups) # for handling ellipsis (...) etc
+         hasaddArg <- logical(num.groups)
+         ## Go through the list and check arguments
+         for(i in 1:num.groups){
+            if(is.list(mix_usr[[i]])){
+               ## i'th element of 'qmix' is a list
+               stopifnot(length(mix_usr[[i]]) >= 1, 
+                         is.character(distr <- mix_usr[[i]][[1]]))
+               ## Name of the function to be called 
+               mix_usr_i <- if(use.q) paste0("q", distr) else paste0("r", distr)
+               if(!existsFunction(mix_usr_i))
+                  stop("No function named '", mix_usr_i, "'.")
+               hasaddArg[i] <- if(length(mix_usr[[i]][-1]) > 0){
+                  ## There are additional arguments
+                  addArgs[i] <- list(mix_usr[[i]][-1])
+                  TRUE
+               } else FALSE 
+               mix_usr[i] <- mix_usr_i # called below via 'do.call(..)' 
+            } else if (is.function(mix_usr[[i]])) {
+               l.addargs_i <- length(addargs_i <- names(formals(mix_usr[[i]]))[-1]) # first one is 'u'
+               ## Match 'addargs_i' with arguments provided via (...) 
+               if(l.addargs_i > 0){
+                  whichmatch_i <- sapply(seq_along(addargs_i), function(ii) 
+                     which(addargs_i[ii] == n.ell.args)[1])
+                  ## All arguments provided?
+                  if(length(whichmatch_i) != length(addargs_i))
+                     stop(paste("Function specified in element", i, "of", mix.prov, "is missing at least one argument."))
+                  hasaddArg[i] <- TRUE
+                  addArgs[i] <- list(ell.args[whichmatch_i])
+               } else hasaddArg[i] <- FALSE
+            } else {
+               stop(mix.prov, " must be either a character string, a list of functions or a list of lists.")
+            }
+         } # for()
+         ## Build final return function 
+         function(u){
+            ## Call all quantile functions
+            W. <- sapply(1:num.groups, function(i){ 
+               if(hasaddArg[i]) do.call(mix_usr[[i]], append(list(u), addArgs[[i]])) else
+                  do.call(mix_usr[[i]], list(u))})
+            if(!is.matrix(W.)) W. <- cbind(W.) # eg if 'u' is a 1-vector 
+            ## Reorder to match groupings
+            sapply(1:d, function(i) W.[, groupings[i], drop = F])
+         }
+      }
+   } 
    ## Return
    list(mix_ = mix_, special.mix = special.mix, mean.sqrt.mix = mean.sqrt.mix,
         use.q = use.q, param = param)
