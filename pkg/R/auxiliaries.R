@@ -14,7 +14,6 @@ get_set_param <- function(control = list())
       pnvmix.reltol = NA,
       cholesky.tol = 1e-9,
       pnvmix.do.ant = TRUE,
-      pnvmix.rmix.qmethod = "allB", 
       ## For dnvmix():
       dnvmix.abstol = 1e-3,
       dnvmix.reltol = 1e-2, # If !NA, 'reltol' is used instead of 'abstol'
@@ -279,9 +278,9 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
          switch(mix_usr, # note: no "constant" here! 
                 "inverse.gamma" = {
                    if(hasArg(df)) {
-                      df <- list(...)$df
+                      df <- ell.args$df
                    } else if(hasArg(nu)) {
-                      nu <- list(...)$nu
+                      nu <- ell.args$nu
                       df <- nu
                    } else { 
                       stop(paste(mix.prov, " = \"inverse.gamma\"' requires 'df' to be provided.", sep = ""))
@@ -290,10 +289,12 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
                    ## Still allow df = Inf (normal distribution)
                    stopifnot(is.numeric(df), length(df) == num.groups, all(df > 0))
                    fin.df <- is.finite(df)
-                   ## Construct 'mean.sqrt.mix'
-                   mean.sqrt.mix <- rep(1, d)
-                   mean.sqrt.mix[fin.df] <- sqrt(df[fin.df]) * gamma(df[fin.df]/2) / 
+                   ## Construct 'mean.sqrt.mix_' (length num.groups)
+                   mean.sqrt.mix_ <- rep(1, num.groups)
+                   mean.sqrt.mix_[fin.df] <- sqrt(df[fin.df]) * gamma(df[fin.df]/2) / 
                       (sqrt(2) * gamma((df[fin.df] + 1)/2)) 
+                   ## Construct 'mean.sqrt.mix' (length d, i'th element = E(sqrt(W_i))
+                   mean.sqrt.mix <- mean.sqrt.mix_[groupings]
                    ## Quantile fun or rng as function of (u, df) or (n, df)
                    mixfun <- if(use.q){
                       function(u, df){
@@ -307,14 +308,14 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
                          } else rep(1, n)} 
                    }
                    ## Construct grouped quantile fun/RNG
-                   function(u) sapply(1:d, function(i) 
-                      mixfun(u, df = df[groupings[i]])) # also works with 'rmix'
+                   function(u) sapply(1:num.groups, function(i) 
+                      mixfun(u, df = df[i])) # also works with 'rmix'
                 },
                 "pareto" = {
                    if(hasArg(alpha)) {
-                      alpha <- list(...)$alpha
+                      alpha <- ell.args$alpha
                    } else if(hasArg(nu)){
-                      nu <- list(...)$nu
+                      nu <- ell.args$nu
                       alpha <- nu
                    } else { 
                       stop(paste(mix.prov, " = \"pareto\"' requires 'alpha' to be provided.", sep = ""))
@@ -323,9 +324,11 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
                    stopifnot(is.numeric(alpha), length(alpha) == num.groups, 
                              all(alpha > 0))
                    alpha.gr <- (alpha > 0.5)
-                   ## Construct 'mean.sqrt.mix'
-                   mean.sqrt.mix <- rep(1, d)
-                   mean.sqrt[alpha.gr] <- alpha[alpha.gr]/(alpha[alpha.gr]-0.5)
+                   ## Construct 'mean.sqrt.mix_' (length num.groups)
+                   mean.sqrt.mix_ <- rep(1, num.groups)
+                   mean.sqrt.mix_[alpha.gr] <- alpha[alpha.gr]/(alpha[alpha.gr]-0.5)
+                   ## Construct 'mean.sqrt.mix' (length d, i'th element = E(sqrt(W_i))
+                   mean.sqrt.mix <- mean.sqrt.mix_[groupings]
                    ## Quantile fun or rng as function of (u, df) or (n, df)
                    mixfun <- if(use.q){
                       function(u, alpha) (1-u)^(-1/alpha)
@@ -333,20 +336,19 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
                       function(n, alpha) (1 - runif(n))^(-1/alpha)
                    }
                    ## Construct grouped quantile fun/RNG
-                   function(u) sapply(1:d, function(i) 
-                      mixfun(u, df = df[groupings[i]])) # also works with 'rmix'
+                   function(u) sapply(1:num.groups, function(i) 
+                      mixfun(u, alpha = alpha[i])) # also works with 'rmix'
                 },
                 stop(paste0("Currently unsupported '", mix.prov,"'")))
       } else {
          ## 'mix_usr' must be a list with 'num.groups' elements
          stopifnot(is.list(mix_usr), length(mix_usr) == num.groups)
          ## Element of 'mix_usr' can be functions or lists;
-         addArgs <- vector("list", num.groups) # for handling ellipsis (...) etc
+         addArgs   <- vector("list", num.groups) # for handling ellipsis (...) etc
          hasaddArg <- logical(num.groups)
          ## Go through the list and check arguments
          for(i in 1:num.groups){
-            if(is.list(mix_usr[[i]])){
-               ## i'th element of 'qmix' is a list
+            if(is.list(mix_usr[[i]])){ # element i of 'qmix' is a list
                stopifnot(length(mix_usr[[i]]) >= 1, 
                          is.character(distr <- mix_usr[[i]][[1]]))
                ## Name of the function to be called 
@@ -354,13 +356,13 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
                if(!existsFunction(mix_usr_i))
                   stop("No function named '", mix_usr_i, "'.")
                hasaddArg[i] <- if(length(mix_usr[[i]][-1]) > 0){
-                  ## There are additional arguments
-                  addArgs[i] <- list(mix_usr[[i]][-1])
+                  addArgs[i] <- list(mix_usr[[i]][-1]) # => additional arguments
                   TRUE
-               } else FALSE 
+               } else FALSE # => no additional arguments
                mix_usr[i] <- mix_usr_i # called below via 'do.call(..)' 
-            } else if (is.function(mix_usr[[i]])) {
-               l.addargs_i <- length(addargs_i <- names(formals(mix_usr[[i]]))[-1]) # first one is 'u'
+            } else if (is.function(mix_usr[[i]])) { # element i of 'qmix' is a fun
+               l.addargs_i <- length(addargs_i <- names(
+                  formals(mix_usr[[i]]))[-1]) # first one is 'u'
                ## Match 'addargs_i' with arguments provided via (...) 
                if(l.addargs_i > 0){
                   whichmatch_i <- sapply(seq_along(addargs_i), function(ii) 
@@ -369,7 +371,7 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
                   if(length(whichmatch_i) != length(addargs_i))
                      stop(paste("Function specified in element", i, "of", mix.prov, "is missing at least one argument."))
                   hasaddArg[i] <- TRUE
-                  addArgs[i] <- list(ell.args[whichmatch_i])
+                  addArgs[i] <- list(ell.args[whichmatch_i]) # store additional args 
                } else hasaddArg[i] <- FALSE
             } else {
                stop(mix.prov, " must be either a character string, a list of functions or a list of lists.")
@@ -382,8 +384,6 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
                if(hasaddArg[i]) do.call(mix_usr[[i]], append(list(u), addArgs[[i]])) else
                   do.call(mix_usr[[i]], list(u))})
             if(!is.matrix(W.)) W. <- cbind(W.) # eg if 'u' is a 1-vector 
-            ## Reorder to match groupings
-            sapply(1:d, function(i) W.[, groupings[i], drop = F])
          }
       }
    } 

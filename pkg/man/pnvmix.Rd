@@ -204,7 +204,7 @@ set.seed(1)
 pt4 <- pnvmix(b, lower = a, 
               rmix = function(n, df) 1/rgamma(n, shape = df/2, rate = df/2),
               df = df, scale = P)
-stopifnot(all.equal(pt4, pt1, tol = 7e-4, check.attributes = FALSE))
+stopifnot(all.equal(pt4, pt1, tol = 8e-4, check.attributes = FALSE))
 
 ## Case with missing data and a matrix of lower and upper bounds
 a. <- matrix(rep(a, each = 4), ncol = d)
