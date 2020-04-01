@@ -5,6 +5,7 @@
 ##' @param n see ?rnvmix()
 ##' @param rmix ?rnvmix()
 ##' @param qmix ?rnvmix()
+##' @param groupings ?pgnvmix() 
 ##' @param loc ?rnvmix()
 ##' @param scale ?rnvmix()
 ##' @param factor ?rnvmix()
@@ -24,7 +25,8 @@
 ##'         + "GIGrvg":  faster if n small and often called with several parameters
 ##'         see examples of 'GIGrvg' for both methods
 ##'       - user friendly wrappers are provided in 'rnvmix()' and 'rgammamix()'
-rnvmix_ <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2), factor = NULL,
+rnvmix_ <- function(n, rmix, qmix, groupings = rep(1, d), loc = rep(0, d), 
+                    scale = diag(2), factor = NULL,
                     method = c("PRNG", "sobol", "ghalton"), skip = 0, 
                     which = c("nvmix", "maha2"), ...)
 {
@@ -44,6 +46,9 @@ rnvmix_ <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2), factor = NU
         k <- ncol(factor)
         factor <- t(factor) # ... converted to a (k, d)-matrix to avoid t() below around Z
     }
+    ## Check groupings
+    stopifnot(length(groupings) == d)
+    numgroups <- length(unique(groupings))
     ## Determine if inversion is to be used
     inversion <- FALSE
     ## This is the case if the method used is "sobol" or "ghalton"
@@ -54,19 +59,23 @@ rnvmix_ <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2), factor = NU
     if(inversion & is.null(qmix)) 
        stop("'qmix' needs to be provided for methods 'sobol' and 'ghalton'")
     ## Logical if supplied 'rmix' is a vector of realizations
-    is.rmix.sample <- (is.numeric(rmix) & length(rmix) == n)
+    is.rmix.sample <- if(is.numeric(rmix)){
+       ## 'rmix' contains realizations => check 
+       stopifnot(all(rmix > 0),
+                 all.equal(dim(rmix <- cbind(rmix)), c(n, numgroups)))
+       TRUE 
+    } else FALSE 
+    ## If no sample provided
     if(!is.rmix.sample){
-       mix_list <- 
-          get_mix_(qmix = qmix, rmix = rmix, callingfun = "rnvmix", ... ) 
+       mix_list <- get_mix_(qmix = qmix, rmix = rmix, groupings = groupings, 
+                            callingfun = "rnvmix", ... ) 
        mix_          <- mix_list[[1]] # function(u) or function(n)
        special.mix   <- mix_list[[2]] # string or NA
        use.q         <- mix_list$use.q # logical if 'mix_' is a quantile function
        inversion     <- use.q 
-    } else {
-       stopifnot(all(rmix > 0)) # sanity check when 'rmix' is a sample
-    }
-    ## Obtain n realizations of the mixing rv 
-    W <- if(inversion){
+    } 
+    ## Obtain n realizations of the root of the mixing rv(s)
+    rtW <- if(inversion){
        ## Get low discrepancy pointset
        ## For 'which = "nvmix"' need k-dim normal distribution later => k+1 uniforms;
        ## otherwise 2 (one for 'W', one for the gamma)
@@ -83,8 +92,8 @@ rnvmix_ <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2), factor = NU
                       matrix(runif(n* dim.), ncol = dim.)
                    })  # (n, dim.) matrix
        ## Get quasi realizations of W via 'mix_()' (quantile function here)
-       mix_(U[, 1])
-    } else if(is.rmix.sample) rmix else mix_(n) 
+       sqrt(mix_(U[, 1]))
+    } else if(is.rmix.sample) sqrt(rmix) else sqrt(mix_(n))
        ## Otherwise a sample was provided (=> rmix) or mix_() is a RNG 
     
     ## Generate normals or gamma variates 
@@ -99,7 +108,7 @@ rnvmix_ <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2), factor = NU
         ## Recall that factor had been transposed, i.e. factor is (k,d)
         Y <- Z %*% factor # (n, k) %*% (k, d) = (n, d)-matrix of N(0, scale)
         ## Generate X ~ NVM_d(0, Sigma, F_W)
-        X <- sqrt(W) * Y # also fine for different k
+        X <- if(numgroups == 1) as.vector(rtW) * Y else rtW[, groupings] * Y
         ## Generate X ~ NVM_d(mu, Sigma, F_W)
         sweep(X, 2, loc, "+")
     } else {
@@ -109,7 +118,7 @@ rnvmix_ <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2), factor = NU
                } else {
                    qgamma(U[, 2], shape = d/2, scale = 2)
                }
-        W * Zsq
+        as.vector(rtW)^2 * Zsq
     }
 }
 
@@ -154,9 +163,7 @@ rnvmix_ <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2), factor = NU
 ##'         rmix() is used.
 ##' @param skip numeric integer. How many points should be skipped when method='sobol'?
 ##' @param ... additional arguments passed to the underlying mixing distribution
-##' @return (n, d)-matrix with NVM(loc,scale, F_W) samples if 'which == "nvmix"'
-##'         or n-vector with samples of the squared mahalanobis distance of
-##'         NVM(loc,scale, F_W)
+##' @return (n, d)-matrix with NVM(loc,scale, F_W) samples 
 ##' @author Marius Hofert and Erik Hintz
 
 rnvmix <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2),
@@ -169,4 +176,34 @@ rnvmix <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2),
     ## Call internal 'rnvmix_()' 
     rnvmix_(n, rmix = rmix, qmix = qmix, loc = loc, scale = scale,
             factor = factor, method = method, skip = skip, which = "nvmix", ...)
+}
+
+### rgnvmix() ###################################################################
+
+##' @title Random Number Generator for Multivariate Normal Variance Mixtures
+##' @param n sample size
+##' @param qmix see ?pgnvmix(). If 'qmix' not provided, can provide a 
+##'        a sample via 'rmix' 
+##' @param rmix (n, length(unique(groupings))) matrix of samples of W_i;
+##' @param groupings see ?pgnvmix() 
+##' @param loc see ?rnvmix()
+##' @param scale see ?rnvmix()
+##' @param factor see ?rnvmix()
+##' @param method see ?rnvmix()
+##' @param skip see ?rnvmix()
+##' @param ... see ?rnvmix()
+##' @return (n, d)-matrix with gNVM(loc,scale, F_W)  
+##' @author Marius Hofert and Erik Hintz
+
+rgnvmix <- function(n, qmix, rmix, groupings = 1:d, loc = rep(0, d), 
+                    scale = diag(2), factor = NULL, 
+                    method = c("PRNG", "sobol", "ghalton"), skip = 0, ...)
+{
+   ## Get 'd' and 'method'
+   d <- if(is.null(factor)) dim(scale)[1] else nrow(factor <- as.matrix(factor))
+   method <- match.arg(method) 
+   ## Call internal 'rnvmix_()' 
+   rnvmix_(n, rmix = rmix, qmix = qmix, groupings = groupings, loc = loc, 
+           scale = scale, factor = factor, method = method, skip = skip, 
+           which = "nvmix", ...)
 }

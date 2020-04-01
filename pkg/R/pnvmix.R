@@ -110,10 +110,11 @@ pnvmix_g_ <- function(U, rtW, rtWant, groupings = rep(1, d), upper,
          if(verbose) warning("Preconditioning led to (numerically) singular 'scale',
                              continuing with original input.")
       } else {
-         lower <- temp$lower
-         upper <- temp$upper
-         scale <- temp$scale
+         lower  <- temp$lower
+         upper  <- temp$upper
+         scale  <- temp$scale
          factor <- temp$factor
+         groupings <- groupings[temp$perm] 
       }
    } 
    ## For evaluating qnorm() close to 0 and 1
@@ -483,6 +484,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
          lower  <- temp$lower
          upper  <- temp$upper
          factor <- temp$factor
+         groupings <- groupings[temp$perm] 
       }
    }
    
@@ -759,7 +761,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
 ##'         (number of iterations)
 ##' @author Erik Hintz and Marius Hofert  
 pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), 
-                    groupings = rep(1, d), qmix, rmix,  
+                    groupings = 1:d, qmix, rmix,  
                     loc = rep(0, d), scale = diag(d), standardized = FALSE,
                     control = list(), verbose = TRUE, ...)
 {   
@@ -778,8 +780,8 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    mix_list      <- get_mix_(qmix = qmix, rmix = rmix, groupings = groupings, callingfun = "pnvmix", ... )
    mix_          <- mix_list$mix_ # function(u) or function(n) depeneding on 'use.q'
    special.mix   <- mix_list$special.mix
-   mean.sqrt.mix <- mix_list$mean.sqrt.mix
    use.q         <- mix_list$use.q
+   mean.sqrt.mix <- mix_list$mean.sqrt.mix
    ## Check 'method': The default depends on wether 'rmix' or 'qmix' was provided
    meth.prov <- if(!use.q & length(control)>0 & any(names(control) == "method")){
       control$method
@@ -822,11 +824,14 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    }
    ## Grab / approximate mean.sqrt.mix, which will be needed for preconditioning
    ## in pnvmix1(). This only depends on 'qmix', hence it is done (once) here in pnvmix.
-   if(control$precond && d > 2) {
+   if(control$precond & d > 2) {
+      if(is.null(mean.sqrt.mix) & !is.null(control$mean.sqrt.mix))
+         mean.sqrt.mix <- control$mean.sqrt.mix
       if(is.null(mean.sqrt.mix)){
-         mean.sqrt.mix <- if(use.q) 
-            mean(sqrt(mix_(qrng::sobol(n = 2^9, d = 1, randomize = TRUE)))) else
-               mean(sqrt(mix_(2^9)))
+         ## Check if 'mean
+         mean.sqrt.mix <- if(use.q){
+            colMeans(as.matrix(sqrt(mix_(qrng::sobol(n = 2^12, d = 1, randomize = TRUE)))))
+         } else colMeans(as.matrix(sqrt(mix_(2^12))))
          mean.sqrt.mix <- mean.sqrt.mix[groupings] 
       } else {
          ## Check if provided 'mean.sqrt.mix' has the correct dimension

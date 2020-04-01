@@ -181,6 +181,9 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
       mix.prov <- "rmix" # for potential error/warning messages further below
       rmix 
    }
+   ## In the grouped case, "qmix" must be provided (=> o/w cannot draw comonotone mixing rvs)
+   if(is.grpd & !use.q)
+      stop("In the grouped case, argument 'qmix' must be provided")
    ## Calling functions for which 'qmix' *must* be provided (due to adaptiveness)
    need.qmix <- c("dnvmix", "dgammamix", "fitnvmix", "qnvmix", "qgammamix", "ESnvmix")
    if(any(callingfun == need.qmix) & !use.q) 
@@ -291,8 +294,12 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
                    fin.df <- is.finite(df)
                    ## Construct 'mean.sqrt.mix_' (length num.groups)
                    mean.sqrt.mix_ <- rep(1, num.groups)
-                   mean.sqrt.mix_[fin.df] <- sqrt(df[fin.df]) * gamma(df[fin.df]/2) / 
-                      (sqrt(2) * gamma((df[fin.df] + 1)/2)) 
+                   ## If X ~ InvGam(nu/2, nu/2) and df > 1
+                   ## => E(sqrt(X)) = sqrt(df/2) * gamma((df-1)/2) / gamma(df/2);
+                   ## If df <= 1 => E(sqrt(X)) DNE => take some proxy 
+                   dffingr <- pmax(df[fin.df], 1.0001)
+                   mean.sqrt.mix_[fin.df] <- sqrt(dffingr/2) * 
+                      gamma((dffingr-1)/2) / gamma(dffingr/2)
                    ## Construct 'mean.sqrt.mix' (length d, i'th element = E(sqrt(W_i))
                    mean.sqrt.mix <- mean.sqrt.mix_[groupings]
                    ## Quantile fun or rng as function of (u, df) or (n, df)
@@ -384,6 +391,7 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
                if(hasaddArg[i]) do.call(mix_usr[[i]], append(list(u), addArgs[[i]])) else
                   do.call(mix_usr[[i]], list(u))})
             if(!is.matrix(W.)) W. <- cbind(W.) # eg if 'u' is a 1-vector 
+            W.
          }
       }
    } 
