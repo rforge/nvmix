@@ -374,6 +374,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
          upper <- tmp$upper
          scale <- tmp$scale
          perm[c(i, j)] <- perm[c(j, i)]
+         mean.sqrt.mix[c(i, j)] <- mean.sqrt.mix[c(j, i)]
          ## If j>1 and an actual swap has occured, need to reorder Cholesky factor:
          if(j > 1) {
             factor[c(i,j),]   <- factor[c(j,i),, drop = FALSE]
@@ -797,7 +798,6 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    ## Grab the following variables for readability
    method        <- control$method
    increment     <- control$increment
-   if(!is.null(control$mean.sqrt.mix)) mean.sqrt.mix <- control$mean.sqrt.mix
    ## Absolute or relative precision required?
    tol <- if(is.null(control$pnvmix.abstol)) {
       ## Set tol to <0 so that algorithm runs until 'fun.eval[2]'
@@ -828,15 +828,15 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
       if(is.null(mean.sqrt.mix) & !is.null(control$mean.sqrt.mix))
          mean.sqrt.mix <- control$mean.sqrt.mix
       if(is.null(mean.sqrt.mix)){
-         ## Check if 'mean
+         ## Not provided => estimate it 
          mean.sqrt.mix <- if(use.q){
             colMeans(as.matrix(sqrt(mix_(qrng::sobol(n = 2^12, d = 1, randomize = TRUE)))))
          } else colMeans(as.matrix(sqrt(mix_(2^12))))
          mean.sqrt.mix <- mean.sqrt.mix[groupings] 
       } else {
          ## Check if provided 'mean.sqrt.mix' has the correct dimension
-         stopifnot(length(mean.sqrt.mix) == length(unique(groupings)))
-         mean.sqrt.mix <- mean.sqrt.mix[groupings]
+         ## (length == 1 for compatibility with 'pnvmix()')
+         stopifnot(length(mean.sqrt.mix) == d | length(mean.sqrt.mix) == 1)
       }
       ## Check if provided/approximated 'mean.sqrt.mix' is strictly positive
       if(any(mean.sqrt.mix <= 0))

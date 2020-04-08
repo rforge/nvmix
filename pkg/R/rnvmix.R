@@ -195,7 +195,7 @@ rnvmix <- function(n, rmix, qmix, loc = rep(0, d), scale = diag(2),
 ##' @return (n, d)-matrix with gNVM(loc,scale, F_W)  
 ##' @author Marius Hofert and Erik Hintz
 
-rgnvmix <- function(n, qmix, rmix, groupings = 1:d, loc = rep(0, d), 
+rgnvmix <- function(n, qmix, groupings = 1:d, loc = rep(0, d), 
                     scale = diag(2), factor = NULL, 
                     method = c("PRNG", "sobol", "ghalton"), skip = 0, ...)
 {
@@ -203,7 +203,7 @@ rgnvmix <- function(n, qmix, rmix, groupings = 1:d, loc = rep(0, d),
    d <- if(is.null(factor)) dim(scale)[1] else nrow(factor <- as.matrix(factor))
    method <- match.arg(method) 
    ## Call internal 'rnvmix_()' 
-   rnvmix_(n, rmix = rmix, qmix = qmix, groupings = groupings, loc = loc, 
+   rnvmix_(n, qmix = qmix, groupings = groupings, loc = loc, 
            scale = scale, factor = factor, method = method, skip = skip, 
            which = "nvmix", ...)
 }

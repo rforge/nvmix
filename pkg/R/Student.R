@@ -133,8 +133,8 @@ rStudent <- function(n, df, loc = rep(0, d), scale = diag(2),
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Erik Hintz and Marius Hofert
 rgStudent <- function(n, groupings = 1:d, df, loc = rep(0, d), scale = diag(2),
-                     factor = NULL, method = c("PRNG", "sobol", "ghalton"), 
-                     skip = 0)
+                      factor = NULL, method = c("PRNG", "sobol", "ghalton"), 
+                      skip = 0)
 {
    method <- match.arg(method) 
    d <- if(!is.null(factor)) { # for 'loc', 'scale'
@@ -142,19 +142,13 @@ rgStudent <- function(n, groupings = 1:d, df, loc = rep(0, d), scale = diag(2),
    } else {
       nrow(scale <- as.matrix(scale))
    }
-   
-   if(method == "PRNG"){
-      ## Provide 'rmix' and no 'qmix' => typically faster
-      rgnvmix(n, groupings = groupings, rmix = "inverse.gamma", 
-             loc = loc, scale = scale, factor = factor, df = df,
-             method = method, skip = skip)
-   } else {
-      ## Provide 'qmix' for inversion based methods
-      rgnvmix(n, groupings = groupings, qmix = "inverse.gamma", 
-             loc = loc, scale = scale, factor = factor, df = df,
-             method = method, skip = skip)
-   }
+   ## Provide 'qmix' (=> 'rmix' not allowed for gNVM() distributions)
+   rgnvmix(n, qmix = "inverse.gamma", groupings = groupings,
+           loc = loc, scale = scale, factor = factor, df = df,
+           method = method, skip = skip)
 }
+
+
 
 ##' @title Fitting the Parameters of a Multivariate Student t Distribution
 ##' @param x (n,d) data matrix
