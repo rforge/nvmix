@@ -132,13 +132,12 @@ pgStudent(upper, lower = matrix(-Inf, nrow = n, ncol = d), groupings = 1:d, df,
   1--21.
 }
 \seealso{
-  \code{\link{dnvmix}()}, \code{\link{rnvmix}()}, \code{\link{fitnvmix}()},
-  \code{\link{get_set_param}()}
+  \code{\link{rgnvmix}()}, \code{\link{get_set_param}()}
 }
 \examples{
 ### Examples for pgnvmix() #####################################################
 
-## 1. Inverse-gamma mixture (=> distribution is generalized t)
+## 1. Inverse-gamma mixture (=> distribution is grouped t with mutliple dof)
 d <- 3
 set.seed(157)
 A <- matrix(runif(d * d), ncol = d)
@@ -150,7 +149,7 @@ groupings <- 1:d
 
 ### Call 'pgnvmix' with 'qmix' a string:
 set.seed(1)
-(pgt1 <- nvmix:::pgnvmix(b, lower = a, groupings = groupings, qmix = "inverse.gamma", 
+(pgt1 <- pgnvmix(b, lower = a, groupings = groupings, qmix = "inverse.gamma", 
                 df = df, scale = P))
 ### Version providing quantile functions of the mixing distributions as list
 qmix_ <- function(u, df) 1 / qgamma(1-u, shape = df/2, rate = df/2)
@@ -162,16 +161,16 @@ set.seed(1)
 qmix <- list(function(u, df1) qmix_(u, df1), function(u, df2) qmix_(u, df2),
              function(u, df3) qmix_(u, df3))
 set.seed(1)
-(pgt3 <- nvmix:::pgnvmix(b, lower = a, groupings = groupings, qmix = qmix, 
+(pgt3 <- pgnvmix(b, lower = a, groupings = groupings, qmix = qmix, 
                         scale = P, df1 = df[1], df2 = df[2], df3 = df[3]))
-## Version using the user friednly wrapper 'pgStudent()'
+## Version using the user friendly wrapper 'pgStudent()'
 set.seed(1) 
-(pgt4 <- nvmix:::pgStudent(b, lower = a, groupings = groupings, scale = P, df = df))
+(pgt4 <- pgStudent(b, lower = a, groupings = groupings, scale = P, df = df))
 stopifnot(all.equal(pgt1, pgt2, tol = 1e-5, check.attributes = FALSE),
           all.equal(pgt2, pgt3), all.equal(pgt1, pgt4))
 
 ## 2. More complicated mixutre
-## Let W1 ~ IG(1, 1), W2 = 1, W3 ~ Exp(1), W4 ~ Par(2, 1), W5 = W1, alll comonotone
+## Let W1 ~ IG(1, 1), W2 = 1, W3 ~ Exp(1), W4 ~ Par(2, 1), W5 = W1, all comonotone
 ## => X1 ~ t_2; X2 ~ normal; X3 ~ Exp-mixture; X4 ~ Par-mixture; X5 ~ t_2
 
 d <- 5

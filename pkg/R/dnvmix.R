@@ -474,7 +474,7 @@ densmix_rqmc <- function(qW, maha2.2, lconst, d, k = d, control, u.left = 0,
    ## while() runs until precision abstol is reached or the number of function
    ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
    ## the desired log-densities are calculated.
-   while(max.error > tol && numiter < max.iter.rqmc &&
+   while(max.error > tol & numiter < max.iter.rqmc &
          total.fun.evals < control$fun.eval[2])
    {
       ## In each randomization ...
