@@ -316,7 +316,7 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
             if(sum_u_sml > 1) {
                ## Case 1: We have >1 observations in (0, u.left)
                last_sml <- which(u_sml)[sum_u_sml]
-               weights <- abs(c(U.W.lint[1, 1],
+               weights <- abs(c(U.W.lint[1, 1], 
                             U.W.lint[2:last_sml, 1] -
                                U.W.lint[1:(last_sml-1), 1]))
                logsumexp(as.matrix(log(weights) + 
@@ -358,7 +358,7 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
                                       (c(U.W.lint[(first_gtr+1):numObs, 3], -Inf) + 
                                           U.W.lint[first_gtr:numObs, 3])/2, ncol = 1))
             } else {
-               ## Case 2: No observations in (u.right, 1) 
+               ## Case 2: No or only one observations in (u.right, 1)
                log1p(-u.right) + l.tol.int.lower - log(2)
             }
          }

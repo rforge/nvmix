@@ -2,6 +2,9 @@
 \alias{dnvmixcop}
 \alias{pnvmixcop}
 \alias{rnvmixcop}
+\alias{dStudentcop}
+\alias{pStudentcop}
+\alias{rStudentcop}
 \title{Functionalities for Normal Variance Mixture Copulas}
 \description{
   Evaluate the density / distribution function of normal variance mixture
@@ -11,18 +14,28 @@
 \usage{
 dnvmixcop(u, qmix, scale = diag(d), factor = NULL, control = list(),
           verbose = FALSE, log = FALSE, ...)
-pnvmixcop(u, qmix, scale = diag(d), control = list(),
-          verbose = FALSE, ...)
+pnvmixcop(upper, lower = matrix(0, nrow = n, ncol = d), qmix, scale = diag(d), 
+          control = list(), verbose = FALSE, ...)
 rnvmixcop(n, qmix, scale = diag(2), factor = NULL,
           method = c("PRNG", "sobol", "ghalton"), skip = 0,
           control = list(), verbose = FALSE, ...)
+          
+dStudentcop(u, df, scale = diag(d), log = FALSE, verbose = TRUE)
+pStudentcop(upper, lower = matrix(0, nrow = n, ncol = d), df, scale = diag(d), 
+            control = list(), verbose = TRUE)
+rStudentcop(n, df, scale = diag(2), method = c("PRNG", "sobol", "ghalton"), 
+            skip = 0)
 }
 \arguments{
   \item{u}{\eqn{(n, d)}-\code{\link{matrix}} of evaluation points.
     Have to be in \eqn{(0,1)}.}
+  \item{upper, lower}{\eqn{(n, d)}-\code{\link{matrix}} of upper/lower evaluation 
+  limits. Have to be in \eqn{(0,1)}.}    
   \item{n}{sample size \eqn{n} (positive integer).}
   \item{qmix}{specification of the mixing variable \eqn{W}; see
   \code{\link{pnvmix}()} for details and examples.}
+  \item{df}{positive degress of freedom; can also be \code{Inf} in which
+    case the copula is interpreted as the Gaussian copula.}
   \item{scale}{scale matrix (a covariance matrix entering the
     distribution as a parameter) of dimension \eqn{(d, d)} (defaults to
     \eqn{d = 2});
@@ -90,6 +103,10 @@ rnvmixcop(n, qmix, scale = diag(2), factor = NULL,
   there are approximations on many levels, reported error estimates for
   the copula versions of \code{pnvmix}() and \code{dnvmix}() can be
   flawed.
+  
+  The functions \code{[d/p/r]Studentcop()} are user-friendly wrappers for
+  \code{[d/p/r]nvmixcop(, qmix = "inverse.gamma")}, designed for the imporant
+  case of a t copula with degrees-of-freedom \code{df}. 
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
@@ -124,9 +141,12 @@ qmix. <- function(u) 1/qgamma(1-u, shape = df/2, rate = df/2)
 
 ## If qmix = "inverse.gamma", dnvmix() calls qt and dt:
 d1 <- dnvmixcop(u, qmix = "inverse.gamma", scale = P, df = df)
+## Same can be obtained using 'dStudentcop()'
+d2 <- dStudentcop(u, scale = P, df = df)
+stopifnot(all.equal(d1, d2))
 ## Use qmix. to force the algorithm to use a rqmc procedure:
-d2 <- dnvmixcop(u, qmix = qmix., scale = P)
-stopifnot(all.equal(d1, d2, tol = 1e-3, check.attributes = FALSE))
+d3 <- dnvmixcop(u, qmix = qmix., scale = P)
+stopifnot(all.equal(d1, d3, tol = 1e-3, check.attributes = FALSE))
 
 
 ### Example for pnvmixcop() ####################################################

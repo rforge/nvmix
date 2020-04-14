@@ -50,7 +50,8 @@ dnvmixcop <- function(u, qmix, scale = diag(d), factor = NULL, control = list(),
 
 
 ##' @title Distribution Function of a Multivariate Normal Variance Mixture Copula
-##' @param u (n,d) matrix of evaluation points. Have to be in (0,1)
+##' @param upper (n,d) matrix of upper evaluation points. Have to be in (0,1)
+##' @param lower (n,d) matrix of lower evaluation points. Have to be in (0,1)
 ##' @param qmix see ?pnvmix
 ##' @param scale (d, d)-covariance matrix (scale matrix).
 ##' @param control see ?get_set_param()
@@ -60,16 +61,23 @@ dnvmixcop <- function(u, qmix, scale = diag(d), factor = NULL, control = list(),
 ##' @author Erik Hintz and Marius Hofert
 ##' @return numeric vector with the computed probabilities and attributes "error"
 ##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
-pnvmixcop <- function(u, qmix, scale = diag(d), control = list(),
-                      verbose = FALSE, ...)
+pnvmixcop <- function(upper, lower = matrix(0, nrow = n, ncol = d), qmix, 
+                      scale = diag(d), control = list(), verbose = FALSE, ...)
 {
     ## Most arguments are checked by qnvmix() and pnvmix()
-    if(!is.matrix(u)) u <- rbind(u)
-    d <- ncol(u) # for 'scale'
+    if(!is.matrix(upper)) upper <- rbind(upper)
+    d <- ncol(upper) # for 'scale'
+    n <- nrow(upper)
     ## Obtain quantiles. Note that qnvmix() returns a vector
-    qu <- matrix(qnvmix(as.vector(u), qmix = qmix, control = control,
+    upper_ <- matrix(qnvmix(as.vector(upper), qmix = qmix, control = control,
                         verbose = verbose, q.only = TRUE, ...), ncol = d)
-    pnvmix(qu, qmix = qmix, scale = scale, control = control,
+    lower_ <- if(all(lower == 0)){
+       matrix(-Inf, nrow = n, ncol = d) # avoid estimation of the quantile 
+    } else {
+       matrix(qnvmix(as.vector(lower), qmix = qmix, control = control,
+                     verbose = verbose, q.only = TRUE, ...), ncol = d)
+    }
+    pnvmix(upper_, lower = lower_, qmix = qmix, scale = scale, control = control,
            verbose = verbose, ...)
 }
 
