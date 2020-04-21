@@ -75,8 +75,8 @@ pgStudent(upper, lower = matrix(-Inf, nrow = n, ncol = d), groupings = 1:d, df,
 \value{
   \code{pgnvmix()} and \code{pgStudent()} return a
   \code{\link{numeric}} \eqn{n}-vector with the computed probabilities
-  and corresponding attributes \code{"error"} (error estimates of the
-  RQMC estimator) and \code{"numiter"} (number of iterations).
+  and corresponding attributes \code{"abs. error"} and \code{"rel. error"} 
+  (error estimates of the RQMC estimator) and \code{"numiter"} (number of iterations).
 }
 \details{
   One should highlight that evaluating generalized normal variance mixtures is a
@@ -148,25 +148,25 @@ df <- c(1.1, 2.4, 4.9) # dof for margin i
 groupings <- 1:d 
 
 ### Call 'pgnvmix' with 'qmix' a string:
-set.seed(1)
+set.seed(12)
 (pgt1 <- pgnvmix(b, lower = a, groupings = groupings, qmix = "inverse.gamma", 
                 df = df, scale = P))
 ### Version providing quantile functions of the mixing distributions as list
 qmix_ <- function(u, df) 1 / qgamma(1-u, shape = df/2, rate = df/2)
 qmix <- list(function(u) qmix_(u, df = df[1]), function(u) qmix_(u, df = df[2]),
              function(u) qmix_(u, df = df[3]))
-set.seed(1)
+set.seed(12)
 (pgt2 <- pgnvmix(b, lower = a, groupings = groupings, qmix = qmix, scale = P))
 ### Similar, but using ellipsis argument:
 qmix <- list(function(u, df1) qmix_(u, df1), function(u, df2) qmix_(u, df2),
              function(u, df3) qmix_(u, df3))
-set.seed(1)
+set.seed(12)
 (pgt3 <- pgnvmix(b, lower = a, groupings = groupings, qmix = qmix, 
                         scale = P, df1 = df[1], df2 = df[2], df3 = df[3]))
 ## Version using the user friendly wrapper 'pgStudent()'
-set.seed(1) 
+set.seed(12) 
 (pgt4 <- pgStudent(b, lower = a, groupings = groupings, scale = P, df = df))
-stopifnot(all.equal(pgt1, pgt2, tol = 1e-5, check.attributes = FALSE),
+stopifnot(all.equal(pgt1, pgt2, tol = 1e-4, check.attributes = FALSE),
           all.equal(pgt2, pgt3), all.equal(pgt1, pgt4))
 
 ## 2. More complicated mixutre
@@ -182,6 +182,6 @@ groupings <- c(1, 2, 3, 4, 1) # since W_5 = W_1
 qmix <- list(function(u) qmix_(u, df = 2), function(u) rep(1, length(u)), 
              list("exp", rate=1), function(u) (1-u)^(-1/2)) # length 4 (# of groups)
 pg1 <- pgnvmix(b, groupings = groupings, qmix = qmix, scale = P)
-all.equal(pg1, 0.7872, tol = 6e-4, check.attributes = FALSE)
+stopifnot(all.equal(pg1, 0.7872, tol = 6e-4, check.attributes = FALSE))
 }
 \keyword{distribution}

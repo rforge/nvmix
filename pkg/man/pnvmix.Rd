@@ -89,8 +89,8 @@ pNorm(upper, lower = matrix(-Inf, nrow = n, ncol = d), loc = rep(0, d),
 \value{
   \code{pnvmix()}, \code{pStudent()} and \code{pNorm()} return a
   \code{\link{numeric}} \eqn{n}-vector with the computed probabilities
-  and corresponding attributes \code{"error"} (error estimates of the
-  RQMC estimator) and \code{"numiter"} (number of iterations).
+  and corresponding attributes \code{"abs. error"} and \code{rel. error} 
+  (error estimates of the RQMC estimator) and \code{"numiter"} (number of iterations).
 }
 \details{
   One should highlight that evaluating normal variance mixtures is a
@@ -163,7 +163,7 @@ pNorm(upper, lower = matrix(-Inf, nrow = n, ncol = d), loc = rep(0, d),
 }
 \seealso{
   \code{\link{dnvmix}()}, \code{\link{rnvmix}()}, \code{\link{fitnvmix}()},
-  \code{\link{get_set_param}()}
+  \code{\link{pgnvmix}()}, \code{\link{get_set_param}()}
 }
 \examples{
 ### Examples for pnvmix() ######################################################

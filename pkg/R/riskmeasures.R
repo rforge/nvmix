@@ -11,7 +11,7 @@
 ##' @return vector of expected shortfall estimates with attributes 'error'
 ##'         and 'numiter' 
 ##' @author Erik Hintz, Marius Hofert and Christiane Lemieux
-ESnvmix <- function(level, qmix, loc = 0, scale = 1, control = list(), 
+ES_nvmix <- function(level, qmix, loc = 0, scale = 1, control = list(), 
                     verbose = TRUE, ...){
    ## 1. Checks and variable declarations ######################################
    stopifnot(scale > 0)
@@ -34,7 +34,8 @@ ESnvmix <- function(level, qmix, loc = 0, scale = 1, control = list(),
                        loc + sqrt(scale)*dnorm(qnorm(level))/(1-level)
                     })
       numiter <- 0
-      error   <- rep(0, length(level)) 
+      relerror <- rep(0, length(level)) 
+      abserror <- rep(0, length(level)) 
    } else {
       ## Otherwise use RQMC to estimate the expected shortfall
       ## Estimate/compute VaR_alpha first 
@@ -46,10 +47,6 @@ ESnvmix <- function(level, qmix, loc = 0, scale = 1, control = list(),
       increment <- control$increment
       B <- control$B
       current.n <- control$fun.eval[1]
-      if(method == "sobol") {
-         if(!exists(".Random.seed")) runif(1)
-         seed <- .Random.seed
-      }
       ## Absolte/relative precision?
       if(is.na(control$riskmeasures.abstol)) {
          ## Use relative error
@@ -66,6 +63,8 @@ ESnvmix <- function(level, qmix, loc = 0, scale = 1, control = list(),
          if(method == "sobol") useskip <- 0
          denom <- 1
       }
+      ## Sample 'B' seeds for 'sobol(..., seed = seeds_[b])' to get the same shifts 
+      if(method == "sobol") seeds_ <- sample(1:(1e5*B), B) # B seeds for 'sobol()'
       ## Matrix to store RQMC estimates for all levels in the vector 'level'
       rqmc.estimates <- matrix(0, ncol = length(level), nrow = B)
       ## Will be needed a lot:
@@ -82,8 +81,7 @@ ESnvmix <- function(level, qmix, loc = 0, scale = 1, control = list(),
       while(max(error) > tol && total.fun.evals < control$fun.eval[2] && 
             numiter < control$max.iter.rqmc)
       {
-         if(method == "sobol" && numiter > 0)
-            .Random.seed <<- seed # reset seed to have the same shifts in sobol(...)
+
          ## Get B RQCM estimates
          for(b in 1:B)
          {
@@ -92,11 +90,13 @@ ESnvmix <- function(level, qmix, loc = 0, scale = 1, control = list(),
                         "sobol" = {
                            if(increment == "doubling") {
                               qrng::sobol(n = current.n, d = 1,
-                                          randomize = TRUE,
+                                          randomize = "digital.shift",
+                                          seed = seeds_[b], 
                                           skip = (useskip * current.n))
                            } else {
                               qrng::sobol(n = current.n, d = 1,
-                                          randomize = TRUE,
+                                          randomize = "digital.shift",
+                                          seed = seeds_[b], 
                                           skip = (numiter * current.n))
                            }
                         },
@@ -171,10 +171,19 @@ ESnvmix <- function(level, qmix, loc = 0, scale = 1, control = list(),
             }
          }
       }
+      abserror <- if(do.reltol){
+         relerror <- error
+         error * res
+      } else {
+         relerror <- error / res # 'error' is absolute error
+         error 
+      }
    } # else 
-   
+
    ## 3. Return ################################################################
-   attr(res, "error") <- error
+   
+   attr(res, "abs. error") <- abserror
+   attr(res, "rel. error") <- relerror
    attr(res, "numiter") <- numiter
    res
 }
@@ -190,7 +199,7 @@ ESnvmix <- function(level, qmix, loc = 0, scale = 1, control = list(),
 ##' @param ... see ?pnvmix()
 ##' @return vector of value at risk estimates
 ##' @author Erik Hintz, Marius Hofert and Christiane Lemieux
-VaRnvmix <- function(level, qmix, loc = 0, scale = 1, control = list(),
+VaR_nvmix <- function(level, qmix, loc = 0, scale = 1, control = list(),
                      verbose = TRUE, ...){
    ## This is called by qnvmix(level, ...) 
    loc + sqrt(scale) * quantile_(level, qmix = qmix, which = "nvmix1", d = 1, 

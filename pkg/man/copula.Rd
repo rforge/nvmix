@@ -5,6 +5,8 @@
 \alias{dStudentcop}
 \alias{pStudentcop}
 \alias{rStudentcop}
+\alias{pgStudentcop}
+\alias{rgStudentcop}
 \title{Functionalities for Normal Variance Mixture Copulas}
 \description{
   Evaluate the density / distribution function of normal variance mixture
@@ -25,6 +27,11 @@ pStudentcop(upper, lower = matrix(0, nrow = n, ncol = d), df, scale = diag(d),
             control = list(), verbose = TRUE)
 rStudentcop(n, df, scale = diag(2), method = c("PRNG", "sobol", "ghalton"), 
             skip = 0)
+            
+pgStudentcop(upper, lower = matrix(0, nrow = n, ncol = d), groupings = 1:d,
+             df, scale = diag(d), control = list(), verbose = TRUE)
+rgStudentcop(n, groupings = 1:d, df, scale = diag(2),
+             method = c("PRNG", "sobol", "ghalton"), skip = 0)             
 }
 \arguments{
   \item{u}{\eqn{(n, d)}-\code{\link{matrix}} of evaluation points.
@@ -33,7 +40,9 @@ rStudentcop(n, df, scale = diag(2), method = c("PRNG", "sobol", "ghalton"),
   limits. Have to be in \eqn{(0,1)}.}    
   \item{n}{sample size \eqn{n} (positive integer).}
   \item{qmix}{specification of the mixing variable \eqn{W}; see
-  \code{\link{pnvmix}()} for details and examples.}
+  \code{\link{pnvmix}()} for the ungrouped and \code{\link{pgnvmix}()} for the
+  grouped case.}
+  \item{groupings}{see \code{\link{pgnvmix}()}.}
   \item{df}{positive degress of freedom; can also be \code{Inf} in which
     case the copula is interpreted as the Gaussian copula.}
   \item{scale}{scale matrix (a covariance matrix entering the
@@ -44,7 +53,7 @@ rStudentcop(n, df, scale = diag(2), method = c("PRNG", "sobol", "ghalton"),
     the expecation of the mixing variable \eqn{W} if and only if the
     former exists.
     Note that \code{scale} must be positive definite; sampling from
-    singular normal variance mixtures can be achieved by providing
+    singular ungrouped normal variance mixtures can be achieved by providing
     \code{factor}.}
   \item{factor}{% more general here than for dnvmix() or pnvmix()
     \eqn{(d, k)}-\code{\link{matrix}} such that
@@ -57,23 +66,10 @@ rStudentcop(n, df, scale = diag(2), method = c("PRNG", "sobol", "ghalton"),
     from the right to an \eqn{(n, k)}-matrix of independent
     standard normals to obtain a sample from a multivariate normal
     with zero mean vector and covariance matrix \code{scale}).}
-  \item{method}{\code{\link{character}} string indicating the method
-    to be used to obtain the sample. Available are:
-    \describe{
-      \item{\code{"PRNG"}:}{pseudo-random numbers,}
-      \item{\code{"sobol"}:}{Sobol' sequence,}
-      \item{\code{"ghalton"}:}{generalized Halton sequence.}
-    }
-    If \code{method = "PRNG"}, either \code{qmix} or \code{rmix} can be
-    provided. If both are provided, \code{rmix} is used and \code{qmix}
-    ignored. For the other two methods, sampling is done via inversion,
-    hence \code{qmix} has to be provided and \code{rmix} is ignored.
-  }
-  \item{skip}{\code{\link{integer}} specifying the number of points
-    to be skipped when \code{method = "sobol"}, see also example below.
-  }
+  \item{method}{see \code{\link{rnvmix}()}.}
+  \item{skip}{see \code{\link{rnvmix}()}.}
   \item{control}{\code{\link{list}} specifying algorithm specific
-    parameters; see details below.}
+    parameters; see \code{\link{get_set_param}()}.}
   \item{verbose}{
     \code{\link{logical}}
     indicating whether a warning is given if the required precision

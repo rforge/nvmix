@@ -206,28 +206,28 @@ for(i in seq_along(max.fun.evals)) {
     errors[nms[1],i] <-
         attr(pStudent(b, lower = a, scale = P,  df = df,
                       control = list(pnvmix.abstol = NULL, fun.eval = c(2^6, N.max)),
-                      verbose = FALSE), "error")
+                      verbose = FALSE), "abs. error")
     ## Sobol without preconditioning
     set.seed(42)
     errors[nms[2],i] <-
         attr(pStudent(b, lower = a, scale = P,  df = df,
                       control = list(precond = FALSE, pnvmix.abstol = NULL,
                                      fun.eval = c(2^6, N.max)),
-                      verbose = FALSE), "error")
+                      verbose = FALSE), "abs. error")
     ## PRNG with preconditioning
     set.seed(42)
     errors[nms[3],i] <-
         attr(pStudent(b, lower = a, scale = P,  df = df,
                       control = list(method = "PRNG", pnvmix.abstol = NULL,
                                      fun.eval = c(2^6, N.max)),
-                      verbose = FALSE), "error")
+                      verbose = FALSE), "abs. error")
     ## PRNG without preconditioning
     set.seed(42)
     errors[nms[4],i] <-
         attr(pStudent(b, lower = a, scale = P,  df = df,
                       control = list(method = "PRNG", precond = FALSE,
                                      pnvmix.abstol = NULL, fun.eval = c(2^6, N.max)),
-                      verbose = FALSE), "error")
+                      verbose = FALSE), "abs. error")
 }
 
 ## Computing the regression coefficients
@@ -296,7 +296,7 @@ d3.1 <- dStudent(x, df = df, log = TRUE) # true value
 ## Specify 'qmix' as function to force estimation of log-density via RQMC
 d3.2 <- dnvmix(x, qmix = function(u) 1/qgamma(1-u, shape = df/2, rate = df/2), 
                log = TRUE)
-rel.err <- (d3.2-d3.1)/d3.1
+rel.err <- (d3.2 - d3.1) / d3.1
 stopifnot(max(abs(rel.err)) < 5e-3) # check 
 cols <- pal(2)
 if(doPDF) pdf(file = (file <- paste0("fig_dStudentvsdnvmix.pdf")),

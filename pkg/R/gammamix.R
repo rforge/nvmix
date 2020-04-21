@@ -29,6 +29,8 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
     
     ## Build result object
     pres <- rep(0, n) # n-vector of results
+    abserror <- rep(0, n)
+    relerror <- rep(0, n) 
     notNA <- which(!is.na(x))
     pres[!notNA] <- NA
     x <- x[notNA, drop = FALSE] # non-missing data (rows)
@@ -50,7 +52,8 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
                                              lower.tail = lower.tail)
                                   })
             ## Return in those cases
-            attr(pres, "error")   <- rep(0, n)
+            attr(pres, "abs. error") <- rep(0, n)
+            attr(pres, "rel. error") <- rep(0, n)
             attr(pres, "numiter") <- numiter
             return(pres)
         }
@@ -71,10 +74,9 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
         tol <- control$pgammamix.reltol
         do.reltol <- TRUE
     }
-    ## Store seed if 'sobol' is used to get the same shifts later:
+    ## Store seed if 'sobol' is used to get the same shifts later
     if(control$method == "sobol") {
-        if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
-        seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used
+       seeds_ <- sample(1:(1e3*B), B) # B seeds for 'sobol()'
     }
     ## Additional variables needed if the increment chosen is "dblng"
     if(dblng) {
@@ -95,9 +97,7 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
     while(max.error > tol && numiter < control$max.iter.rqmc &&
           total.fun.evals < control$fun.eval[2])
     {
-        ## Reset seed to have the same shifts in sobol(...)
-        if(control$method == "sobol" && numiter > 0)
-            .Random.seed <<- seed # reset seed to have the same shifts in sobol(...)
+
         for(b in 1:B) {
 
             ## 2.1 Get the point set
@@ -105,11 +105,13 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
                         "sobol" = {
                             if(dblng) {
                                 qrng::sobol(n = current.n, d = 1,
-                                            randomize = TRUE,
+                                            randomize = "digital.shift",
+                                            seed = seeds_[b],
                                             skip = (useskip * current.n))
                             } else {
                                 qrng::sobol(n = current.n, d = 1,
-                                            randomize = TRUE,
+                                            randomize = "digital.shift",
+                                            seed = seeds_[b],
                                             skip = (numiter * current.n))
                             }
                         },
@@ -154,24 +156,33 @@ pgammamix <- function(x, qmix, d, lower.tail = TRUE,
                 current.n <- 2 * current.n
             }
         }
-        ## Total number of function evaluations:
-        total.fun.evals <- total.fun.evals + B * current.n
-        numiter <- numiter + 1
-        ## Update error. The following is slightly faster than 'apply(..., 2, var)'
-        pres[notNA] <- .colMeans(rqmc.estimates, B, n , 0)
-        vars <- .colMeans((rqmc.estimates - rep(pres, each = B))^2, B, n, 0)
-        errors <- if(!do.reltol) {
-                      sqrt(vars)*CI.factor.sqrt.B
-                  } else {
-                      sqrt(vars)/pres*CI.factor.sqrt.B
-                  }
-        max.error <- max(errors)
+       ## Total number of function evaluations
+       total.fun.evals <- total.fun.evals + B * current.n
+       numiter <- numiter + 1
+       ## Update error. The following is slightly faster than 'apply(..., 2, var)'
+       pres[notNA] <- .colMeans(rqmc.estimates, B, n , 0)
+       vars <- .colMeans((rqmc.estimates - rep(pres, each = B))^2, B, n, 0)
+       error <- if(!do.reltol) {
+          sqrt(vars)*CI.factor.sqrt.B
+       } else {
+          sqrt(vars)/pres*CI.factor.sqrt.B
+       }
+       max.error <- max(error)
     } # while()
-    if(verbose && max.error > tol)
-        warning("Tolerance not reached for all inputs; consider increasing 'max.iter.rqmc' in the 'control' argument.")
-
+    if(verbose & max.error > tol)
+       warning("Tolerance not reached for all inputs; consider increasing 'max.iter.rqmc' in the 'control' argument.")
+    
+    ## Compute absolute and relative errors (once here at the end)
+    abserror[notNA] <- if(do.reltol){
+       relerror[notNA] <- error
+       relerror[notNA] * pres[notNA] 
+    } else { # error is absolute error
+       relerror[notNA] <- error / pres[notNA] 
+       error 
+    }
     ## Return
-    attr(pres, "error")   <- errors
+    attr(pres, "abs. error") <- abserror
+    attr(pres, "rel. error") <- relerror
     attr(pres, "numiter") <- numiter
     pres
 }
@@ -239,6 +250,8 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
     control <- get_set_param(control)
     ## Build result object (log-density)
     lres  <- rep(-Inf, n) # n-vector of results
+    abserror <- rep(NA, n)
+    relerror <- rep(NA, n) 
     notNA <- which(!is.na(x))
     lres[!notNA] <- NA
     x <- x[notNA, drop = FALSE] # non-missing data (rows)
@@ -264,7 +277,8 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
                                       dgamma(x, shape = d/2, scale = 2, log = TRUE)
                                   })
             ## Return in those cases
-            attr(lres, "error")   <- rep(0, n)
+            attr(lres, "abs. error") <- rep(0, n)
+            attr(lres, "rel. error") <- rep(0, n)
             attr(lres, "numiter") <- numiter
             if(log) return(lres) else return(exp(lres))
         }
@@ -277,20 +291,26 @@ dgammamix <- function(x, qmix, d, control = list(), verbose = TRUE, log = FALSE,
     ## Define log-constant for the integration
     lconst <- -lgamma(d/2) - d/2 * log(2) + (d/2-1)*log(x.ordered)
     ## Call 'densmix_()' (which itself calls C-Code and handles warnings):
-    ests <- densmix_(qW, maha2.2 = x.ordered/2, lconst = lconst,
+    est.list <- densmix_(qW, maha2.2 = x.ordered/2, lconst = lconst,
                              d = d, control = control, verbose = verbose)
     ## Grab results, correct 'error' and 'lres' if 'log = FALSE'
-    lres[notNA] <- ests$ldensities[order(ordering.x)]
-    error <- if(log) {
-                 ests$error[order(ordering.x)]
-             } else {
-                 lres <- exp(lres)
-                 ests$error[order(ordering.x)]*pmax(lres[notNA], 1)
-             }
-    numiter <- ests$numiter
+    ldens <- est.list$ldensities[order(ordering.x)]
+    abserror[notNA] <- est.list$abserror[order(ordering.x)]
+    relerror[notNA] <- est.list$relerror[order(ordering.x)]
+    ## Correct results and error if 'log = FALSE'
+    if(!log){
+       ldens <- exp(ldens)
+       ## CI for mu: exp(logmu_hat +/- abserr(logmu_hat))) = (lower, upper)
+       ## => compute max. error on mu_hat as max( (upper - mu), (mu - lower) ) 
+       relerror[notNA] <- max( (exp(abserror[notNA]) - 1), (1 - exp(-abserror[notNA])) )
+       abserror[notNA] <- ldens * relerror[notNA] # ldens already exponentiated 
+    }
+    lres[notNA] <- ldens 
+    
     ## Return
     ## Note that 'lres' was exponentiated already if necessary.
-    attr(lres, "error")   <- error # these are absolute errors, no matter what!
-    attr(lres, "numiter") <- numiter
+    attr(lres, "abs. error") <- abserror
+    attr(lres, "rel. error") <- relerror
+    attr(lres, "numiter") <- est.list$numiter
     lres
 }

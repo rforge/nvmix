@@ -103,6 +103,7 @@ pnvmix_g_ <- function(U, rtW, rtWant, groupings = rep(1, d), upper,
    k.factor <- rep(1, d)
    ## Precondition?
    if(precond & d > 2) {
+      ## 'mean.sqrt.mix' must have length d and contain E(sqrt(W_j)), j=1,..,d
       temp <- precondition(lower, upper = upper, scale = scale, factor = factor,
                            mean.sqrt.mix = mean.sqrt.mix)
       if(is.null(temp)) {
@@ -443,12 +444,15 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
 ##' @param B see details in ?pnvmix
 ##' @param verbose see ?pnvmix
 ##' @param ... see details in ?pnvmix
-##' @return list of length 3:
+##' @return list of length 5:
 ##'         - value: computed probability
-##'         - error: error estimate
+##'         - error: error estimate (depending on do.reltol)
+##'         - abserror: absolute error estimate 
+##'         - relerror: relative error estimate
 ##'         - numiter: number of iterations needed
 ##' @author Erik Hintz and Marius Hofert
-##' @note Internal function being called by pnvmix.
+##' @note Internal function being called by pnvmix; all error estimates
+##'       returned for backwards compatibility 
 pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d), 
                     mix_ = NULL, use.q, do.ant,
                     is.const.mix = FALSE, 
@@ -509,7 +513,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
    ZERO <- .Machine$double.xmin
    ONE  <- 1 - .Machine$double.neg.eps
    ## Sample 'B' seeds for 'sobol(..., seed = seeds_[b])' to get the same shifts 
-   if(method == "sobol") seeds_ <- sample(1:(1e2*B), B) # B seeds for 'sobol()'
+   if(method == "sobol") seeds_ <- sample(1:(1e5*B), B) # B seeds for 'sobol()'
    ## Additional variables needed if the increment chosen is "doubling"
    if(increment == "doubling") {
       if(method == "sobol") useskip <- 0
@@ -678,8 +682,17 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
    } # while()
    ## Finalize
    value <- mean(rqmc.estimates) # calculate the RQMC estimator
+   ## Compute absolute and relative error for return 
+   abserror <- if(do.reltol){
+      relerror <- error
+      error * value 
+   } else {
+      relerror <- error / value # 'error' is absolute error
+      error 
+   }
    ## Return
-   list(value = value, error = error, numiter = numiter)
+   list(value = value, error = error, abserror = abserror, 
+        relerror = relerror, numiter = numiter)
 }
 
 
@@ -796,8 +809,8 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
       FALSE
    } else control$pnvmix.do.ant 
    ## Grab the following variables for readability
-   method        <- control$method
-   increment     <- control$increment
+   method    <- control$method
+   increment <- control$increment
    ## Absolute or relative precision required?
    tol <- if(is.null(control$pnvmix.abstol)) {
       ## Set tol to <0 so that algorithm runs until 'fun.eval[2]'
@@ -923,7 +936,8 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    reached <- rep(TRUE, n) # indicating whether 'tol' has been reached in the ith integration bounds (needs default TRUE)
    for(i in seq_len(n)) {
       if(NAs[i]) {
-         res1[[i]] <- list(value = NA, error = 0, numiter = 0)
+         res1[[i]] <- 
+            list(value = NA, error = 0, abserror = 0, relerror = 0, numiter = 0)
          next # => 'reached' already has the right value
       }
       ## Pick out ith row of lower and upper
@@ -931,7 +945,8 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
       up  <- upper[i,]
       ## Deal with equal bounds (result is 0 as integral over null set)
       if(any(low == up)) {
-         res1[[i]] <- list(value = 0, error = 0, numiter = 0)
+         res1[[i]] <- 
+            list(value = 0, error = 0, abserror = 0, relerror = 0, numiter = 0)
          next # => 'reached' already has the right value
       }
       ## Deal with case where components of both low and up are Inf
@@ -949,7 +964,7 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
          d <- length(low) # Update dimension and 'k.factor'
          k.factor <- rep(1, d)
          if(d == 0) {
-            res1[[i]] <- list(value = 1, error = 0, numiter = 0)
+            res1[[i]] <- list(value = 1, error = 0, abserror = 0, relerror = 0, numiter = 0)
             next
          }
          ## Update scale (for precond)
@@ -964,12 +979,14 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
       if(d == 1 && !is.na(special.mix)) {
          if(special.mix == "constant") {
             value <- pnorm(up) - pnorm(low)
-            res1[[i]] <- list(value = value, error = 0, numiter = 0)
+            res1[[i]] <- list(value = value, error = 0, abserror = 0, 
+                              relerror = 0, numiter = 0)
             next
          } else if(special.mix == "inverse.gamma") {
             df <- mix_list$param # returned by get_mix_()
             value <- pt(up, df = df) - pt(low, df = df)
-            res1[[i]] <- list(value = value, error = 0, numiter = 0)
+            res1[[i]] <- list(value = value, error = 0, abserror = 0, 
+                              relerror = 0, numiter = 0)
             next
          }
       }
@@ -987,7 +1004,8 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
                  max.iter.rqmc = control$max.iter.rqmc, increment = increment,
                  B = control$B, verbose = as.logical(verbose), ...)
       ## Check if desired precision was reached
-      reached[i] <- res1[[i]]$error <= tol
+      ## Note: 'error' is either relative or absolute, depending on 'do.reltol' 
+      reached[i] <- res1[[i]]$error <= tol 
       if(verbose >= 2 && !reached[i])
          warning(sprintf("Tolerance not reached for pair %d of integration bounds; consider increasing 'fun.eval[2]' and 'max.iter.rqmc'", i))
    } # for()
@@ -1002,7 +1020,8 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    }
    ## Return
    res <- vapply(res1, function(r) r$value, NA_real_)
-   attr(res, "error")   <- vapply(res1, function(r) r$error, NA_real_)
+   attr(res, "abs. error")   <- vapply(res1, function(r) r$abserror, NA_real_)
+   attr(res, "rel. error")   <- vapply(res1, function(r) r$relerror, NA_real_)
    attr(res, "numiter") <- vapply(res1, function(r) r$numiter, NA_real_)
    res
 }
@@ -1068,11 +1087,9 @@ pnvmix1d <- function(upper, lower = rep(-Inf, n), mix_, use.q = TRUE, do.ant = T
    ## different from 1 (0) such that qnorm(u) is not +/- Inf
    ZERO <- .Machine$double.eps # for symmetry reasons (-8/+8), use this instead of .Machine$double.xmin
    ONE  <- 1-.Machine$double.neg.eps
-   ## If method == sobol, we want the same random shifts in each iteration below,
-   ## this is accomplished by reseting to the "original" seed
+   ## If method == sobol, we want the same random shifts in each iteration below
    if(method == "sobol") {
-      if(!exists(".Random.seed")) runif(1) # dummy to generate .Random.seed
-      seed <- .Random.seed # need to reset to the seed later if a Sobol sequence is being used.
+      seeds_ <- sample(1:(1e5*B), B) # B seeds for 'sobol()'
    }
    ## Additional variables needed if the increment chosen is "doubling"
    if(increment == "doubling") {
@@ -1087,24 +1104,24 @@ pnvmix1d <- function(upper, lower = rep(-Inf, n), mix_, use.q = TRUE, do.ant = T
    ## the desired probability are calculated.
    while(max(error) > tol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
    {
-      if(method == "sobol" && numiter > 0)
-         .Random.seed <<- seed # reset seed to have the same shifts in sobol(...)
-      ## Get B RQCM estimates
+
+            ## Get B RQCM estimates
       for(b in 1:B)
       {
          ## 2.1 Get the point set ###########################################
-         
          ## U will contain realizations of 1 / sqrt(W):
          U <- if(use.q){
             U <- switch(method,
                         "sobol" = {
                            if(increment == "doubling") {
                               qrng::sobol(n = current.n, d = 1,
-                                          randomize = TRUE,
+                                          randomize = "digital.shift",
+                                          seed = seeds_[b], 
                                           skip = (useskip * current.n))
                            } else {
                               qrng::sobol(n = current.n, d = 1,
-                                          randomize = TRUE,
+                                          randomize = "digital.shift",
+                                          seed = seeds_[b], 
                                           skip = (numiter * current.n))
                            }
                         },
@@ -1121,9 +1138,7 @@ pnvmix1d <- function(upper, lower = rep(-Inf, n), mix_, use.q = TRUE, do.ant = T
             1 / sqrt(mix_(current.n))
          }
          
-         
          ## 2.2 Evaluate the integrand at the (next) point set ##############
-         
          next.estimate <- 
             if(do.ant){
                colMeans( 
@@ -1134,7 +1149,6 @@ pnvmix1d <- function(upper, lower = rep(-Inf, n), mix_, use.q = TRUE, do.ant = T
             }
          
          ## 2.3 Update RQMC estimates #######################################
-         
          rqmc.estimates[b, ] <-
             if(increment == "doubling") {
                ## In this case both, rqmc.estimates[b] and
@@ -1165,7 +1179,6 @@ pnvmix1d <- function(upper, lower = rep(-Inf, n), mix_, use.q = TRUE, do.ant = T
             current.n <- 2 * current.n
          }
       }
-      
       ## Update error depending on 'do.reltol'
       error <- if(!do.reltol) { # absolute error
          CI.factor.sqrt.B * apply(rqmc.estimates, 2, sd)
@@ -1196,9 +1209,17 @@ pnvmix1d <- function(upper, lower = rep(-Inf, n), mix_, use.q = TRUE, do.ant = T
    }
    ## Obtain estimates
    res <- colMeans(rqmc.estimates)
-   attr(res, "error") <- error
+   ## Compute absolute and relative error for return 
+   abserror <- if(do.reltol){
+      relerror <- error
+      error * res 
+   } else {
+      relerror <- error / res # 'error' is absolute error
+      error 
+   }
+   ## Assign attributes and return 
+   attr(res, "abs. error") <- abserror
+   attr(res, "rel. error") <- relerror
    attr(res, "numiter") <- numiter
-   
-   ## Return
    res
 }

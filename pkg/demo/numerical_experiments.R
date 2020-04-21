@@ -151,7 +151,7 @@ pnvmix_testing_abserr <- function(qmix, nu, d, n, max.fun.evals, n_init = 2^6,
                                        fun.eval = c(n_init, max.fun.evals[k]), 
                                        method = method[l], precond = precond[m],
                                        max.iter.rqmc = 1e8), 
-                               verbose = FALSE), "error") # don't suppress warnings 
+                               verbose = FALSE), "abs. error") # don't suppress warnings 
                   } # for(m in seq_along(preconds))
                } # for(l in seq_along(methods))
             } # for(k in seq_along(max.fun.evals)) 
@@ -704,7 +704,7 @@ dnvmix_testing <- function(d = 10, n = 1000, qmix = "inverse.gamma",
                         <- dnvmix(x, qmix = qmix.[[i]], loc = loc, scale = scale, 
                                   log = TRUE, control = control.doAdapt, 
                                   nu = nu.dens[i], verbose = verbose))[1] 
-         error.doAdapt <- attr(ldens.est.doAdapt, "error")
+         error.doAdapt <- attr(ldens.est.doAdapt, "abs. error")
       } else {
          CPUused.doAdapt   <- NA
          ldens.est.doAdapt <- rep(NA, n)
@@ -717,7 +717,7 @@ dnvmix_testing <- function(d = 10, n = 1000, qmix = "inverse.gamma",
                         <- dnvmix(x, qmix = qmix.[[i]], loc = loc, scale = scale, 
                                   log = TRUE, control = control.noAdapt, 
                                   nu = nu.dens[i], verbose = verbose))[1]
-         error.noAdapt <- attr(ldens.est.noAdapt, "error")
+         error.noAdapt <- attr(ldens.est.noAdapt, "abs. error")
       } else {
          CPUused.noAdapt   <- NA
          ldens.est.noAdapt <- rep(NA, n)

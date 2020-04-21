@@ -5,7 +5,7 @@
   Algorithm specific parameters for functionalities in the \code{nvmix}
   package, notably for \code{\link{fitnvmix}()}, \code{\link{dnvmix}()}, 
   \code{\link{pnvmix}()}, \code{\link{qnvmix}()}, \code{\link{pgammamix}()}, 
-  \code{\link{dgammamix}()} and \code{\link{ESnvmix}()}.
+  \code{\link{dgammamix}()} and \code{\link{ES_nvmix}()}.
 }
 \usage{
 get_set_param(control = list())
@@ -19,7 +19,7 @@ get_set_param(control = list())
   than 30 elements specifying algorithm specific parameters for the
   functions \code{\link{fitnvmix}()}, \code{\link{dnvmix}()}, 
   \code{\link{pnvmix}()}, \code{\link{qnvmix}()}, \code{\link{pgammamix}()}, 
-  \code{\link{dgammamix}()} and \code{\link{ESnvmix}()}.
+  \code{\link{dgammamix}()} and \code{\link{ES_nvmix}()}.
   Parameter values passed to \code{get_set_param()} via the
   \code{control} argument overwrite the defaults; for parameters not
   specified in the \code{control} argument, the default values are being
@@ -72,7 +72,7 @@ get_set_param(control = list())
           in the RQMC approach; the default is \code{15}.}
       }
     }
-    \item{For \code{pnvmix()}:}{
+    \item{For \code{pnvmix()} and \code{pgnvmix()}:}{
       \describe{
 	\item{\code{pnvmix.abstol}, \code{pnvmix.reltol}}{non-negative \code{\link{numeric}}
           providing the relative/absolute precision required for the distribution
@@ -105,7 +105,7 @@ get_set_param(control = list())
           defaults to \code{1e-9}.}
       }
     }
-    \item{For \code{dnvmix()}:}{
+    \item{For \code{dnvmix()} and \code{dgnvmix()}:}{
       \describe{
 	\item{\code{dnvmix.reltol}, \code{dnvmix.abstol}}{non-negative 
 	\code{\link{numeric}} providing the relative/absolute precision for the *log-*
@@ -131,7 +131,7 @@ get_set_param(control = list())
           \code{dnvmix.tol.int.lower} and \eqn{10^{-c} g_{max}}, where
           \eqn{g_{max}} is the theoretical maximum of the integrand and \eqn{c}
           is the specified \code{dnvmix.order.lower}. Default to \code{1e-30}
-	  and \code{10}, respectively.}
+	  and \code{20}, respectively.}
 	\item{\code{dnvmix.tol.bisec}}{\code{\link{numeric}} \code{vector} of
           length 3 specifying bisection tolerances in the adaptive RQMC algorithm.
           First/second/third element specify the tolerance on \eqn{u}, \eqn{W} and
@@ -221,11 +221,11 @@ get_set_param(control = list())
         \code{newton.df.reltol}. Defaults to \code{5e-3}.}
        }
     }
-    \item{For \code{ESnvmix()}:}{
+    \item{For \code{ES_nvmix()}:}{
       \describe{
         \item{\code{riskmeasures.abstol, riskmeasures.reltol}}{
         \code{\link{numeric}}, absolute or relative error tolerance for 
-        estimating riskmeasures, notably for \code{ESnvmix()}. By default,
+        estimating riskmeasures, notably for \code{ES_nvmix()}. By default,
          \code{riskmeasures.reltol=1e-2} and \code{riskmeasures.abstol=NA},
          so that a relative tolerance is used.}
        }
@@ -243,7 +243,7 @@ get_set_param(control = list())
 \seealso{
   \code{\link{fitnvmix}()}, \code{\link{dnvmix}()}, 
   \code{\link{pnvmix}()}, \code{\link{qnvmix}()}, \code{\link{pgammamix}()}, 
-  \code{\link{dgammamix}()}, \code{\link{ESnvmix}()}
+  \code{\link{dgammamix}()}, \code{\link{ES_nvmix}()}
 }
 \examples{
 get_set_param() # obtain defaults

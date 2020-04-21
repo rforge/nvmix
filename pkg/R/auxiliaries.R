@@ -185,7 +185,8 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
    if(is.grpd & !use.q)
       stop("In the grouped case, argument 'qmix' must be provided")
    ## Calling functions for which 'qmix' *must* be provided (due to adaptiveness)
-   need.qmix <- c("dnvmix", "dgammamix", "fitnvmix", "qnvmix", "qgammamix", "ESnvmix")
+   need.qmix <- c("dnvmix", "dgammamix", "fitnvmix", "qnvmix", "qgammamix", "ESnvmix",
+                  "dgnvmix", "pgnvmix()")
    if(any(callingfun == need.qmix) & !use.q) 
       stop(paste(callingfun, "()", " needs argument 'qmix' to be provided", sep = ""))
    special.mix   <- NA # special mixing variable? TBD below

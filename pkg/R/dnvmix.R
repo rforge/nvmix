@@ -49,6 +49,7 @@ merge_m <- function(A, B, sort.by = 1){
 ##' @note NO checking is done for efficiency reasons
 logsumexp <- function(M)
 {
+   if(!is.matrix(M)) M <- rbind(M) 
    cmax <- apply(M, 2, max)
    cmax + log(colSums(exp( M - rep(cmax, each = dim(M)[1]))))
 }
@@ -77,7 +78,7 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
    ## Initialize output object
    n          <- length(maha2.2)
    ldensities <- rep(NA, n)
-   errors     <- rep(NA, n)
+   error      <- rep(NA, n)
    numiters   <- rep(NA, n)
    ## Grab 'UsWs'; store them in vectors and sort
    stopifnot(is.matrix(UsWs), dim(UsWs)[2] == 2) # sanity check 
@@ -187,7 +188,7 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
             rbind(U.W.lint[1:index.first.u,], 
                   cbind(addvalues[order.add.us, 1, drop = FALSE], WsToAdd,
                         curr.lconst - log(WsToAdd)*k/2 - curr.maha2.2/WsToAdd),
-                            U.W.lint[(index.first.u+1):numObs,])
+                  U.W.lint[(index.first.u+1):numObs,])
          ## Update length (=nrow) of 'U.W.lint'
          numObs <- numObs + numiter
       } 
@@ -265,7 +266,7 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
             numiter <- 0
             ## Matrix to store additional u's, W's, l.integrand's generated:
             addvalues <- matrix(NA, ncol = 3,
-                                     nrow = control$dnvmix.max.iter.bisec)
+                                nrow = control$dnvmix.max.iter.bisec)
             while(!convd && numiter < control$dnvmix.max.iter.bisec) {
                numiter <- numiter + 1
                ## Next point to check
@@ -305,7 +306,7 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
             ## => Special case where no obs > threshold
             ## => Use all obs and Riemann for this region
             weights <- abs(c(U.W.lint[1, 1], U.W.lint[2:numObs, 1] -
-                            U.W.lint[1:(numObs-1), 1]))
+                                U.W.lint[1:(numObs-1), 1]))
             logsumexp(as.matrix(log(weights) + 
                                    (c(-Inf, U.W.lint[1:(numObs-1), 3]) + 
                                        U.W.lint[1:numObs, 3])/2, ncol = 1))
@@ -317,8 +318,8 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
                ## Case 1: We have >1 observations in (0, u.left)
                last_sml <- which(u_sml)[sum_u_sml]
                weights <- abs(c(U.W.lint[1, 1], 
-                            U.W.lint[2:last_sml, 1] -
-                               U.W.lint[1:(last_sml-1), 1]))
+                                U.W.lint[2:last_sml, 1] -
+                                   U.W.lint[1:(last_sml-1), 1]))
                logsumexp(as.matrix(log(weights) + 
                                       (c(-Inf, U.W.lint[1:(last_sml-1), 3]) + 
                                           U.W.lint[1:last_sml, 3])/2, ncol = 1))
@@ -352,8 +353,8 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
                ## Case 1: We have >1 observations in (u.right, 1)
                first_gtr <- which(u_gtr)[1]
                weights <- abs(c(U.W.lint[ (first_gtr+1):numObs, 1] -
-                               U.W.lint[first_gtr:(numObs-1), 1],
-                            .Machine$double.neg.eps))
+                                   U.W.lint[first_gtr:(numObs-1), 1],
+                                .Machine$double.neg.eps))
                logsumexp(as.matrix(log(weights) + 
                                       (c(U.W.lint[(first_gtr+1):numObs, 3], -Inf) + 
                                           U.W.lint[first_gtr:numObs, 3])/2, ncol = 1))
@@ -391,13 +392,13 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
       ## 2.4 Combine ###########################################################
       ldensities[ind] <- 
          logsumexp(rbind(ldens.left, ldens.right, ldens.stratum, deparse.level = 0))
-      errors[ind]     <- error
+      error[ind]     <- error
       numiters[ind]   <- rqmc.numiter
    }
    
    ## 3. Return ################################################################
-
-   list(ldensities = ldensities, error = errors, numiter = numiters)
+   
+   list(ldensities = ldensities, error = error, numiter = numiters)
 }
 
 
@@ -446,7 +447,7 @@ densmix_rqmc <- function(qW, maha2.2, lconst, d, k = d, control, u.left = 0,
    }
    ## Store seed if 'sobol' is used to get the same shifts later:
    if(control$method == "sobol") {
-      seeds_ <- sample(1:(1e3*B), B) # B seeds for 'sobol()'
+      seeds_ <- sample(1:(1e5*B), B) # B seeds for 'sobol()'
    }
    ## Additional variables needed if the increment chosen is "dblng"
    if(dblng) {
@@ -522,7 +523,7 @@ densmix_rqmc <- function(qW, maha2.2, lconst, d, k = d, control, u.left = 0,
                ## In this case both, rqmc.estimates[b,] and
                ## next.estimate depend on n.current points
                .Call("logsumexp2",
-                     a = as.double(rqmc.estimates[b,]),
+                     a = as.double(rqmc.estimates[b, ]),
                      b = as.double(next.estimate),
                      n = as.integer(n)) - log(denom)
             } else {
@@ -554,21 +555,21 @@ densmix_rqmc <- function(qW, maha2.2, lconst, d, k = d, control, u.left = 0,
       ## Update error. The following is slightly faster than 'apply(..., 2, var)'
       ldensities <- logsumexp(rqmc.estimates) - log(B) # performs better than .colMeans
       vars <- .colMeans((rqmc.estimates - rep(ldensities, each = B))^2, B, n, 0)
-      errors <- if(!do.reltol) { # absolute error
+      error <- if(!do.reltol) { # absolute error
          sqrt(vars)*CI.factor.sqrt.B
       } else { # relative error
          sqrt(vars)/abs(ldensities)*CI.factor.sqrt.B
       }
-      max.error <- max(errors)
+      max.error <- max(error)
    } # while()
    
    ## 3. Return ################################################################
    
    if(return.all) {
-      list(ldensities = ldensities, numiter = numiter, error = errors,
+      list(ldensities = ldensities, numiter = numiter, error = error,
            UsWs = UsWs[1:curr.lastrow,])
    } else {
-      list(ldensities = ldensities, numiter = numiter, error = errors)
+      list(ldensities = ldensities, numiter = numiter, error = error)
    }
 }
 
@@ -629,11 +630,18 @@ densmix_ <- function(qW, maha2.2, lconst, d, control, verbose)
          if(any(error[setdiff(1:length(error), whichNA)] > tol)) # 'setdiff' needed if 'whichNA' is empty
             warning("Tolerance not reached for all inputs; consider increasing 'max.iter.rqmc' in the 'control' argument.")
       }
-      ## Transform error back to *absolute* errors:
-      if(do.reltol) error <- error * abs(ldens)
    }
+   ## Compute relative/absolute error for return 
+   if(do.reltol){
+      relerror <- error
+      abserror <- error * abs(ldens)
+   } else {
+      abserror <- error
+      relerror <- error/abs(ldens)
+   } 
    ## Return
-   list(ldensities = ldens, numiter = numiter, error = error)
+   list(ldensities = ldens, numiter = numiter, abserror = abserror, 
+        relerror = relerror)
 }
 
 
@@ -680,6 +688,8 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
    special.mix   <- mix_list[[2]] # string or NA
    ## Build result object (log-density)
    lres <- rep(-Inf, (n <- nrow(x))) # n-vector of results
+   abserror <- rep(NA, n)
+   relerror <- rep(NA, n)
    notNA <- rowSums(is.na(x)) == 0
    lres[!notNA] <- NA
    x <- x[notNA,, drop = FALSE] # non-missing data (rows)
@@ -723,7 +733,8 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
                lgamma(alpha+d/2)
          })
       if(!log) lres <- exp(lres) # already exponentiate
-      error <- rep(0, length(maha2))
+      abserror <- rep(0, length(maha2))
+      relerror <- rep(0, length(maha2)) # no error here 
    } else {
       ## General case of a multivariate normal variance mixture (=> RQMC)
       ## Prepare inputs for densmix_()
@@ -736,13 +747,17 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
       ## Call internal densmix_ (which itself calls C-Code and handles warnings)
       ests <- densmix_(qW, maha2.2 = maha2.2, lconst = lconst,
                        d = d, control = control, verbose = verbose)
-      ## Grab results, correct 'error' and 'lres' if 'log = FALSE'
+      ## Grab results
       lres[notNA] <- ests$ldensities[order(ordering.maha)]
-      error <- if(log) {
-         ests$error[order(ordering.maha)]
-      } else {
-         lres <- exp(lres)
-         ests$error[order(ordering.maha)]*pmax(lres[notNA], 1)
+      relerror[notNA] <- ests$relerror[order(ordering.maha)]
+      abserror[notNA] <- ests$abserror[order(ordering.maha)]
+      ## Correct results and error if 'log = FALSE'
+      if(!log){
+         lres[notNA] <- exp(lres[notNA])
+         ## CI for mu: exp(logmu_hat +/- abserr(logmu_hat))) = (lower, upper)
+         ## => compute max. error on mu_hat as max( (upper - mu), (mu - lower) ) 
+         relerror[notNA] <- max( (exp(abserror[notNA]) - 1), (1 - exp(-abserror[notNA])) )
+         abserror[notNA] <- lres[notNA] * relerror[notNA] 
       }
       numiter <- ests$numiter
    }
@@ -750,7 +765,8 @@ dnvmix <- function(x, qmix, loc = rep(0, d), scale = diag(d),
    ## 3. Return ################################################################
    
    ## Note that 'lres' was exponentiated already if necessary.
-   attr(lres, "error")   <- error # these are absolute errors, no matter what!
+   attr(lres, "abs. error") <- abserror 
+   attr(lres, "rel. error") <- relerror 
    attr(lres, "numiter") <- numiter
    lres
 }

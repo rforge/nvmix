@@ -91,16 +91,15 @@ quantile_ <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
    ## 2 Set up helper function 'est.cdf.dens()' ###############################
    
    ## Initialize first pointset needed for RQMC approach
-   if(method == "sobol") {
-      if(!exists(".Random.seed")) runif(1)
-      seed <- .Random.seed
-   }
+   if(method == "sobol") seeds_ <- sample(1:(1e5*B), B)  # B seeds for 'sobol()'
+   
    ## Get realizations of W and sqrt(W)
    ## Initial point-set with B columns (each column = one shift)
    U0 <- switch(method,
                 "sobol"   = {
                    sapply(1:B, function(i)
-                      sobol(n0, d = 1, randomize = TRUE))
+                      sobol(n0, d = 1, randomize = "digital.shift", 
+                            seed = seeds_[i]))
                 },
                 "gHalton" = {
                    sapply(1:B, function(i)
@@ -167,13 +166,12 @@ quantile_ <- function(u, qmix, which = c('nvmix1', 'maha2'), d = 1,
          iter.rqmc <- 1
          while(!precision.reached && 
                iter.rqmc < control$newton.df.max.iter.rqmc) {
-            ## Reset seed and get another n0 realizations
-            if(method == "sobol") .Random.seed <<- seed
-            
+            ## Get another n0 realizations
             U.next <- switch(method,
                              "sobol"   = {
                                 sapply(1:B, function(i)
-                                   sobol(n0, d = 1, randomize = TRUE, 
+                                   sobol(n0, d = 1, randomize = "digital.shift",
+                                         seed = seeds_[i], 
                                          skip = current.n))
                              },
                              "gHalton" = {

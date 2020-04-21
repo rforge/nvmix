@@ -24,9 +24,10 @@ importFrom("graphics",
 export("dnvmix", "pnvmix", "rnvmix", "pgnvmix", "rgnvmix",
        "fitnvmix", "qnvmix", "qqplot_maha",
        "dStudent", "pStudent", "rStudent", "fitStudent", "pgStudent", "rgStudent", 
+       "pgStudentcop", "rgStudentcop",
        "dNorm", "pNorm", "rNorm", "fitNorm", "rNorm_sumconstr",
        "get_set_param",
        "dnvmixcop", "pnvmixcop", "rnvmixcop",
        "pStudentcop", "rStudentcop", "dStudentcop", 
        "dgammamix", "pgammamix", "qgammamix", "rgammamix",
-       "ESnvmix", "VaRnvmix")
+       "ES_nvmix", "VaR_nvmix")

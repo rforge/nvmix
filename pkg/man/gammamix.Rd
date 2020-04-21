@@ -45,9 +45,9 @@ rgammamix(n, rmix, qmix, d, method = c("PRNG", "sobol", "ghalton"),
 \value{
   \code{pgammamix()} and \code{dgammamix()} return
   a \code{\link{numeric}} \eqn{n}-vector with the computed
-  probabilities/densities and corresponding attributes \code{"error"}
-  (error estimates of the RQMC estimator) and \code{"numiter"} (number
-  of iterations).
+  probabilities/densities and corresponding attributes \code{"abs. error"}
+  and \code{"rel. error"} (error estimates of the RQMC estimator) and 
+  \code{"numiter"} (number of iterations).
 
   If \code{q.only = TRUE}, \code{qgammamix()} a vector of the same length as
   \code{u} with entries \eqn{q_i} where \eqn{q_i} satisfies
