@@ -45,6 +45,30 @@ dStudentcop <- function(u, df, scale = diag(d), log = FALSE, verbose = TRUE)
              df = df)
 }
 
+##' @title Density of the grouped t distribution
+##' @param x (n, d)-matrix of evaluation points
+##' @param groupings see ?pgnvmix() 
+##' @param df degrees of freedom > 0; if df = Inf, the normal density is returned
+##' @param loc d-vector (location != mean vector here)
+##' @param scale (d, d)-covariance matrix, positive definite (scale != covariance
+##'        matrix here)
+##' @param control list; see ?get_set_param() 
+##' @param log logical indicating whether the logarithmic density is computed
+##' @param verbose logical indicating whether a warning is given if the required
+##'        precision 'abstol' (see dnvmix()) has not been reached.
+##' @return n-vector of t_nu(loc, scale) density values
+##' @author Erik Hintz and Marius Hofert
+dgStudent <- function(x, groupings = 1:d, df, loc = rep(0, d), scale = diag(d), 
+                      control = list(), log = FALSE, verbose = TRUE)
+{
+   if(!is.matrix(x)) x <- rbind(x)
+   d <- ncol(x) # for 'loc', 'scale'
+   ## Call 'dgnvmix()'
+   dgnvmix(x, groupings = groupings, qmix = "inverse.gamma", loc = loc, 
+           scale = scale, df = df, factor = NULL, control = control, log = log,
+           verbose = verbose)
+}
+
 
 ##' @title Distribution Function of the Multivariate Student t Distribution
 ##' @param upper d-vector of upper evaluation limits

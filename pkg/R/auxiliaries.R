@@ -391,7 +391,7 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
             W. <- sapply(1:num.groups, function(i){ 
                if(hasaddArg[i]) do.call(mix_usr[[i]], append(list(u), addArgs[[i]])) else
                   do.call(mix_usr[[i]], list(u))})
-            if(!is.matrix(W.)) W. <- cbind(W.) # eg if 'u' is a 1-vector 
+            if(!is.matrix(W.)) W. <- rbind(W.) # eg if 'u' is a 1-vector 
             W.
          }
       }

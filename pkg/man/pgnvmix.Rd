@@ -132,7 +132,7 @@ pgStudent(upper, lower = matrix(-Inf, nrow = n, ncol = d), groupings = 1:d, df,
   1--21.
 }
 \seealso{
-  \code{\link{rgnvmix}()}, \code{\link{get_set_param}()}
+  \code{\link{rgnvmix}()}, \code{\link{dgnvmix}()}, \code{\link{get_set_param}()}
 }
 \examples{
 ### Examples for pgnvmix() #####################################################
