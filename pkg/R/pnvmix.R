@@ -608,8 +608,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
                }
             }
          }
-         if(!is.matrix(rtW)) rtW <- as.matrix(rtW)
-         if(!is.matrix(rtWant)) rtWant <- as.matrix(rtWant)
+         if(!is.matrix(rtW)) rtW <- cbind(rtW)
+         if(!is.matrix(rtWant)) rtWant <- cbind(rtWant)
          
          ## 2.2 Evaluate the integrand at the (next) point set ##############
          

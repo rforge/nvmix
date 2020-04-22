@@ -19,10 +19,10 @@ dStudent <- function(x, df, loc = rep(0, d), scale = diag(d),
                      factor = NULL, # needs to be triangular!
                      log = FALSE, verbose = TRUE, ...)
 {
-    if(!is.matrix(x)) x <- rbind(x)
-    d <- ncol(x) # for 'loc', 'scale'
-    dnvmix(x, qmix = "inverse.gamma", loc = loc, scale = scale,
-           factor = factor, log = log, verbose = verbose, df = df, ...)
+   if(!is.matrix(x)) x <- rbind(x)
+   d <- ncol(x) # for 'loc', 'scale'
+   dnvmix(x, qmix = "inverse.gamma", loc = loc, scale = scale,
+          factor = factor, log = log, verbose = verbose, df = df, ...)
 }
 
 ##' @title Density of the t copula 
@@ -122,13 +122,13 @@ pStudent <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
                      df, loc = rep(0, d), scale = diag(d), standardized = FALSE,
                      control = list(), verbose = TRUE)
 {
-    ## Checks (needed to get the default for 'lower' correctly)
-    if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
-    n <- nrow(upper) # number of evaluation points
-    d <- ncol(upper) # dimension
-    pnvmix(upper, lower = lower, qmix = "inverse.gamma", loc = loc, scale = scale,
-           standardized = standardized, control = control,
-           verbose = verbose, df = df)
+   ## Checks (needed to get the default for 'lower' correctly)
+   if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
+   n <- nrow(upper) # number of evaluation points
+   d <- ncol(upper) # dimension
+   pnvmix(upper, lower = lower, qmix = "inverse.gamma", loc = loc, scale = scale,
+          standardized = standardized, control = control,
+          verbose = verbose, df = df)
 }
 
 ##' @title Distribution Function of the grouped Multivariate t Distribution
@@ -149,9 +149,9 @@ pStudent <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
 ##'         (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pgStudent <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
-                     groupings = 1:d, 
-                     df, loc = rep(0, d), scale = diag(d), standardized = FALSE,
-                     control = list(), verbose = TRUE)
+                      groupings = 1:d, 
+                      df, loc = rep(0, d), scale = diag(d), standardized = FALSE,
+                      control = list(), verbose = TRUE)
 {
    ## Checks (needed to get the default for 'lower' correctly)
    if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
@@ -160,7 +160,7 @@ pgStudent <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    ## Call 'pgnvmix()' 
    pgnvmix(upper, lower = lower, groupings = groupings, qmix = "inverse.gamma", 
            loc = loc, scale = scale, standardized = standardized, control = control,
-          verbose = verbose, df = df)
+           verbose = verbose, df = df)
 }
 
 ##' @title Distribution Function of the t copula
@@ -176,7 +176,7 @@ pgStudent <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
 ##'         (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pStudentcopula <- function(upper, lower = matrix(0, nrow = n, ncol = d), df, 
-                        scale = diag(d), control = list(), verbose = TRUE)
+                           scale = diag(d), control = list(), verbose = TRUE)
 {
    ## Checks 
    if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
@@ -184,7 +184,7 @@ pStudentcopula <- function(upper, lower = matrix(0, nrow = n, ncol = d), df,
    d <- ncol(upper) # dimension
    ## Call more general pgStudentcopula() 
    pgStudentcopula(upper, lower = lower, groupings = rep(1, d), df = df, scale = scale,
-                control = control, verbose = verbose)
+                   control = control, verbose = verbose)
 }
 
 ##' @title Distribution Function of the grouped t copula 
@@ -201,8 +201,8 @@ pStudentcopula <- function(upper, lower = matrix(0, nrow = n, ncol = d), df,
 ##'         (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pgStudentcopula <- function(upper, lower = matrix(0, nrow = n, ncol = d),
-                      groupings = 1:d, df, scale = diag(d), control = list(), 
-                      verbose = TRUE)
+                            groupings = 1:d, df, scale = diag(d), control = list(), 
+                            verbose = TRUE)
 {
    ## Checks 
    if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
@@ -233,22 +233,22 @@ rStudent <- function(n, df, loc = rep(0, d), scale = diag(2),
 {
    method <- match.arg(method) 
    d <- if(!is.null(factor)) { # for 'loc', 'scale'
-             nrow(factor <- as.matrix(factor))
-         } else {
-             nrow(scale <- as.matrix(scale))
-         }
-    
-    if(method == "PRNG"){
-       ## Provide 'rmix' and no 'qmix' => typically faster
-       rnvmix(n, rmix = "inverse.gamma", 
-              loc = loc, scale = scale, factor = factor, df = df,
-              method = method, skip = skip)
-    } else {
-       ## Provide 'qmix' for inversion based methods
-       rnvmix(n, qmix = "inverse.gamma", 
-              loc = loc, scale = scale, factor = factor, df = df,
-              method = method, skip = skip)
-    }
+      nrow(factor <- as.matrix(factor))
+   } else {
+      nrow(scale <- as.matrix(scale))
+   }
+   
+   if(method == "PRNG"){
+      ## Provide 'rmix' and no 'qmix' => typically faster
+      rnvmix(n, rmix = "inverse.gamma", 
+             loc = loc, scale = scale, factor = factor, df = df,
+             method = method, skip = skip)
+   } else {
+      ## Provide 'qmix' for inversion based methods
+      rnvmix(n, qmix = "inverse.gamma", 
+             loc = loc, scale = scale, factor = factor, df = df,
+             method = method, skip = skip)
+   }
 }
 
 ##' @title Random Number Generator for the generalzied Multivariate t Distribution
@@ -287,7 +287,7 @@ rgStudent <- function(n, groupings = 1:d, df, loc = rep(0, d), scale = diag(2),
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Erik Hintz and Marius Hofert
 rgStudentcopula <- function(n, groupings = 1:d, df, scale = diag(2),
-                         method = c("PRNG", "sobol", "ghalton"), skip = 0)
+                            method = c("PRNG", "sobol", "ghalton"), skip = 0)
 {
    method <- match.arg(method) 
    d <- nrow(scale <- as.matrix(scale))
@@ -306,13 +306,13 @@ rgStudentcopula <- function(n, groupings = 1:d, df, scale = diag(2),
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Erik Hintz and Marius Hofert
 rStudentcopula <- function(n, df, scale = diag(2), 
-                        method = c("PRNG", "sobol", "ghalton"), skip = 0)
+                           method = c("PRNG", "sobol", "ghalton"), skip = 0)
 {
    d <- nrow(scale <- as.matrix(scale))
    method <- match.arg(method)
    ## Call more general 'rgStudentcop' without grouping 
    rgStudentcopula(n, groupings = rep(1, d), df = df, scale = scale, 
-                method = method, skip = skip)
+                   method = method, skip = skip)
 }
 
 
@@ -324,11 +324,11 @@ rStudentcopula <- function(n, df, scale = diag(2),
 ##' @author Marius Hofert
 fitStudent <- function(x, mix.param.bounds = c(1e-3, 1e2), ...)
 {
-    fit <- fitnvmix(x, qmix = "inverse.gamma", mix.param.bounds = mix.param.bounds, ...)
-    ## Consistency with other *Student() functions
-    nms <- names(fit)
-    nms[nms == "nu"] <- "df"
-    names(fit) <- nms
-    ## Return
-    fit
+   fit <- fitnvmix(x, qmix = "inverse.gamma", mix.param.bounds = mix.param.bounds, ...)
+   ## Consistency with other *Student() functions
+   nms <- names(fit)
+   nms[nms == "nu"] <- "df"
+   names(fit) <- nms
+   ## Return
+   fit
 }
