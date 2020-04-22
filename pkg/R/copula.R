@@ -1,4 +1,4 @@
-### d/p/rnvmixcop() ############################################################
+### d/p/rnvmixcopula() ############################################################
 
 ##' @title Density Function of a Multivariate Normal Variance Mixture Copula
 ##' @param u (n,d) matrix of evaluation points. Have to be in (0,1)
@@ -14,7 +14,7 @@
 ##' @author Erik Hintz and Marius Hofert
 ##' @return numeric vector with the computed probabilities and attributes "error"
 ##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
-dnvmixcop <- function(u, qmix, scale = diag(d), factor = NULL, control = list(),
+dnvmixcopula <- function(u, qmix, scale = diag(d), factor = NULL, control = list(),
                       verbose = FALSE, log = FALSE, ...)
 {
     ## Most arguments are checked by qnvmix() and pnvmix()
@@ -61,7 +61,7 @@ dnvmixcop <- function(u, qmix, scale = diag(d), factor = NULL, control = list(),
 ##' @author Erik Hintz and Marius Hofert
 ##' @return numeric vector with the computed probabilities and attributes "error"
 ##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
-pnvmixcop <- function(upper, lower = matrix(0, nrow = n, ncol = d), qmix, 
+pnvmixcopula <- function(upper, lower = matrix(0, nrow = n, ncol = d), qmix, 
                       scale = diag(d), control = list(), verbose = FALSE, ...)
 {
     ## Most arguments are checked by qnvmix() and pnvmix()
@@ -103,7 +103,7 @@ pnvmixcop <- function(upper, lower = matrix(0, nrow = n, ncol = d), qmix,
 ##'        in the underlying pnvmix() is not reached.
 ##' @author Erik Hintz and Marius Hofert
 ##' @return (n, d)-matrix with NVM(0, scale)-copula samples
-rnvmixcop <- function(n, qmix, scale = diag(2), factor = NULL,
+rnvmixcopula <- function(n, qmix, scale = diag(2), factor = NULL,
                       method = c("PRNG", "sobol", "ghalton"), skip = 0,
                       control = list(), verbose = FALSE, ...)
 {
@@ -116,9 +116,9 @@ rnvmixcop <- function(n, qmix, scale = diag(2), factor = NULL,
                            method = method, skip = skip, ...)
     ## Apply univariate margins
     ## Need (n,1) matrix as input so that pnvmix() gets the dimension right:
-    sample.nvmixcop <- pnvmix(upper = matrix(sample.nvmix, ncol = 1), qmix = qmix,
+    sample.nvmixcopula <- pnvmix(upper = matrix(sample.nvmix, ncol = 1), qmix = qmix,
                               scale = matrix(1), standardized = TRUE,
                               control = control, verbose = verbose, ...)
     ## Get dimensions correct and return
-    matrix(sample.nvmixcop, ncol = d)
+    matrix(sample.nvmixcopula, ncol = d)
 }

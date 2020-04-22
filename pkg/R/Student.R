@@ -36,13 +36,13 @@ dStudent <- function(x, df, loc = rep(0, d), scale = diag(d),
 ##' @param ... additional arguments passed to the underlying dnvmix()
 ##' @return n-vector of t_nu(loc, scale) density values
 ##' @author Erik Hintz and Marius Hofert
-dStudentcop <- function(u, df, scale = diag(d), log = FALSE, verbose = TRUE)
+dStudentcopula <- function(u, df, scale = diag(d), log = FALSE, verbose = TRUE)
 {
    if(!is.matrix(u)) u <- rbind(u)
    d <- ncol(u) # for 'loc', 'scale'
    ## Call 'dnvmixcop'
-   dnvmixcop(u, qmix = "inverse.gamma", scale = scale, log = log, verbose = verbose,
-             df = df)
+   dnvmixcopula(u, qmix = "inverse.gamma", scale = scale, log = log, verbose = verbose,
+                df = df)
 }
 
 ##' @title Density of the grouped t distribution
@@ -69,6 +69,38 @@ dgStudent <- function(x, groupings = 1:d, df, loc = rep(0, d), scale = diag(d),
            verbose = verbose)
 }
 
+##' @title Density Function of the grouped t copula  
+##' @param u (n, d) matrix of evaluation points 
+##' @param groupings ?pgnvmix() 
+##' @param df see ?pgStudent()
+##' @param scale (d, d)-covariance matrix (scale != covariance matrix here)
+##' @param control ?get_set_param() 
+##' @param verbose logical indicating whether a warning is given if the required
+##'        precision 'abstol' (see dnvmix()) has not been reached.
+##' @param log logical if log-density required         
+##' @return numeric vector with the computed probabilities and attributes "error"
+##'         (error estimate of the RQMC estimator) and "numiter"
+##'         (number of iterations)
+##' @author Erik Hintz and Marius Hofert
+dgStudentcopula <- function(u, groupings = 1:d, df, scale = diag(d), 
+                            control = list(), verbose = TRUE, log = FALSE)
+{
+   ## Checks 
+   if(!is.matrix(u)) u <- rbind(u)
+   d <- ncol(u) 
+   ## Compute quantiles
+   qu <- sapply(1:d, function(i) qt(u[, i], df = df[groupings[i]]))
+   if(!is.matrix(qu)) qu <- rbind(qu)
+   num <- dgnvmix(qu, qmix = "inverse.gamma", scale = scale, df = df,
+                  groupings = groupings, verbose = verbose, control = control,
+                  log = TRUE) # length(u) vector 
+   ## Matrix with marginal density applied on the columns of 'qu' 
+   temp <- sapply(1:d, function(i) dt(qu[, i], df = df[groupings[i]], log = TRUE))
+   if(!is.matrix(temp)) temp <- rbind(temp)
+   denom <- rowSums(temp)
+   ## Return 
+   if(log) exp(num - denom) else num - denom 
+}
 
 ##' @title Distribution Function of the Multivariate Student t Distribution
 ##' @param upper d-vector of upper evaluation limits
@@ -99,7 +131,7 @@ pStudent <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
            verbose = verbose, df = df)
 }
 
-##' @title Distribution Function of the generalized/grouped Multivariate t Distribution
+##' @title Distribution Function of the grouped Multivariate t Distribution
 ##' @param upper d-vector of upper evaluation limits
 ##' @param lower d-vector of lower evaluation limits
 ##' @param groupings ?pgnvmix() 
@@ -143,19 +175,19 @@ pgStudent <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
 ##'         (error estimate of the RQMC estimator) and "numiter"
 ##'         (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
-pStudentcop <- function(upper, lower = matrix(0, nrow = n, ncol = d), df, 
+pStudentcopula <- function(upper, lower = matrix(0, nrow = n, ncol = d), df, 
                         scale = diag(d), control = list(), verbose = TRUE)
 {
    ## Checks 
    if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
    n <- nrow(upper) # number of evaluation points
    d <- ncol(upper) # dimension
-   ## Call more general pgStudentcop() 
-   pgStudentcop(upper, lower = lower, groupings = rep(1, d), df = df, scale = scale,
+   ## Call more general pgStudentcopula() 
+   pgStudentcopula(upper, lower = lower, groupings = rep(1, d), df = df, scale = scale,
                 control = control, verbose = verbose)
 }
 
-##' @title Distribution Function of the generalized/grouped Multivariate t Distribution
+##' @title Distribution Function of the grouped t copula 
 ##' @param upper d-vector of upper evaluation points in [0,1]^d
 ##' @param lower d-vector of lower evaluation limits in [0,1]^d
 ##' @param groupings ?pgnvmix() 
@@ -168,7 +200,7 @@ pStudentcop <- function(upper, lower = matrix(0, nrow = n, ncol = d), df,
 ##'         (error estimate of the RQMC estimator) and "numiter"
 ##'         (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
-pgStudentcop <- function(upper, lower = matrix(0, nrow = n, ncol = d),
+pgStudentcopula <- function(upper, lower = matrix(0, nrow = n, ncol = d),
                       groupings = 1:d, df, scale = diag(d), control = list(), 
                       verbose = TRUE)
 {
@@ -183,6 +215,7 @@ pgStudentcop <- function(upper, lower = matrix(0, nrow = n, ncol = d),
    pgnvmix(upper_, lower = lower_, groupings = groupings, qmix = "inverse.gamma", 
            scale = scale, control = control, verbose = verbose, df = df)
 }
+
 
 ##' @title Random Number Generator for the Multivariate Student t Distribution
 ##' @param n sample size
@@ -253,7 +286,7 @@ rgStudent <- function(n, groupings = 1:d, df, loc = rep(0, d), scale = diag(2),
 ##' @param scale (d, d)- correlation matrix
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Erik Hintz and Marius Hofert
-rgStudentcop <- function(n, groupings = 1:d, df, scale = diag(2),
+rgStudentcopula <- function(n, groupings = 1:d, df, scale = diag(2),
                          method = c("PRNG", "sobol", "ghalton"), skip = 0)
 {
    method <- match.arg(method) 
@@ -272,13 +305,13 @@ rgStudentcop <- function(n, groupings = 1:d, df, scale = diag(2),
 ##' @param scale (d, d)- correlation matrix
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Erik Hintz and Marius Hofert
-rStudentcop <- function(n, df, scale = diag(2), 
+rStudentcopula <- function(n, df, scale = diag(2), 
                         method = c("PRNG", "sobol", "ghalton"), skip = 0)
 {
    d <- nrow(scale <- as.matrix(scale))
    method <- match.arg(method)
    ## Call more general 'rgStudentcop' without grouping 
-   rgStudentcop(n, groupings = rep(1, d), df = df, scale = scale, 
+   rgStudentcopula(n, groupings = rep(1, d), df = df, scale = scale, 
                 method = method, skip = skip)
 }
 
