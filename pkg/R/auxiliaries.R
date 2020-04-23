@@ -21,9 +21,9 @@ get_set_param <- function(control = list())
       dnvmix.doAdapt = TRUE,
       dnvmix.tol.int.lower = 1e-30,
       dnvmix.order.lower = 10,
-      dnvmix.tol.bisec = c(1e-16, 1e-1, 1e-1),
+      dnvmix.tol.bisec = c(1e-6, 1e-1, 1e-1),
       dnvmix.tol.stratlength = 1e-20,
-      dnvmix.max.iter.bisec = 50,
+      dnvmix.max.iter.bisec = 25,
       ## For pgammamix:
       pgammamix.reltol = NA,
       pgammamix.abstol = 1e-3,
