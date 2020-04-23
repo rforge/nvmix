@@ -177,7 +177,7 @@ P <- cov2cor(A \%*\% t(A))
 ## Evaluate a t_{1/2} distribution function
 a <- -3 * runif(d) * sqrt(d) # random lower limit
 b <-  3 * runif(d) * sqrt(d) # random upper limit
-df <- 0.5 # note that this is *non-integer*
+df <- 1.5 # note that this is *non-integer*
 set.seed(1)
 pt1 <- pnvmix(b, lower = a, qmix = "inverse.gamma", df = df, scale = P)
 
@@ -230,7 +230,7 @@ pn <- pnvmix(upper, qmix = "constant", scale = scale) # multivariate normal
 pt <- pnvmix(upper, qmix = "inverse.gamma", scale = scale, df = df) # multivariate t
 
 stopifnot(all.equal(pn, 0.8581, tol = 1e-3, check.attributes = FALSE))
-stopifnot(all.equal(pt, 0.6649, tol = 1e-3, check.attributes = FALSE))
+stopifnot(all.equal(pt, 0.7656, tol = 1e-3, check.attributes = FALSE))
 
 ## Evaluate a Exp(1)-mixture
 ## Specify the mixture distribution parameter
