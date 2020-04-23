@@ -443,6 +443,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
 ##' @param increment see details in ?pnvmix
 ##' @param B see details in ?pnvmix
 ##' @param verbose see ?pnvmix
+##' @param seeds  B - vector with integer seeds for 'sobol()'    
 ##' @param ... see details in ?pnvmix
 ##' @return list of length 5:
 ##'         - value: computed probability
@@ -461,7 +462,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
                     method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
                     tol = 1e-3, do.reltol = FALSE, CI.factor,
                     fun.eval, max.iter.rqmc, increment = c("doubling", "num.init"),
-                    B = 15,  verbose = TRUE, ...)
+                    B = 15,  verbose = TRUE, seeds = NULL, ...)
 {
    numgroups <- length(unique(groupings))
    rank <- length(k.factor)
@@ -512,8 +513,10 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
    ## (smallest) number different from 1 (0) such that qnorm(u) is not +/- Inf
    ZERO <- .Machine$double.xmin
    ONE  <- 1 - .Machine$double.neg.eps
-   ## Sample 'B' seeds for 'sobol(..., seed = seeds_[b])' to get the same shifts 
-   if(method == "sobol") seeds_ <- sample(1:(1e5*B), B) # B seeds for 'sobol()'
+   ## Sample 'B' seeds for 'sobol(..., seed = seeds[b])' to get the same shifts 
+   if(method == "sobol"){
+      if(is.null(seeds)) seeds <- sample(1:(1e3*B), B) else stopifnot(length(seeds) == B)
+   } 
    ## Additional variables needed if the increment chosen is "doubling"
    if(increment == "doubling") {
       if(method == "sobol") useskip <- 0
@@ -542,12 +545,12 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
                            if(increment == "doubling") {
                               qrng::sobol(n = current.n, d = rank - 1,
                                           randomize = "digital.shift",
-                                          seed = seeds_[b],
+                                          seed = seeds[b],
                                           skip = (useskip * current.n))
                            } else {
                               qrng::sobol(n = current.n, d = rank - 1,
                                           randomize = "digital.shift",
-                                          seed = seeds_[b],
+                                          seed = seeds[b],
                                           skip = (numiter * current.n))
                            }
                         },
@@ -568,12 +571,12 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
                            if(increment == "doubling") {
                               qrng::sobol(n = current.n, d = rank,
                                           randomize = "digital.shift",
-                                          seed = seeds_[b],
+                                          seed = seeds[b],
                                           skip = (useskip * current.n))
                            } else {
                               qrng::sobol(n = current.n, d = rank,
                                           randomize = "digital.shift",
-                                          seed = seeds_[b],
+                                          seed = seeds[b],
                                           skip = (numiter * current.n))
                            }
                         },
@@ -617,10 +620,10 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
             if(d == 1) {
                ## If d=1, use pnorm(); normal + t in d = 1 already addressed 
                if(do.ant){
-                  mean( (pnorm(upper/rtW[groupings]) - pnorm(lower/rtW[groupings]) + 
-                            pnorm(upper/rtWant[groupings]) - pnorm(lower/rtWant[groupings])) / 2)
+                  mean( (pnorm(upper/rtW[, groupings]) - pnorm(lower/rtW[, groupings]) + 
+                            pnorm(upper/rtWant[, groupings]) - pnorm(lower/rtWant[, groupings])) / 2)
                } else {
-                  mean(pnorm(upper/rtW[groupings]) - pnorm(lower/groupings))
+                  mean(pnorm(upper/rtW[, groupings]) - pnorm(lower/rtW[, groupings]))
                }
             } else {
                .Call("eval_nvmix_integral",
@@ -724,7 +727,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
 pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), 
                    qmix, rmix, 
                    loc = rep(0, d), scale = diag(d), standardized = FALSE,
-                   control = list(), verbose = TRUE, ...)
+                   control = list(), verbose = TRUE,  ...)
 {
    ## Checks
    if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
@@ -796,6 +799,7 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    special.mix   <- mix_list$special.mix
    use.q         <- mix_list$use.q
    mean.sqrt.mix <- mix_list$mean.sqrt.mix
+   numgroups     <- length(unique(groupings)) # number of groups 
    ## Check 'method': The default depends on wether 'rmix' or 'qmix' was provided
    meth.prov <- if(!use.q & length(control)>0 & any(names(control) == "method")){
       control$method
@@ -811,6 +815,8 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    ## Grab the following variables for readability
    method    <- control$method
    increment <- control$increment
+   ## Generate 'B' seeds for sobol(.., seed = seeds[b])
+   seeds <- if(method == "sobol") sample(1:1e3, control$B) else NULL 
    ## Absolute or relative precision required?
    tol <- if(is.null(control$pnvmix.abstol)) {
       ## Set tol to <0 so that algorithm runs until 'fun.eval[2]'
@@ -826,14 +832,15 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    }
    ## If d = 1, call 'pnvmix1d()' which is truly *vectorized* (=> no variable reordering)
    ## Case of normal and t dist'ns handled below with 'pnorm()' and 'pt()' 
-   if(d == 1 && (is.na(special.mix) || special.mix == "pareto")) {
+   if(d == 1 & (is.na(special.mix) || special.mix == "pareto")) {
       return(pnvmix1d(upper = as.vector(upper), lower = as.vector(lower),
                       mix_ = mix_, use.q = use.q, do.ant = do.ant, 
                       loc = loc, scale = as.numeric(scale),
                       standardized = standardized, method = method,tol = tol, 
                       do.reltol = do.reltol, CI.factor = control$CI.factor,
                       fun.eval = control$fun.eval, max.iter.rqmc = control$max.iter.rqmc,
-                      increment = increment, B = control$B, verbose = verbose))
+                      increment = increment, B = control$B, verbose = verbose,
+                      seeds = seeds))
    }
    ## Grab / approximate mean.sqrt.mix, which will be needed for preconditioning
    ## in pnvmix1(). This only depends on 'qmix', hence it is done (once) here in pnvmix.
@@ -915,18 +922,18 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
       k.factor <- rep(1, d)
       ## Standardize 'scale', 'lower', 'upper', 'factor' ('loc' was already taken care of)
       if(!standardized) {
-         row.scales     <- diag(factor) # diagonal of cholesky factor
-         row.scales.inv <- 1/row.scales # d-vector
+         row.scales    <- diag(scale) # diagonal of cholesky factor
+         rt.scales.inv <- sqrt(1/row.scales) # d-vector
          ## The following is equivalent but faster than
          ## 'scale <- diag(row.scales.inv) %*% scale %*% diag(row.scales.inv)'
          ## [http://comisef.wikidot.com/tip:diagonalmatrixmultiplication]
-         scale  <- outer(row.scales.inv, row.scales.inv) * scale # standardize scale
-         factor <- matrix(rep(row.scales.inv, each = d),
+         scale  <- outer(rt.scales.inv, rt.scales.inv) * scale # standardize scale
+         factor <- matrix(rep(rt.scales.inv, each = d),
                           ncol = d, byrow = TRUE) * factor # standardized cholesky
          ## Now standardize scale as above: Also works for +/- Inf
-         lower <- matrix(rep(row.scales.inv, each = n), ncol = d, nrow = n, byrow = FALSE) *
+         lower <- matrix(rep(rt.scales.inv, each = n), ncol = d, nrow = n, byrow = FALSE) *
             lower
-         upper <- matrix(rep(row.scales.inv, each = n), ncol = d, nrow = n, byrow = FALSE) *
+         upper <- matrix(rep(rt.scales.inv, each = n), ncol = d, nrow = n, byrow = FALSE) *
             upper
       }
    }
@@ -953,38 +960,46 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
       lowFin <- is.finite(low)
       upFin  <- is.finite(up)
       lowupFin <- lowFin | upFin # at least one finite limit
-      ## Only for full rank case for efficiency as ow rank, k.factor etc change
+      ## Only for ungrouped full rank case for efficiency as ow rank, k.factor etc change
       ## completely and would need to be recalculated
-      if(any(!lowupFin) && rank == d) {
+      if(any(!lowupFin) & rank == d) {
          ## Update low, up
          low <- low[lowupFin]
          up  <- up [lowupFin]
          ## Grab (new) dimension. If 0, then all upper are +Inf, all lower are -Inf
          ## => Return 0
-         d <- length(low) # Update dimension and 'k.factor'
-         k.factor <- rep(1, d)
-         if(d == 0) {
+         dFin <- length(low) # Update dimension and 'k.factor'
+         k.factorFin <- rep(1, dFin )
+         if(dFin  == 0) {
             res1[[i]] <- list(value = 1, error = 0, abserror = 0, relerror = 0, numiter = 0)
             next
          }
-         ## Update scale (for precond)
-         scale <- scale[lowupFin, lowupFin, drop = FALSE]
-         factorFin <- t(chol(scale)) # Cholesky factor changes
+         ## Update groupings
+         groupingsFin <- groupings[lowupFin] 
+         numgroupsFin <- length(unique(groupingsFin))
+         ## Update scale and factor (for preconditioning)
+         scaleFin <- scale[lowupFin, lowupFin, drop = FALSE]
+         factorFin <- t(chol(scaleFin)) # Cholesky factor changes
       } else {
-         ## If no such component exists, set Choleksy factor correctly
+         ## If no such component exists, variables correctly 
+         dFin <- d
+         scaleFin <- scale 
          factorFin <- factor
+         k.factorFin <- k.factor 
+         groupingsFin <- groupings 
+         numgroupsFin <- numgroups
       }
       ## If d = 1, deal with multivariate normal, and t via pnorm() and pt()
       ## Note that everything has been standardized.
-      if(d == 1 && !is.na(special.mix)) {
+      if(dFin == 1 & !is.na(special.mix) & numgroupsFin == 1) {
          if(special.mix == "constant") {
             value <- pnorm(up) - pnorm(low)
             res1[[i]] <- list(value = value, error = 0, abserror = 0, 
                               relerror = 0, numiter = 0)
             next
          } else if(special.mix == "inverse.gamma") {
-            df <- mix_list$param # returned by get_mix_()
-            value <- pt(up, df = df) - pt(low, df = df)
+            df_ <- mix_list$param[groupingsFin[1]] 
+            value <- pt(up, df = df_ ) - pt(low, df = df_ )
             res1[[i]] <- list(value = value, error = 0, abserror = 0, 
                               relerror = 0, numiter = 0)
             next
@@ -993,16 +1008,16 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
       ## Compute result for ith row of lower and upper (in essence,
       ## because of the preconditioning, one has to treat each such
       ## row separately)
-      res1[[i]] <- 
-         pnvmix1(up, lower = low, groupings = groupings, mix_ = mix_, 
-                 use.q = use.q, do.ant = do.ant, 
+      res1[[i]] <-
+         pnvmix1(up, lower = low, groupings = groupingsFin, mix_ = mix_,
+                 use.q = use.q, do.ant = do.ant,
                  is.const.mix = (!is.na(special.mix) & special.mix == "constant"),
-                 mean.sqrt.mix = mean.sqrt.mix, loc = loc, scale = scale, 
-                 factor = factorFin, k.factor = k.factor, method = method, 
+                 mean.sqrt.mix = mean.sqrt.mix, loc = loc, scale = scaleFin,
+                 factor = factorFin, k.factor = k.factorFin, method = method,
                  precond = control$precond, tol = tol, do.reltol = do.reltol,
                  CI.factor = control$CI.factor, fun.eval = control$fun.eval,
                  max.iter.rqmc = control$max.iter.rqmc, increment = increment,
-                 B = control$B, verbose = as.logical(verbose), ...)
+                 B = control$B, verbose = as.logical(verbose), seeds = seeds, ...)           
       ## Check if desired precision was reached
       ## Note: 'error' is either relative or absolute, depending on 'do.reltol' 
       reached[i] <- res1[[i]]$error <= tol 
@@ -1058,7 +1073,8 @@ pnvmix1d <- function(upper, lower = rep(-Inf, n), mix_, use.q = TRUE, do.ant = T
                      standardized = FALSE, method = "sobol",
                      tol = 1e-3, do.reltol = FALSE,
                      CI.factor = 3.5, fun.eval = c(2^6, 1e8), max.iter.rqmc = 15,
-                     increment = "doubling", B = 15, verbose = FALSE)
+                     increment = "doubling", B = 15, verbose = FALSE, 
+                     seeds = NULL)
 {
    ## 1 Setup #################################################################
    
@@ -1089,7 +1105,7 @@ pnvmix1d <- function(upper, lower = rep(-Inf, n), mix_, use.q = TRUE, do.ant = T
    ONE  <- 1-.Machine$double.neg.eps
    ## If method == sobol, we want the same random shifts in each iteration below
    if(method == "sobol") {
-      seeds_ <- sample(1:(1e5*B), B) # B seeds for 'sobol()'
+      if(is.null(seeds)) seeds <- sample(1:1e3, B) else stopifnot(length(seeds) == B) 
    }
    ## Additional variables needed if the increment chosen is "doubling"
    if(increment == "doubling") {
@@ -1116,12 +1132,12 @@ pnvmix1d <- function(upper, lower = rep(-Inf, n), mix_, use.q = TRUE, do.ant = T
                            if(increment == "doubling") {
                               qrng::sobol(n = current.n, d = 1,
                                           randomize = "digital.shift",
-                                          seed = seeds_[b], 
+                                          seed = seeds[b], 
                                           skip = (useskip * current.n))
                            } else {
                               qrng::sobol(n = current.n, d = 1,
                                           randomize = "digital.shift",
-                                          seed = seeds_[b], 
+                                          seed = seeds[b], 
                                           skip = (numiter * current.n))
                            }
                         },

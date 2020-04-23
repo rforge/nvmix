@@ -311,11 +311,17 @@ dgnvmix <- function(x, groupings = 1:d, qmix, loc = rep(0, d), scale = diag(d),
                ## Initialize 
                u.left <- NA
                u.right <- NA
-               dhvals <- diff(lhvals[, i]) # log h(u_{i+1}) - log h(u_{i})
-               if(all(dhvals > 0)) u.right <- 1 # maximum at the right endpoint (or close to it)
-               if(all(dhvals < 0)) u.left <- 0 # maximum at left endpoint
+               #dhvals <- diff(lhvals[, i]) # log h(u_{i+1}) - log h(u_{i})
+               #if(all(dhvals > 0)) u.right <- 1 # maximum at the right endpoint (or close to it)
+               #if(all(dhvals < 0)) u.left <- 0 # maximum at left endpoint
                l.max <- lhvals[ (ind.max <- which.max(lhvals[, i])), i] # *observed* maximum
                u.max <- Us[ind.max] 
+               ## Maximum at left/right endpoint?
+               if(ind.max == 1){
+                  u.left <- 0 # maximum at left endpoint (or close to it)
+               } else if(ind.max == n.UsWs){
+                  u.right <- 1 # maximum at the right endpoint (or close to it)
+               } 
                ## Tolerance above which RQMC is used 
                l.tol.int.lower <- min(log(control$dnvmix.tol.int.lower), 
                                       l.max - control$dnvmix.order.lower * log(10))

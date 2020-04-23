@@ -256,7 +256,7 @@ stopifnot(all.equal(p1, p2))
 ## Evaluate a t_{3.5} distribution function
 set.seed(271)
 pt <- pStudent(b, lower = a, df = 3.5, scale = P)
-stopifnot(all.equal(pt, 0.6180, tol = 5e-5, check.attributes = FALSE))
+stopifnot(all.equal(pt, 0.6180, tol = 7e-5, check.attributes = FALSE))
 
 ## Evaluate a normal distribution function
 set.seed(271)

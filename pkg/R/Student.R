@@ -88,18 +88,30 @@ dgStudentcopula <- function(u, groupings = 1:d, df, scale = diag(d),
    ## Checks 
    if(!is.matrix(u)) u <- rbind(u)
    d <- ncol(u) 
+   n <- nrow(u)
+   stopifnot(all(u <= 1), all(u >= 0)) 
+   ## Result object
+   res <- rep(NA, n)
+   notNA <- rowSums(is.na(u)) == 0 
+   res[!notNA] <- NA
+   u <- u[notNA, ] # non-missing data (rows)
+   not01 <- rowSums( u == 0 | u == 1 ) == 0 # rows where no component is 0 or 1
+   res[!not01] <- 0
+   u <- u[not01, ] # rows where all components in (0,1)^d 
    ## Compute quantiles
    qu <- sapply(1:d, function(i) qt(u[, i], df = df[groupings[i]]))
    if(!is.matrix(qu)) qu <- rbind(qu)
    num <- dgnvmix(qu, qmix = "inverse.gamma", scale = scale, df = df,
                   groupings = groupings, verbose = verbose, control = control,
-                  log = TRUE) # length(u) vector 
+                  log = TRUE) # vector 
    ## Matrix with marginal density applied on the columns of 'qu' 
    temp <- sapply(1:d, function(i) dt(qu[, i], df = df[groupings[i]], log = TRUE))
    if(!is.matrix(temp)) temp <- rbind(temp)
    denom <- rowSums(temp)
+   ## Store results and return
+   res[notNA & not01] <- if(!log) exp(num - denom) else num - denom
    ## Return 
-   if(log) exp(num - denom) else num - denom 
+   res
 }
 
 ##' @title Distribution Function of the Multivariate Student t Distribution
