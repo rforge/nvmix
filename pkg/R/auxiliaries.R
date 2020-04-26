@@ -56,8 +56,8 @@ get_set_param <- function(control = list())
       riskmeasures.abstol = NA,
       riskmeasures.reltol = 1e-2,
       ## For dependence measures:
-      lambda.abstol = 1e-3,
-      lambda.reltol = NA,
+      dependencemeasures.abstol = 1e-3,
+      dependencemeasures.reltol = NA,
       ## For all (randomized) algorithms:
       method = "sobol",
       increment = "doubling", # "doubling" or "num.init"
@@ -190,7 +190,7 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
       stop("In the grouped case, argument 'qmix' must be provided")
    ## Calling functions for which 'qmix' *must* be provided (due to adaptiveness)
    need.qmix <- c("dnvmix", "dgammamix", "fitnvmix", "qnvmix", "qgammamix", "ESnvmix",
-                  "dgnvmix", "pgnvmix()")
+                  "dgnvmix", "pgnvmix", "dependencemeasures")
    if(any(callingfun == need.qmix) & !use.q) 
       stop(paste(callingfun, "()", " needs argument 'qmix' to be provided", sep = ""))
    special.mix   <- NA # special mixing variable? TBD below

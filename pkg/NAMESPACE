@@ -31,4 +31,4 @@ export("dnvmix", "pnvmix", "rnvmix", "pgnvmix", "rgnvmix", "dgnvmix",
        "pStudentcopula", "rStudentcopula", "dStudentcopula", 
        "dgammamix", "pgammamix", "qgammamix", "rgammamix",
        "ES_nvmix", "VaR_nvmix",
-       "lambda_gStudent")
+       "lambda_gStudent", "corgnvmix")

@@ -320,16 +320,23 @@ rgStudent <- function(n, groupings = 1:d, df, loc = rep(0, d), scale = diag(2),
 ##' @param df degrees of freedom > 0; if df = Inf, sample from a Normal distribution
 ##'        is returned
 ##' @param scale (d, d)- correlation matrix
+##' @param factor factor R of the covariance matrix 'scale' with d rows
+##'        such that R R^T = 'scale'.
 ##' @return (n, d)-matrix with t_nu(loc, scale) samples
 ##' @author Erik Hintz and Marius Hofert
-rgStudentcopula <- function(n, groupings = 1:d, df, scale = diag(2),
+rgStudentcopula <- function(n, groupings = 1:d, df, scale = diag(2), factor = NULL, 
                             method = c("PRNG", "sobol", "ghalton"), skip = 0)
 {
    method <- match.arg(method) 
-   d <- nrow(scale <- as.matrix(scale))
+   d <- if(!is.null(factor)) { 
+      nrow(factor <- as.matrix(factor))
+   } else {
+      nrow(scale <- as.matrix(scale))
+   }
    ## Sample from the grouped t distribution 
-   t_sample <- rgnvmix(n, qmix = "inverse.gamma", groupings = groupings, 
-                       scale = scale, df = df, method = method, skip = skip)
+   t_sample <- 
+      rgnvmix(n, qmix = "inverse.gamma", groupings = groupings, scale = scale,
+              factor = factor, df = df, method = method, skip = skip)
    ## Apply the correct pt(, df) columnwise and return
    sapply(1:d, function(i) pt(t_sample[, i], df = df[groupings[i]]))
 }
