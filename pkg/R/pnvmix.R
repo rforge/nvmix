@@ -462,7 +462,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
                     method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
                     tol = 1e-3, do.reltol = FALSE, CI.factor,
                     fun.eval, max.iter.rqmc, increment = c("doubling", "num.init"),
-                    B = 15,  verbose = TRUE, seeds = NULL, ...)
+                    B = 15,  verbose = TRUE, seeds = NULL, mix.stored = NULL,
+                    mix.doStore = FALSE, maxiter.stored = 4, ...)
 {
    numgroups <- length(unique(groupings))
    rank <- length(k.factor)
@@ -516,11 +517,41 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
    ## Sample 'B' seeds for 'sobol(..., seed = seeds[b])' to get the same shifts 
    if(method == "sobol"){
       if(is.null(seeds)) seeds <- sample(1:(1e3*B), B) else stopifnot(length(seeds) == B)
-   } 
+   } else {
+      mix.doStore <- FALSE # only works for sobol, because of the same 'seeds'
+   }
    ## Additional variables needed if the increment chosen is "doubling"
-   if(increment == "doubling") {
+   do.doubling <- (increment == "doubling")
+   if(do.doubling){
       if(method == "sobol") useskip <- 0
       denom <- 1
+   }
+   ## Deal with 'mix.stored' and 'mix.doStore'
+   if(mix.doStore){
+      ## No stored mixings provided but storing required => create 'mix.stored'
+      if(is.null(mix.stored)){
+         max.nrow <- if(do.doubling) current.n* B *2^(maxiter.stored-1) else 
+            maxiter.stored * B *current.n # maximum number of mix_ evaluations possible
+         num.col <- if(do.ant) 2 * numgroups else numgroups 
+         ## 'mix.stored' = list of length B, b'th element = matrix containing the
+         ## mixings for the b'th seed (Col's 1-numgroups: original; 
+         ## col's numgroups + 1 - 2*numgroups: antithetic, if applicable)
+         mix.stored <- lapply(1:B, function(i) matrix(, ncol = num.col, nrow = max.nrow))
+         numiter.stored <- -1 # number of iterations worth of mixings stored - 1
+      } else {
+         ## Stored mixings provided => grab how many 
+         numiter.stored <- attr(mix.stored, "numiter.stored") 
+      }
+      ## Function returning the row indices in iteration 'numiter' 
+      whichRows <- function(numiter){
+         ind <- if(do.doubling){
+            if(numiter == 0) 1:fun.eval[1] else 
+               2^(numiter-1) * fun.eval[1] + (1 : (2^(numiter-1)*fun.eval[1]))
+         } else numiter * fun.eval[1] + (1 : fun.eval[1])
+         ind # return
+      }
+   } else {
+      numiter.stored <- -1
    }
    
    ## 2 Major while() loop ####################################################
@@ -542,7 +573,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
          U <- if(is.const.mix) {
             U <- switch(method, 
                         "sobol" = {
-                           if(increment == "doubling") {
+                           if(do.doubling) {
                               qrng::sobol(n = current.n, d = rank - 1,
                                           randomize = "digital.shift",
                                           seed = seeds[b],
@@ -587,28 +618,39 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
                         "PRNG" = {
                            matrix(runif( current.n * rank), ncol = rank)
                         })
-            
-            ## Case d = 1 somewhat special again, as then only realizations
-            ## of W (and no 'normals') needed 
-            if(d == 1) {
-               if(use.q){
-                  rtW <- sqrt(mix_(U))
-                  if(do.ant) rtWant <- sqrt(mix_(1 - U))
-                  -1 # => 'U' has value -1, won't be needed anymore 
-               } else {
-                  ## If use.q = FALSE, do.ant = FALSE automatically 
-                  rtW <- sqrt(mix_(current.n))
-                  -1 # => 'U' has value -1, won't be needed anymore 
-               }
-            } else {
-               if(use.q){
+            if(!is.matrix(U)) U <- cbind(U)
+            ## Compute/grab mixing realizations 
+            ## If d == 1, U <- -1 as not needed anymore (no normals, only W)
+            if(use.q){ # use quantile function (as opposed to RNG)
+               if(!mix.doStore |  # no storing, or storing but not stored yet
+                  (mix.doStore & (numiter > min(numiter.stored, 
+                                                maxiter.stored)))){
+                  ## No storing, or storing but not stored yet, or storing
+                  ## but beyond numiters to store: Call 'mix_' 
                   rtW <- sqrt(mix_(U[, 1]))
                   if(do.ant) rtWant <- sqrt(mix_(1 - U[, 1]))
-                  U[, 2:rank]
-               } else { 
-                  rtW <- sqrt(mix_(current.n)) 
-                  U[, 2:rank]
+                  ## Store if needed 
+                  if(mix.doStore & numiter < maxiter.stored){
+                     if(!is.matrix(rtW)) rtW <- cbind(rtW)
+                     if(!is.matrix(rtWant)) rtWant <- cbind(rtWant)
+                     mix.stored[[b]][whichRows(numiter), 1:numgroups]<- rtW
+                     if(do.ant) mix.stored[[b]][
+                        whichRows(numiter), numgroups+(1:numgroups)] <- rtWant
+                     if(b == B) numiter.stored <- numiter.stored + 1 
+                  }
+               } else {
+                  ## Grab realizations from 'mix.stored'
+                  rtW <- 
+                     mix.stored[[b]][whichRows(numiter), 1:numgroups, drop = FALSE]
+                  if(do.ant) rtWant <- mix.stored[[b]][
+                     whichRows(numiter), numgroups+(1:numgroups), drop = FALSE]
                }
+               ## Return (for 'U') correctly
+               if(d == 1) -1 else U[, 2:rank] 
+            } else {
+               ## If use.q = FALSE, do.ant = FALSE automatically 
+               rtW <- sqrt(mix_(current.n))
+               if(d == 1) -1 else U[, 2:rank] 
             }
          }
          if(!is.matrix(rtW)) rtW <- cbind(rtW)
@@ -647,7 +689,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
          ## 2.3 Update RQMC estimates #######################################
          
          rqmc.estimates[b] <-
-            if(increment == "doubling") {
+            if(do.doubling) {
                ## In this case both, rqmc.estimates[b] and
                ## next.estimate depend on n.current points
                (rqmc.estimates[b] + next.estimate) / denom
@@ -664,7 +706,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
       total.fun.evals <- if(do.ant) total.fun.evals + 2 * B * current.n else
          total.fun.evals + B * current.n
       ## Double sample size and adjust denominator in averaging as well as useskip
-      if(increment == "doubling") {
+      if(do.doubling) {
          ## Change denom and useksip (exactly once, in the first iteration)
          if(numiter == 0) {
             denom <- 2
@@ -681,7 +723,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
       } else {
          CI.factor.sqrt.B * sd(rqmc.estimates)/mean(rqmc.estimates)
       }
-      numiter <- numiter + 1 # update counter
+      numiter <- numiter + 1 # update counter.
    } # while()
    ## Finalize
    value <- mean(rqmc.estimates) # calculate the RQMC estimator
@@ -693,9 +735,11 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
       relerror <- error / value # 'error' is absolute error
       error 
    }
-   ## Return
+   ## Return with correctly set 'mix.stored'
+   if(mix.doStore) attr(mix.stored, "numiter.stored") <- numiter.stored # update
+   ## Return (if(!mix.doStore), 'mix.stored' is NULL by default) 
    list(value = value, error = error, abserror = abserror, 
-        relerror = relerror, numiter = numiter)
+        relerror = relerror, numiter = numiter, mix.stored = mix.stored)
 }
 
 
@@ -733,6 +777,7 @@ pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
    n <- nrow(upper) # number of evaluation points
    d <- ncol(upper) # dimension
+   if(!is.matrix(lower)) lower <- rbind(lower) # 1-row matrix if lower is a vector
    
    ## Call the more general 'pgnvmix()' with 'groupings = rep(1, d)' 
    pgnvmix(upper = upper, lower = lower, qmix = qmix, rmix = rmix, 
@@ -937,9 +982,16 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
             upper
       }
    }
+   ## Logical indicating if we're dealing with a multivariate normal dist'n
+   is.const.mix = (!is.na(special.mix) & special.mix == "constant")
+   ## If n>1, 'mix.realixations' is a matrix with B columns storing evalauations of mix_,
+   ## will be created by 'pnvmix1()' below, if needed 
+   mix.stored <- NULL 
+   ## Used only when more than one estimation required for a non-normal dist'n
+   ## and when sobol(..., seed = ...) is used 
+   mix.doStore <- !is.const.mix & (n > 1) & (method == "sobol")
    
    ## Loop over observations ##################################################
-   
    reached <- rep(TRUE, n) # indicating whether 'tol' has been reached in the ith integration bounds (needs default TRUE)
    for(i in seq_len(n)) {
       if(NAs[i]) {
@@ -992,7 +1044,7 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
       ## If d = 1, deal with multivariate normal, and t via pnorm() and pt()
       ## Note that everything has been standardized.
       if(dFin == 1 & !is.na(special.mix) & numgroupsFin == 1) {
-         if(special.mix == "constant") {
+         if(is.const.mix) {
             value <- pnorm(up) - pnorm(low)
             res1[[i]] <- list(value = value, error = 0, abserror = 0, 
                               relerror = 0, numiter = 0)
@@ -1008,16 +1060,22 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
       ## Compute result for ith row of lower and upper (in essence,
       ## because of the preconditioning, one has to treat each such
       ## row separately)
-      res1[[i]] <-
+      tmp <- 
          pnvmix1(up, lower = low, groupings = groupingsFin, mix_ = mix_,
                  use.q = use.q, do.ant = do.ant,
-                 is.const.mix = (!is.na(special.mix) & special.mix == "constant"),
+                 is.const.mix = is.const.mix,
                  mean.sqrt.mix = mean.sqrt.mix, loc = loc, scale = scaleFin,
                  factor = factorFin, k.factor = k.factorFin, method = method,
                  precond = control$precond, tol = tol, do.reltol = do.reltol,
                  CI.factor = control$CI.factor, fun.eval = control$fun.eval,
                  max.iter.rqmc = control$max.iter.rqmc, increment = increment,
-                 B = control$B, verbose = as.logical(verbose), seeds = seeds, ...)           
+                 B = control$B, verbose = as.logical(verbose), seeds = seeds, 
+                 mix.stored = mix.stored, mix.doStore = mix.doStore, 
+                 maxiter.stored = control$maxiter.stored, df = df)  
+      res1[[i]] <- if(mix.doStore){
+         mix.stored <- tmp[[6]]
+         tmp[-6]
+      } else tmp 
       ## Check if desired precision was reached
       ## Note: 'error' is either relative or absolute, depending on 'do.reltol' 
       reached[i] <- res1[[i]]$error <= tol 

@@ -14,38 +14,45 @@
 ##' @author Erik Hintz and Marius Hofert
 ##' @return numeric vector with the computed probabilities and attributes "error"
 ##'         (error estimate of the RQMC estimator) and "numiter" (number of iterations)
-dnvmixcopula <- function(u, qmix, scale = diag(d), factor = NULL, control = list(),
-                      verbose = FALSE, log = FALSE, ...)
+dnvmixcopula <- function(u, qmix, scale = diag(d), factor = NULL, 
+                         control = list(), verbose = FALSE, log = FALSE, ...)
 {
-    ## Most arguments are checked by qnvmix() and pnvmix()
-    if(!is.matrix(u)) u <- rbind(u)
-    d <- ncol(u) # for 'scale'
-
-    ## Change accuracy for logdensity in qnvmix() to the one from dnvmix() here
-    ## if the user did not provide a different one
-    ## (The default for abstol.newton.logdensity is chosen somewhat large for
-    ## efficiency reasons as the logdensity there is only needed for Newton)
-    names.control <- names(control)
-    if(!any(names.control == "newton.logdens.abstol")) {
-        ## 'newton.logdens.abstol' was *not* provided:
-        control <- get_set_param(control)
-        control$newton.logdens.abstol <- control$dnvmix.abstol
-    }
-    ## If it was provided, we don't change it.
-
-    ## Obtain quantiles. Note that qnvmix() takes in and returns a vector
-    qu <- qnvmix(as.vector(u), qmix = qmix, control = control,
-                 verbose = verbose, q.only =  FALSE, ...) # length n*d
-    ## log f_{X, scale} (F_{X1}^{-1}(u_{j1}),...,F_X1 ^{-1}(u_{jd})), j = 1,...,n
-    num <- dnvmix(matrix(qu$q, ncol = d), qmix = qmix, scale = scale, factor = factor,
-                  control = control, verbose = verbose, log = TRUE, ...)# length n
-
-    ## sum_{i=1}^d log f_{X1}( F_{X1}^{-1}(u_{ji})), j = 1,...,n
-    ## Note that the log-density values are already calculated by qnvmix()
-    denom <- rowSums(matrix(qu$log.density, ncol = d)) # length n
-
-    ## Return
-    if(log) num - denom else exp(num - denom)
+   ## Checks 
+   if(!is.matrix(u)) u <- rbind(u)
+   d <- ncol(u) 
+   n <- nrow(u)
+   stopifnot(all(u <= 1), all(u >= 0)) 
+   ## Result object
+   res <- rep(-Inf, n)
+   notNA <- rowSums(is.na(u)) == 0 
+   not01 <- rowSums( u <= 0 | u >= 1 ) == 0 # rows where no component is <= 0 or >=1
+   ## Fill in NAs where needed
+   res[!notNA] <- NA
+   ## Density is zero outside (0,1)^d 
+   res[!not01 & notNA] <- if(log) -Inf else 0 
+   u <- u[notNA & not01,, drop = FALSE] # non-missing data inside (0,1)^d
+   ## Change accuracy for logdensity in qnvmix() to the one from dnvmix() here
+   ## if the user did not provide a different one
+   ## (The default for abstol.newton.logdensity is chosen somewhat large for
+   ## efficiency reasons as the logdensity there is only needed for Newton)
+   names.control <- names(control)
+   if(!any(names.control == "newton.logdens.abstol")) {
+      ## 'newton.logdens.abstol' was *not* provided:
+      control <- get_set_param(control)
+      control$newton.logdens.abstol <- control$dnvmix.abstol
+   }
+   ## Obtain quantiles. Note that qnvmix() takes in and returns a vector
+   qu <- qnvmix(as.vector(u), qmix = qmix, control = control,
+                verbose = verbose, q.only =  FALSE, ...) # length n*d
+   ## log f_{X, scale} (F_{X1}^{-1}(u_{j1}),...,F_X1 ^{-1}(u_{jd})), j = 1,...,n
+   num <- dnvmix(matrix(qu$q, ncol = d), qmix = qmix, scale = scale, factor = factor,
+                 control = control, verbose = verbose, log = TRUE, ...)# length n
+   ## sum_{i=1}^d log f_{X1}( F_{X1}^{-1}(u_{ji})), j = 1,...,n
+   ## Note that the log-density values were already calculated by qnvmix()
+   denom <- rowSums(matrix(qu$log.density, ncol = d)) # length n
+   ## Store results and return
+   res[notNA & not01] <- if(!log) exp(num - denom) else num - denom
+   res
 }
 
 
@@ -66,8 +73,10 @@ pnvmixcopula <- function(upper, lower = matrix(0, nrow = n, ncol = d), qmix,
 {
     ## Most arguments are checked by qnvmix() and pnvmix()
     if(!is.matrix(upper)) upper <- rbind(upper)
-    d <- ncol(upper) # for 'scale'
+    d <- ncol(upper) 
     n <- nrow(upper)
+    upper <- pmax( pmin(upper, 1), 0) 
+    lower <- pmax( pmin(lower, 1), 0) 
     ## Obtain quantiles. Note that qnvmix() returns a vector
     upper_ <- matrix(qnvmix(as.vector(upper), qmix = qmix, control = control,
                         verbose = verbose, q.only = TRUE, ...), ncol = d)
@@ -77,6 +86,7 @@ pnvmixcopula <- function(upper, lower = matrix(0, nrow = n, ncol = d), qmix,
        matrix(qnvmix(as.vector(lower), qmix = qmix, control = control,
                      verbose = verbose, q.only = TRUE, ...), ncol = d)
     }
+    ## Call pnvmix() which handles NA correctly 
     pnvmix(upper_, lower = lower_, qmix = qmix, scale = scale, control = control,
            verbose = verbose, ...)
 }

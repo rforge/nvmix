@@ -14,6 +14,7 @@ get_set_param <- function(control = list())
       pnvmix.reltol = NA,
       cholesky.tol = 1e-9,
       pnvmix.do.ant = TRUE,
+      maxiter.stored = 4, 
       ## For dnvmix():
       dnvmix.abstol = 1e-3,
       dnvmix.reltol = 1e-2, # If !NA, 'reltol' is used instead of 'abstol'
@@ -24,7 +25,7 @@ get_set_param <- function(control = list())
       dnvmix.tol.bisec = c(1e-6, 1e-1, 1e-1),
       dnvmix.tol.stratlength = 1e-20,
       dnvmix.max.iter.bisec = 25,
-      ## For pgammamix:
+      ## For pgammamix():
       pgammamix.reltol = NA,
       pgammamix.abstol = 1e-3,
       ## For qnvmix():
@@ -54,6 +55,9 @@ get_set_param <- function(control = list())
       ## For riskmeasures:
       riskmeasures.abstol = NA,
       riskmeasures.reltol = 1e-2,
+      ## For dependence measures:
+      lambda.abstol = 1e-3,
+      lambda.reltol = NA,
       ## For all (randomized) algorithms:
       method = "sobol",
       increment = "doubling", # "doubling" or "num.init"

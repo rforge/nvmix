@@ -48,15 +48,13 @@ ES_nvmix <- function(level, qmix, loc = 0, scale = 1, control = list(),
       B <- control$B
       current.n <- control$fun.eval[1]
       ## Absolte/relative precision?
-      if(is.na(control$riskmeasures.abstol)) {
-         ## Use relative error
+      tol <- if(is.na(control$riskmeasures.abstol)) {  # use relative error
          stopifnot(control$riskmeasures.reltol > 0)
-         tol <- control$riskmeasures.reltol
          do.reltol <- TRUE
+         control$riskmeasures.reltol
       } else {
-         ## Use absolute error
-         tol <- control$riskmeasures.abstol
-         do.reltol <- FALSE
+         do.reltol <- FALSE # use absolute error
+         control$riskmeasures.abstol
       }
       ## Additional variables needed if the increment chosen is "doubling"
       if(increment == "doubling") {
@@ -78,7 +76,7 @@ ES_nvmix <- function(level, qmix, loc = 0, scale = 1, control = list(),
       ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
       ## the expected shortfall are computed; if 'level' is a vector,
       ## the same mixing realizations are used for all levels 
-      while(max(error) > tol && total.fun.evals < control$fun.eval[2] && 
+      while(max(error) > tol & total.fun.evals < control$fun.eval[2] & 
             numiter < control$max.iter.rqmc)
       {
 

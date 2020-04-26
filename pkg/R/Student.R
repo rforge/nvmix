@@ -38,11 +38,24 @@ dStudent <- function(x, df, loc = rep(0, d), scale = diag(d),
 ##' @author Erik Hintz and Marius Hofert
 dStudentcopula <- function(u, df, scale = diag(d), log = FALSE, verbose = TRUE)
 {
+   ## Checks 
    if(!is.matrix(u)) u <- rbind(u)
-   d <- ncol(u) # for 'loc', 'scale'
-   ## Call 'dnvmixcop'
-   dnvmixcopula(u, qmix = "inverse.gamma", scale = scale, log = log, verbose = verbose,
-                df = df)
+   d <- ncol(u) 
+   n <- nrow(u)
+   stopifnot(all(u <= 1), all(u >= 0)) 
+   ## Result object
+   res <- rep(-Inf, n)
+   notNA <- rowSums(is.na(u)) == 0 
+   not01 <- rowSums( u <= 0 | u >= 1 ) == 0 # rows where no component is <= 0 or >=1
+   ## Fill in NAs where needed
+   res[!notNA] <- NA
+   ## Density is zero outside (0,1)^d 
+   res[!not01 & notNA] <- if(log) -Inf else 0 
+   u <- u[notNA & not01,, drop = FALSE] # non-missing data inside (0,1)^d
+   ## Call 'dnvmixcopula()' with non-missing, (0,1)^d rows 
+   res[notNA & not01] <- dnvmixcopula(u, qmix = "inverse.gamma", scale = scale, 
+                                      verbose = verbose, df = df,  log = log)
+   res
 }
 
 ##' @title Density of the grouped t distribution
@@ -91,16 +104,17 @@ dgStudentcopula <- function(u, groupings = 1:d, df, scale = diag(d),
    n <- nrow(u)
    stopifnot(all(u <= 1), all(u >= 0)) 
    ## Result object
-   res <- rep(NA, n)
+   res <- rep(-Inf, n)
    notNA <- rowSums(is.na(u)) == 0 
+   not01 <- rowSums( u <= 0 | u >= 1 ) == 0 # rows where no component is <= 0 or >=1
+   ## Fill in NAs where needed
    res[!notNA] <- NA
-   u <- u[notNA, ] # non-missing data (rows)
-   not01 <- rowSums( u == 0 | u == 1 ) == 0 # rows where no component is 0 or 1
-   res[!not01] <- 0
-   u <- u[not01, ] # rows where all components in (0,1)^d 
+   ## Density is zero outside (0,1)^d 
+   res[!not01 & notNA] <- if(log) -Inf else 0 
+   u <- u[notNA & not01,, drop = FALSE] # non-missing data inside (0,1)^d
    ## Compute quantiles
    qu <- sapply(1:d, function(i) qt(u[, i], df = df[groupings[i]]))
-   if(!is.matrix(qu)) qu <- rbind(qu)
+   if(!is.matrix(qu)) qu <- rbind(qu) # otherwise dimension not correct in dgnvmix()
    num <- dgnvmix(qu, qmix = "inverse.gamma", scale = scale, df = df,
                   groupings = groupings, verbose = verbose, control = control,
                   log = TRUE) # vector 
@@ -138,6 +152,7 @@ pStudent <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
    n <- nrow(upper) # number of evaluation points
    d <- ncol(upper) # dimension
+   if(!is.matrix(lower)) lower <- rbind(lower) # 1-row matrix if lower is a vector
    pnvmix(upper, lower = lower, qmix = "inverse.gamma", loc = loc, scale = scale,
           standardized = standardized, control = control,
           verbose = verbose, df = df)
@@ -169,6 +184,7 @@ pgStudent <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
    n <- nrow(upper) # number of evaluation points
    d <- ncol(upper) # dimension
+   if(!is.matrix(lower)) lower <- rbind(lower) # 1-row matrix if lower is a vector
    ## Call 'pgnvmix()' 
    pgnvmix(upper, lower = lower, groupings = groupings, qmix = "inverse.gamma", 
            loc = loc, scale = scale, standardized = standardized, control = control,
@@ -194,6 +210,7 @@ pStudentcopula <- function(upper, lower = matrix(0, nrow = n, ncol = d), df,
    if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
    n <- nrow(upper) # number of evaluation points
    d <- ncol(upper) # dimension
+   if(!is.matrix(lower)) lower <- rbind(lower) # 1-row matrix if lower is a vector
    ## Call more general pgStudentcopula() 
    pgStudentcopula(upper, lower = lower, groupings = rep(1, d), df = df, scale = scale,
                    control = control, verbose = verbose)
@@ -220,10 +237,17 @@ pgStudentcopula <- function(upper, lower = matrix(0, nrow = n, ncol = d),
    if(!is.matrix(upper)) upper <- rbind(upper) # 1-row matrix if upper is a vector
    n <- nrow(upper) # number of evaluation points
    d <- ncol(upper) # dimension
+   if(!is.matrix(lower)) lower <- rbind(lower) # 1-row matrix if lower is a vector
+   upper <- pmax( pmin(upper, 1), 0) 
+   lower <- pmax( pmin(lower, 1), 0) 
    ## Transform limits via qt(..., df)
    upper_ <- sapply(1:d, function(i) qt(upper[, i], df = df[groupings[i]]))
-   lower_ <- sapply(1:d, function(i) qt(lower[, i], df = df[groupings[i]]))
-   ## Call 'pgnvmix()' 
+   lower_ <- if(all(lower == 0)){
+      matrix(-Inf, nrow = n, ncol = d) # avoid estimation of the quantile 
+   } else {
+      sapply(1:d, function(i) qt(lower[, i], df = df[groupings[i]]))
+   }
+   ## Call 'pgnvmix()' (which handles NA correctly) 
    pgnvmix(upper_, lower = lower_, groupings = groupings, qmix = "inverse.gamma", 
            scale = scale, control = control, verbose = verbose, df = df)
 }
