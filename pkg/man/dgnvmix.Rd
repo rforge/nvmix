@@ -7,10 +7,10 @@
   (including Student \emph{t} with multiple degrees-of-freedom).
 }
 \usage{
-dgnvmix(x, groupings = 1:d, qmix, loc = rep(0, d), scale = diag(d),
-        factor = NULL, control = list(), log = FALSE, verbose = TRUE, ...)
-dgStudent(x, groupings = 1:d, df, loc = rep(0, d), scale = diag(d),
-          control = list(), log = FALSE, verbose = TRUE)
+dgnvmix(x, groupings = 1:d, qmix, loc = rep(0, d), scale = diag(d), factor = NULL,
+        scale.inv = NULL, control = list(), log = FALSE, verbose = TRUE, ...)
+dgStudent(x, groupings = 1:d, df, loc = rep(0, d), scale = diag(d), 
+          scale.inv = NULL, control = list(), log = FALSE, verbose = TRUE)
 }
 \arguments{
   \item{x}{see \code{\link{dnvmix}()}.}
@@ -22,6 +22,8 @@ dgStudent(x, groupings = 1:d, df, loc = rep(0, d), scale = diag(d),
   \item{factor}{\eqn{(d, d)} lower triangular \code{\link{matrix}}
     such that \code{factor \%*\% t(factor)} equals \code{scale}. Internally
     used is \code{scale}.}
+  \item{scale.inv}{inverse of \code{scale}; if not provided, computed via
+    \code{solve(scale)}.}    
   \item{df}{\code{\link{vector}} of length \code{length(unique(groupings))} so that
   variable \code{i} has degrees-of-freedom \code{df[groupings[i]]}; all elements 
   must be positive
@@ -85,11 +87,9 @@ dgStudent(x, groupings = 1:d, df, loc = rep(0, d), scale = diag(d),
   \code{\link{rgnvmix}()}, \code{\link{pgnvmix}()}, \code{\link{get_set_param}()}
 }
 \examples{
-### Examples for pgnvmix() #####################################################
-
 n <- 100 # sample size to generate evaluation points
 
-## 1. Inverse-gamma mixture 
+### 1. Inverse-gamma mixture 
 ## 1.1. Grouped t with mutliple dof
 
 d <- 3 # dimension
@@ -131,10 +131,11 @@ dt1 <- dStudent(x, scale = P, df = df, log = TRUE) # uses analytical formula
 dt2 <- dgnvmix(x, qmix = "inverse.gamma", groupings = groupings, df = df, scale = P, log = TRUE) 
 stopifnot(all.equal(dt1, dt2))
 ## Provide 'qmix' as a function to force estimation in 'dgnvmix()' 
-dt3 <- nvmix:::dgnvmix(x, qmix = qmix_, groupings = groupings, df = df, scale = P, log = TRUE) 
-stopifnot(all.equal(dt1, dt3, tol = 5e-5, check.attributes = FALSE))
+dt3 <- dgnvmix(x, qmix = qmix_, groupings = groupings, df = df, scale = P, log = TRUE) 
+stopifnot(all.equal(dt1, dt3, tol = 5e-4, check.attributes = FALSE))
 
-## 2. More complicated mixutre
+### 2. More complicated mixutre
+
 ## Let W1 ~ IG(1, 1), W2 = 1, W3 ~ Exp(1), W4 ~ Par(2, 1), W5 = W1, all comonotone
 ## => X1 ~ t_2; X2 ~ normal; X3 ~ Exp-mixture; X4 ~ Par-mixture; X5 ~ t_2
 

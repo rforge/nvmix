@@ -72,14 +72,14 @@ dStudentcopula <- function(u, df, scale = diag(d), log = FALSE, verbose = TRUE)
 ##' @return n-vector of t_nu(loc, scale) density values
 ##' @author Erik Hintz and Marius Hofert
 dgStudent <- function(x, groupings = 1:d, df, loc = rep(0, d), scale = diag(d), 
-                      control = list(), log = FALSE, verbose = TRUE)
+                      scale.inv = NULL, control = list(), log = FALSE, verbose = TRUE)
 {
    if(!is.matrix(x)) x <- rbind(x)
    d <- ncol(x) # for 'loc', 'scale'
    ## Call 'dgnvmix()'
    dgnvmix(x, groupings = groupings, qmix = "inverse.gamma", loc = loc, 
-           scale = scale, df = df, factor = NULL, control = control, log = log,
-           verbose = verbose)
+           scale = scale, scale.inv = scale.inv, df = df, factor = NULL, 
+           control = control, log = log, verbose = verbose)
 }
 
 ##' @title Density Function of the grouped t copula  
@@ -96,7 +96,8 @@ dgStudent <- function(x, groupings = 1:d, df, loc = rep(0, d), scale = diag(d),
 ##'         (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 dgStudentcopula <- function(u, groupings = 1:d, df, scale = diag(d), 
-                            control = list(), verbose = TRUE, log = FALSE)
+                            scale.inv = NULL, control = list(), verbose = TRUE, 
+                            log = FALSE)
 {
    ## Checks 
    if(!is.matrix(u)) u <- rbind(u)
@@ -115,9 +116,9 @@ dgStudentcopula <- function(u, groupings = 1:d, df, scale = diag(d),
    ## Compute quantiles
    qu <- sapply(1:d, function(i) qt(u[, i], df = df[groupings[i]]))
    if(!is.matrix(qu)) qu <- rbind(qu) # otherwise dimension not correct in dgnvmix()
-   num <- dgnvmix(qu, qmix = "inverse.gamma", scale = scale, df = df,
-                  groupings = groupings, verbose = verbose, control = control,
-                  log = TRUE) # vector 
+   num <- dgnvmix(qu, qmix = "inverse.gamma", scale = scale, scale.inv = scale.inv,
+                  df = df, groupings = groupings, verbose = verbose, 
+                  control = control, log = TRUE) # vector 
    ## Matrix with marginal density applied on the columns of 'qu' 
    temp <- sapply(1:d, function(i) dt(qu[, i], df = df[groupings[i]], log = TRUE))
    if(!is.matrix(temp)) temp <- rbind(temp)

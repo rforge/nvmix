@@ -635,7 +635,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                     1/mean(qW(runif(1e4), nu = rowMeans(mix.param.bounds))))
       ## Optimize log-lik
       opt.obj <- optim(init.par, fn = function(par) -loglik(par), 
-                       lower = c(mix.param.bounds[, 1], 0.01),
+                       lower = c(mix.param.bounds[, 1], 0.1),
                        upper = c(mix.param.bounds[, 2], NA),
                        method = "L-BFGS-B", control = control$control.optim)
       ## Grab estimates for 'nu' and 'scale'

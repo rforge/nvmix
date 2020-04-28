@@ -89,8 +89,8 @@ lambda_gStudent(df, scale, control = list(), verbose = TRUE)
 \examples{
 ### Examples for corgnvmix() ###################################################
 
-## Create a plot displaying Spearman's rho as a function of the copula parameter
-## for various choices of the degrees-of-freedom 
+## Create a plot displaying Spearman's rho for a grouped t copula as a function 
+## of the copula parameter for various choices of the degrees-of-freedom 
 qmix <- "inverse.gamma"
 df <- matrix( c(1, 2, 1, 5, 1, Inf), ncol = 2, byrow = TRUE)
 l.df <- nrow(df)

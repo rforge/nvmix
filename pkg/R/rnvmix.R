@@ -95,7 +95,7 @@ rnvmix_ <- function(n, rmix, qmix, groupings = rep(1, d), loc = rep(0, d),
        sqrt(mix_(U[, 1]))
     } else if(is.rmix.sample) sqrt(rmix) else sqrt(mix_(n))
        ## Otherwise a sample was provided (=> rmix) or mix_() is a RNG 
-    
+    if(!is.matrix(rtW)) rtW <- cbind(rtW) # can happen when n=1
     ## Generate normals or gamma variates 
     if(which == "nvmix") {
         ## Generate Z ~ N(0, I_k)

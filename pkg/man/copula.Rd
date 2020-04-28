@@ -31,7 +31,7 @@ rStudentcopula(n, df, scale = diag(2), method = c("PRNG", "sobol", "ghalton"),
             
 pgStudentcopula(upper, lower = matrix(0, nrow = n, ncol = d), groupings = 1:d,
                 df, scale = diag(d), control = list(), verbose = TRUE)
-dgStudentcopula(u, groupings = 1:d, df, scale = diag(d), 
+dgStudentcopula(u, groupings = 1:d, df, scale = diag(d), scale.inv = NULL,
                 control = list(), verbose = TRUE, log = FALSE)                
 rgStudentcopula(n, groupings = 1:d, df, scale = diag(2), factor = NULL, 
                 method = c("PRNG", "sobol", "ghalton"), skip = 0)             
@@ -58,6 +58,8 @@ rgStudentcopula(n, groupings = 1:d, df, scale = diag(2), factor = NULL,
     Note that \code{scale} must be positive definite; sampling from
     singular ungrouped normal variance mixtures can be achieved by providing
     \code{factor}.}
+    \item{scale.inv}{inverse of \code{scale}; if not provided, computed via
+    \code{solve(scale)}.}
   \item{factor}{% more general here than for dnvmix() or pnvmix()
     \eqn{(d, k)}-\code{\link{matrix}} such that
     \code{factor \%*\% t(factor)} equals \code{scale}; the non-square

@@ -21,10 +21,10 @@ get_set_param <- function(control = list())
       dnvmix.max.iter.rqmc.pilot = 4,
       dnvmix.doAdapt = TRUE,
       dnvmix.tol.int.lower = 1e-30,
-      dnvmix.order.lower = 10,
+      dnvmix.order.lower = 15,
       dnvmix.tol.bisec = c(1e-6, 1e-1, 1e-1),
-      dnvmix.tol.stratlength = 1e-20,
-      dnvmix.max.iter.bisec = 25,
+      dnvmix.tol.stratlength = 1e-5,
+      dnvmix.max.iter.bisec = 15,
       ## For pgammamix():
       pgammamix.reltol = NA,
       pgammamix.abstol = 1e-3,
@@ -60,7 +60,7 @@ get_set_param <- function(control = list())
       dependencemeasures.reltol = NA,
       ## For all (randomized) algorithms:
       method = "sobol",
-      increment = "doubling", # "doubling" or "num.init"
+      increment = "num.init", # "doubling" or "num.init"
       max.iter.rqmc = NA, # defined below, depending on 'increment'
       CI.factor = 3.5,
       fun.eval = c(2^7, 1e12),
@@ -118,7 +118,7 @@ get_set_param <- function(control = list())
    }
    ## Define 'max.iter.rqmc': If it was not provided (=> NA), set defaults
    if(is.na(ctrl$max.iter.rqmc)) {
-      ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 17 else 200
+      ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 12 else 800
    } else {
       ## If it was provided (=> not NA), check if it's reasonable
       stopifnot(ctrl$max.iter.rqmc > 1)

@@ -17,7 +17,7 @@
 ##'         $numiter numeric, number of iterations needed
 ##'         $error n-vector of error estimates for log-densities; either
 ##'         relative error or absolte error depending on is.na(control$dnvmix.reltol)
-##'         $UsWs (B, n) matrix (U, qW(U)) where U are uniforms
+##'         $U_lh (N, n+1) matrix with columns 'u' and 'logh(u)' (for all rows in 'x')
 ##'         (only if return.all = TRUE)
 ##' @author Erik Hintz and Marius Hofert
 densgmix_rqmc <- function(qW, x, scale.inv, lrdet = 0, u.left = 0, u.right = 1, 
@@ -40,7 +40,8 @@ densgmix_rqmc <- function(qW, x, scale.inv, lrdet = 0, u.left = 0, u.right = 1,
    dblng   <- (control$increment == "doubling")
    B       <- control$B # number of randomizations
    current.n <- control$fun.eval[1] # initial sample size
-   numiter   <- 0 # counter for the number of iterations
+   numiter   <- rep(0, n) # counter for the number of iterations
+   max.numiter <- 0 # stores max(numiter) 
    total.fun.evals <- 0 # counter for the number of fun evaluations 
    ## Absolte/relative precision?
    if(is.na(control$dnvmix.reltol)) {
@@ -67,24 +68,26 @@ densgmix_rqmc <- function(qW, x, scale.inv, lrdet = 0, u.left = 0, u.right = 1,
    trafo <- function(u) u.left + (u.right - u.left)*u
    ## Initialize 'max.error' to > tol so that we can enter the while loop
    max.error <- tol + 42
+   notRchd <- 1:n # row indices in 'x' for which tol not reached 
+   l.notRchd <- n 
    ## Matrix to store (u, W_1(u),...,W_k(u)) 
    if(return.all) {
       max.nrow <- if(dblng) current.n*B*2^(max.iter.rqmc-1) else 
          max.iter.rqmc*B*current.n
-      UsWs <- matrix(NA, ncol = numgroups + 1, nrow = max.nrow)
+      U_lh <- matrix(NA, ncol = n+1, nrow = max.nrow)
       curr.lastrow <- 0 # counter row-index additional points are being inserted after
    }
    ## Some more constants needed multiple times
    lconst <- -d/2 * log(2*pi) - lrdet
    CI.factor.sqrt.B <- control$CI.factor / sqrt(B)
    ZERO <- .Machine$double.neg.eps # avoid evaluation at 0 < ZERO 
-   
+   firstiter <- TRUE # logical if we're in the first iteration 
    ## 2. Main loop #############################################################
    
    ## while() runs until precision abstol is reached or the number of function
    ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
    ## the desired log-densities are calculated.
-   while(max.error > tol & numiter < max.iter.rqmc &
+   while(l.notRchd > 0 & max.numiter < max.iter.rqmc &
          total.fun.evals < control$fun.eval[2])
    {
       ## In each randomization ...
@@ -98,7 +101,7 @@ densgmix_rqmc <- function(qW, x, scale.inv, lrdet = 0, u.left = 0, u.right = 1,
                               seed = seeds_[b], skip = (useskip * current.n))
                } else {
                   qrng::sobol(n = current.n, d = 1, randomize = "digital.shift", 
-                              seed = seeds_[b], skip = (numiter * current.n))
+                              seed = seeds_[b], skip = (max.numiter * current.n))
                }
             },
             "ghalton" = {
@@ -110,50 +113,58 @@ densgmix_rqmc <- function(qW, x, scale.inv, lrdet = 0, u.left = 0, u.right = 1,
          ## Obtain realizations of 1 / sqrt(W_j), j = 1,..,numgroups 
          mixings <- qW((U <- trafo(U)))
          if(!is.matrix(mixings)) mixings <- cbind(mixings) # can happen in ungrouped case
+         ## Transform to  1/sqrt(W_j), j=1,..,*d* 
+         mixings <- mixings[, groupings, drop = FALSE] # (current.n, d)
+         rt.mix.i <- t(1/sqrt(mixings)) # (d, current.n)  with1/sqrt(W_j), j=1,..,d  
+         ## Compute mahalanobis distances for each row in 'x' 
+         ## Done very often => use lapply and unlist rather than sapply(, simplify = TRUE)
+         
+         mahasq <- array(unlist(lapply(notRchd, function(i){
+            Dix <- rt.mix.i * matrix(x[i, ], ncol = current.n, nrow = d, byrow = FALSE)
+            .colSums(Dix * (scale.inv %*% Dix), m = d, n = current.n)
+         })), dim = c(current.n, l.notRchd ))
+         # mahasq <- sapply(notRchd, function(i){
+         #    Dix <- rt.mix.i * matrix(x[i, ], ncol = current.n, nrow = d, byrow = FALSE)
+         #    .colSums(Dix * (scale.inv %*% Dix), m = d, n = current.n)
+         # }) # (current.n, l.notRchd ) matrix 
+         ## Compute values of log h(u) (i.e., the logarithmic integrand)
+         lhvals <- lconst - .rowSums(log(mixings), m = current.n, n = d)/2 - 
+            mahasq/2 # (current.n, l.notRchd ) matrix 
          ## Store if needed
          if(return.all) {
-            UsWs[(curr.lastrow + 1) : (curr.lastrow + current.n), ] <- 
-               cbind(U, mixings)
+            U_lh[(curr.lastrow+1):(curr.lastrow+current.n), 1] <- U
+            U_lh[(curr.lastrow+1):(curr.lastrow+current.n), 1 + notRchd] <- lhvals
             curr.lastrow <- curr.lastrow + current.n
          }
-         ## Transform to  1/sqrt(W_j), j=1,..,*d* 
-         mixings <- mixings[, groupings, drop = FALSE] # reorder => now d columns
-         rt.mix.i <- 1/sqrt(mixings) # 1/sqrt(W_j), j=1,..,d
-         ## Compute mahalanobis distances for each row in 'x' 
-         mahasq <- sapply(1:n, function(i){
-            Dix <- t(rt.mix.i * matrix(x[i, ], ncol = d, nrow = current.n, byrow = TRUE))
-            colSums(Dix * (scale.inv %*% Dix))
-         }) # (current.n, n) matrix 
-         ## Compute values of log h(u) (i.e., the logarithmic integrand)
-         lhvals <- lconst - rowSums(log(mixings))/2 - mahasq/2 # (current.n, n) matrix 
          ## Compute next estimates via LogSumExp trick
-         next.estimate <- -log(current.n) + logsumexp(lhvals) # n-vector
+         next.estimate <- -log(current.n) + logsumexp(lhvals) # l.notRchd -vector
          ## Update RQMC estimates
-         rqmc.estimates[b,] <-
+         rqmc.estimates[b, notRchd] <-
             if(dblng) {
                ## In this case both, rqmc.estimates[b,] and
                ## next.estimate depend on n.current points
                .Call("logsumexp2",
-                     a = as.double(rqmc.estimates[b, ]),
+                     a = as.double(rqmc.estimates[b, notRchd]),
                      b = as.double(next.estimate),
-                     n = as.integer(n)) - log(denom)
+                     n = as.integer(l.notRchd )) - log(denom)
             } else {
                ## In this case, rqmc.estimates[b,] depends on
                ## numiter * current.n points whereas next.estimate
                ## depends on current.n points
                .Call("logsumexp2",
-                     a = as.double(rqmc.estimates[b,] + log(numiter)),
+                     a = as.double(rqmc.estimates[b, notRchd] + log(max(numiter))),
                      b = as.double(next.estimate),
-                     n = as.integer(n)) - log(numiter + 1)
+                     n = as.integer(l.notRchd )) - log(max.numiter + 1)
             }
       } # end for(b in 1:B)
       ## Update of various variables
       ## Double sample size and adjust denominator in averaging as well as useskip
       if(dblng) {
          ## Change denom and useksip (exactly once, in the first iteration)
-         if(numiter == 0) {
+         if(firstiter) {
             denom <- 2
             useskip <- 1
+            firstiter <- FALSE 
          } else {
             ## Increase sample size n. This is done in all iterations
             ## except for the first two
@@ -162,7 +173,8 @@ densgmix_rqmc <- function(qW, x, scale.inv, lrdet = 0, u.left = 0, u.right = 1,
       }
       ## Total number of function evaluations
       total.fun.evals <- total.fun.evals + B * current.n
-      numiter <- numiter + 1
+      numiter[notRchd] <- numiter[notRchd] + 1
+      max.numiter <- max.numiter + 1
       ## Update error. The following is slightly faster than 'apply(..., 2, var)'
       ldens <- logsumexp(rqmc.estimates) - log(B) # performs better than .colMeans
       vars <- .colMeans((rqmc.estimates - rep(ldens, each = B))^2, B, n, 0)
@@ -171,17 +183,16 @@ densgmix_rqmc <- function(qW, x, scale.inv, lrdet = 0, u.left = 0, u.right = 1,
       } else { # relative error
          sqrt(vars)/abs(ldens)*CI.factor.sqrt.B
       }
-      max.error <- max(error)
+      l.notRchd <- length(notRchd <- which(error > tol))
    }
    ## 3. Return ################################################################
    
    if(return.all) {
       list(ldensities = ldens, numiter = numiter, error = error,
-           UsWs = UsWs[1:curr.lastrow,])
+           U_lh = U_lh[1:curr.lastrow,])
    } else {
       list(ldensities = ldens, numiter = numiter, error = error)
    }
-   
 }
 
 ##' @title Density of a Grouped Normal Variance Mixture
@@ -189,17 +200,19 @@ densgmix_rqmc <- function(qW, x, scale.inv, lrdet = 0, u.left = 0, u.right = 1,
 ##' @param qmix see ?pgnvmix()
 ##' @param loc see ?pgnvmix()
 ##' @param scale see ?pgnvmix()
-##' @param factor Cholesky factor (lower triangular matrix) of 'scale';
-##'        important here so that det(scale) is computed correctly!
+##' @param factor if 'scale' not provided, scale = tcrossprod(factor)
+##' @param scale.inv inverse of scale. 
 ##' @param control list; see ?get_set_param()
 ##' @param log logical indicating whether the logarithmic density is to be computed
 ##' @param verbose logical indicating whether warnings shall be thrown.
 ##' @param ... additional arguments passed to the underlying mixing distribution
 ##' @return n-vector with computed density values and attributes 'error'
 ##'         (error estimate) and 'numiter' (number of while-loop iterations)
+##' @note Computation of maha distances different in grouped case (=> NOT 
+##'        ellitpical) => need 'scale.inv'         
 ##' @author Erik Hintz and Marius Hofert
 dgnvmix <- function(x, groupings = 1:d, qmix, loc = rep(0, d), scale = diag(d),
-                    factor = NULL, # needs to be lower triangular!
+                    factor = NULL, scale.inv = NULL, 
                     control = list(), log = FALSE, verbose = TRUE, ...)
 {
    
@@ -229,7 +242,7 @@ dgnvmix <- function(x, groupings = 1:d, qmix, loc = rep(0, d), scale = diag(d),
    x <- x[notNA,, drop = FALSE] # non-missing data (rows)
    n <- nrow(x) # update 
    numiter <- 0 # initialize counter 
-   scale.inv <- solve(scale)
+   if(is.null(scale.inv)) scale.inv <- solve(scale) 
    lrdet     <- log(det(scale))/2
    ## Absolte/relative precision?
    tol <- if(is.na(control$dnvmix.reltol)) { # if 'reltol = NA' use absolute precision
@@ -273,37 +286,42 @@ dgnvmix <- function(x, groupings = 1:d, qmix, loc = rep(0, d), scale = diag(d),
                                 return.all = TRUE, control = control)
       ## Extract results
       ldens   <- rqmc.obj$ldensities
-      numiter <- rep(rqmc.obj$numiter, n)
+      numiter <- rqmc.obj$numiter
       error   <- rqmc.obj$error
       if(any(error > tol)){
          ## Call adaptive procedure here
          ## Accuracy not reached for some inputs => use adaptive method there 
          if(control$dnvmix.doAdapt){
+            min.stratlength <- control$dnvmix.tol.stratlength
             ZERO <- .Machine$double.neg.eps # avoid evaluation at 0 < ZERO 
             ONE <- 1-.Machine$double.neg.eps # avoid evaluation at 1 > ONE  
             notRchd <- which(error > tol)
             x. <- x[notRchd, , drop = FALSE]
             n.notRchd <- nrow(x.) 
-            ## Prepare realizations of (u, F_W^\i(u)) needed for all 'x[notRchd, ]'
-            UsWs <- rqmc.obj$UsWs
-            Us <- UsWs[, 1] # vector!
+            ## Grab realizations of (u, logh(u)) for all 'x[notRchd, ]'
+            U_lh <- rqmc.obj$U_lh[, c(1, 1 + notRchd)] # first columns has 'u' 
+            Us <- U_lh[, 1] # vector!
             ord <- order(Us)
             Us <- c(ZERO, Us[ord], ONE) # 'Us' are sorted and 'ZERO'/'ONE' included
-            Ws <- rbind(qW(ZERO), UsWs[ord, -1, drop = FALSE], qW(ONE)) # 'Ws' are sorted 
-            stopifnot( (n.UsWs <- nrow(Ws)) == nrow(Us), ncol(Ws) == numgroups) # check
-            Ws <- Ws[, groupings, drop = FALSE] # now has exactly 'd' columns 
-            n.UsWs <- nrow(Ws) 
-            rt.mix.i <- 1/sqrt(Ws) # 1/sqrt(W_j), j=1,..,d
-            ## Compute realizations of log h(u) for *all* 'x[notRchd, ]' at once
-            mahasq <- sapply(1:n.notRchd, function(i){
-               Dix <- t(rt.mix.i * matrix(x.[i, ], ncol = d, nrow = n.UsWs, byrow = TRUE))
-               colSums(Dix * (scale.inv %*% Dix))
-            }) # (n.UsWs, n.notRchd) matrix of mahalanobis distances for each row in 'x.' 
-            lhvals <- # (n.UsWs, n.notRchd) matrix 
-               -d/2 * log(2*pi) - lrdet - rowSums(log(Ws))/2 - mahasq/2 
+            n.lh <- length(Us)
+            ## Compute logh(u) for u = ZERO and u = ONE 
+            mixings_ZO <- qW(c(ZERO, ONE))
+            if(!is.matrix(mixings_ZO)) mixings_ZO <- cbind(mixings_ZO) 
+            mixings_ZO <- mixings_ZO[, groupings, drop = FALSE] # (2, d)
+            rt.mix.i_ZO <- t(1/sqrt(mixings_ZO)) # (d, 2) with 1/sqrt(W_j), j=1,..,d  
+            mahasq_ZO <- sapply(1:n.notRchd, function(i){ 
+               Dix <- rt.mix.i_ZO * matrix(x.[i, ], ncol = 2, nrow = d, byrow = FALSE)
+               .colSums(Dix * (scale.inv %*% Dix), m = d, n = 2)
+            }) # (2, n.notRchd) matrix: mahalanobis distances for each row in 'x.' 
+            lhvals_ZO <- -d/2 * log(2*pi) - lrdet - 
+               .rowSums(log(mixings_ZO), m = 2, n = d)/2 - mahasq_ZO/2 # (2, n.notRchd) matrix 
+            ## Store all log h(u) (same order as 'Us' above)
+            lhvals <- rbind(lhvals_ZO[1, ], U_lh[ord, -1, drop = FALSE], 
+                            lhvals_ZO[2, ]) # (n.lh, n.notRchd) matrix 
+            stopifnot( nrow(lhvals) == n.lh ) # check
             ## Result objects
             ldens_adapt    <- rep(NA, n.notRchd)
-            error_adapt   <- rep(NA, n.notRchd)
+            error_adapt    <- rep(NA, n.notRchd)
             numiters_adapt <- rep(NA, n.notRchd)
             ## Go through all rows in 'x.' (= all columns of 'lhvals') to find 
             ## limits for the adaptive procedure
@@ -311,15 +329,12 @@ dgnvmix <- function(x, groupings = 1:d, qmix, loc = rep(0, d), scale = diag(d),
                ## Initialize 
                u.left <- NA
                u.right <- NA
-               #dhvals <- diff(lhvals[, i]) # log h(u_{i+1}) - log h(u_{i})
-               #if(all(dhvals > 0)) u.right <- 1 # maximum at the right endpoint (or close to it)
-               #if(all(dhvals < 0)) u.left <- 0 # maximum at left endpoint
                l.max <- lhvals[ (ind.max <- which.max(lhvals[, i])), i] # *observed* maximum
                u.max <- Us[ind.max] 
                ## Maximum at left/right endpoint?
                if(ind.max == 1){
                   u.left <- 0 # maximum at left endpoint (or close to it)
-               } else if(ind.max == n.UsWs){
+               } else if(ind.max == n.lh){
                   u.right <- 1 # maximum at the right endpoint (or close to it)
                } 
                ## Tolerance above which RQMC is used 
@@ -328,25 +343,28 @@ dgnvmix <- function(x, groupings = 1:d, qmix, loc = rep(0, d), scale = diag(d),
                if(any(lhvals[, i] > l.tol.int.lower)){
                   ## Indices of 'u's so corresponding log h(u) >  l.tol.int.lower
                   ind.gr <- which(lhvals[, i] > l.tol.int.lower)
-                  if(is.na(u.left)) u.left <- Us[ind.gr[1]]
+                  if(is.na(u.left)) u.left <- min(1-min.stratlength, Us[ind.gr[1]])
                   if(is.na(u.right))
-                     u.right <- if(ind.gr[length(ind.gr)] == n.UsWs) 1 else Us[ind.gr[length(ind.gr)]+1]
+                     u.right <- 
+                        if(ind.gr[length(ind.gr)] == n.lh) 1 else Us[ind.gr[length(ind.gr)]+1]
                } else {
                   ## No obs > threshold 
                   if(!is.na(u.right)){
                      ## 'u.right' was set above => set 'u.left' if not set yet 
                      if(is.na(u.left)){
-                        u.left <- if(u.right >= ONE) 1 - 1e-10 else u.max - control$dnvmix.tol.stratlength
+                        u.left <- if(u.right >= ONE) 1 - min.stratlength else u.max - 
+                           min.stratlength
                      }
                   } else {
                      ## 'u.right' was not set
                      if(!is.na(u.left)){
                         ## But 'u.left' was 
-                        u.right <- if(u.left == 0) 1e-10 else u.max + control$dnvmix.tol.stratlength
+                        u.right <- if(u.left == 0)min.stratlength else u.max + 
+                           min.stratlength
                      } else {
                         ## Neither 'u.left' nor 'u.right' was set
-                        u.left <- u.max - control$dnvmix.tol.stratlength
-                        u.right <- u.max + control$dnvmix.tol.stratlength
+                        u.left <- u.max - min.stratlength
+                        u.right <- u.max + min.stratlength
                      } 
                   }
                }
@@ -377,10 +395,10 @@ dgnvmix <- function(x, groupings = 1:d, qmix, loc = rep(0, d), scale = diag(d),
                   if(sum_u_gtr > 1) {
                      ## Case 1: We have >1 observations in (u.right, 1)
                      first_gtr <- which(u_gtr)[1]
-                     weights <- abs(c(Us[1], diff(Us[first_gtr:n.UsWs])))
+                     weights <- abs(c(Us[1], diff(Us[first_gtr:n.lh])))
                      logsumexp(
-                        as.matrix(log(weights) + (c(lhvals[(first_gtr+1):n.UsWs, i], -Inf) + 
-                                                     lhvals[first_gtr:n.UsWs, i])/2, ncol = 1))
+                        as.matrix(log(weights) + (c(lhvals[(first_gtr+1):n.lh, i], -Inf) + 
+                                                     lhvals[first_gtr:n.lh, i])/2, ncol = 1))
                   } else {
                      ## Case 2: No or only one observations in (u.right, 1)
                      log1p(-u.right) + l.tol.int.lower - log(2)

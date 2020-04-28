@@ -16,7 +16,7 @@
 ##'         (number of iterations)
 ##' @author Erik Hintz 
 corgnvmix <- function(scale, qmix, method = c("kendall", "spearman"),
-                      groupings = 1:2,  ellip.kendall = FALSE, control = list(), 
+                      groupings = 1:2, ellip.kendall = FALSE, control = list(), 
                       verbose = TRUE, ...)
 {
    

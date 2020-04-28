@@ -178,13 +178,13 @@ P <- cov2cor(A \%*\% t(A))
 a <- -3 * runif(d) * sqrt(d) # random lower limit
 b <-  3 * runif(d) * sqrt(d) # random upper limit
 df <- 1.5 # note that this is *non-integer*
-set.seed(1)
+set.seed(123)
 pt1 <- pnvmix(b, lower = a, qmix = "inverse.gamma", df = df, scale = P)
 
 ## Here is a version providing the quantile function of the mixing distribution
 qmix <- function(u, df) 1 / qgamma(1-u, shape = df/2, rate = df/2)
 mean.sqrt.mix <- sqrt(df) * gamma(df/2) / (sqrt(2) * gamma((df+1) / 2))
-set.seed(1)
+set.seed(123)
 pt2 <- pnvmix(b, lower = a, qmix = qmix, df  = df, scale = P,
               control = list(mean.sqrt.mix = mean.sqrt.mix))
 
@@ -193,14 +193,14 @@ stopifnot(all.equal(pt1, pt2, tol = 7e-4, check.attributes = FALSE))
 
 ## mean.sqrt.mix will be approximated by QMC internally if not provided,
 ## so the results will differ slightly.
-set.seed(1)
+set.seed(123)
 pt3 <- pnvmix(b, lower = a, qmix = qmix, df = df, scale = P)
 stopifnot(all.equal(pt3, pt1, tol = 7e-4, check.attributes = FALSE))
 
 ## Here is a version providing a RNG for the mixing distribution
 ## Note the significantly larger number of iterations in the attribute 'numiter'
 ## compared to when 'qmix' was provided (=> plain MC versus RQMC)
-set.seed(1)
+set.seed(123)
 pt4 <- pnvmix(b, lower = a, 
               rmix = function(n, df) 1/rgamma(n, shape = df/2, rate = df/2),
               df = df, scale = P)
@@ -264,9 +264,9 @@ pn <- pNorm(b, lower = a, scale = P)
 stopifnot(all.equal(pn, 0.7001, tol = 1e-4, check.attributes = FALSE))
 
 ## pStudent deals correctly with df = Inf:
-set.seed(1)
+set.seed(123)
 p.St.dfInf <- pStudent(b, df = Inf, scale = P)
-set.seed(1)
+set.seed(123)
 p.Norm <- pNorm(b, scale = P)
 stopifnot(all.equal(p.St.dfInf, p.Norm, check.attributes = FALSE))
 }

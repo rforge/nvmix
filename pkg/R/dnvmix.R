@@ -93,9 +93,11 @@ merge_m2 <- function(A, B, sort.by = 1){
 ##' @note NO checking is done for efficiency reasons
 logsumexp <- function(M)
 {
+   n.rows <- nrow(M)
+   n.cols <- ncol(M)
    if(!is.matrix(M)) M <- rbind(M) 
    cmax <- apply(M, 2, max)
-   cmax + log(colSums(exp( M - rep(cmax, each = dim(M)[1]))))
+   cmax + log(.colSums(exp( M - rep(cmax, each = n.rows)), m = n.rows, n = n.cols))
 }
 
 ##' @title Adaptive RQMC Method to estimate the log-density of an NVMIX

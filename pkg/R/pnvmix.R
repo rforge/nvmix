@@ -461,7 +461,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
                     factor = NULL, k.factor = rep(1, d),
                     method = c("sobol", "ghalton", "PRNG"), precond = TRUE,
                     tol = 1e-3, do.reltol = FALSE, CI.factor,
-                    fun.eval, max.iter.rqmc, increment = c("doubling", "num.init"),
+                    fun.eval, max.iter.rqmc, 
+                    increment = c("doubling", "num.init"),
                     B = 15,  verbose = TRUE, seeds = NULL, mix.stored = NULL,
                     mix.doStore = FALSE, maxiter.stored = 4, ...)
 {
@@ -1176,7 +1177,7 @@ pnvmix1d <- function(upper, lower = rep(-Inf, n), mix_, use.q = TRUE, do.ant = T
    ## while() runs until precision 'tol' is reached or the number of function
    ## evaluations exceed fun.eval[2]. In each iteration, B RQMC estimates of
    ## the desired probability are calculated.
-   while(max(error) > tol && total.fun.evals < fun.eval[2] && numiter < max.iter.rqmc)
+   while(max(error) > tol & total.fun.evals < fun.eval[2] & numiter < max.iter.rqmc)
    {
 
             ## Get B RQCM estimates
