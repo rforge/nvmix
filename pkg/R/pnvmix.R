@@ -333,7 +333,7 @@ trunc_var <- function(a, b)
 ##' and if this happens, NULL is returned. pnvmix1() then throws a warning
 ##' and estimation is carried out with un-preconditioned inputs.
 precondition <- function(lower, upper, scale, factor, mean.sqrt.mix, 
-                         tol = 1e-16, use.C = FALSE, verbose = FALSE){
+                         tol = 1e-16, use.C = TRUE, verbose = FALSE){
    
    d <- length(lower)
    ## If scalar 'mean.sqrt.mix' provided => repeat to vector of length d for
@@ -429,7 +429,8 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
       precond_C <- .C("precond", as.double(lower), as.double(upper), 
                       as.double(scale.tri), as.double(rep(0, d*(d+1)/2)), 
                       as.double(mean.sqrt.mix), as.double(1e-16),
-                      as.integer(d), as.integer(1:d), as.integer(1))
+                      as.integer(d), as.integer(1:d), as.integer(1),
+                      NAOK = TRUE) # if 'lower'/'upper' contain +/-Inf
       ## Arguments = return of "precond": 
       ## [[1]]: lower; [[2]]: upper; [[3]]: scale.tri (vector);
       ## [[4]]: factor.tri (vector); [[5]]: mean.sqrt.mix; [[6]]: tol; [[7]]: d;
