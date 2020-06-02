@@ -20,7 +20,7 @@
 ##'       - It corresponds to 'g' in the paper.
 pnvmix_g <- function(U, qmix, rmix = NULL, upper, lower = rep(-Inf, d), 
                      groupings = rep(1, d), scale, precond, mean.sqrt.mix = NULL, 
-                     return.all = FALSE,  verbose = TRUE, do.ant = TRUE, ...)
+                     return.all = FALSE, verbose = TRUE, do.ant = TRUE, ...)
 {
    d <- dim(scale)[1]
    ## Define the quantile function of the mixing variable
@@ -127,7 +127,7 @@ pnvmix_g_ <- function(U, rtW, rtWant, groupings = rep(1, d), upper,
       Yorg <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
       ## First 'iteration' (d1, e1 in the paper)
       dorg <- pnorm(lower[1] / (rtW[, groupings[1]] * factor[1, 1]))
-      eorg <- pnorm(upper[1] / (rtW[, groupings[2]] * factor[1, 1]))
+      eorg <- pnorm(upper[1] / (rtW[, groupings[1]] * factor[1, 1]))
       forg <- eorg - dorg
       if(do.ant){
          ## Antithetic values
@@ -143,16 +143,16 @@ pnvmix_g_ <- function(U, rtW, rtWant, groupings = rep(1, d), upper,
          ## Update d__, e__, f___:
          dorg <- pnorm((lower[i]/rtW[, groupings[i]] - Yorg[,1: (i-1)] %*% 
                            as.matrix(factor[i, 1:(i-1)]))/factor[i,i])
-         eorg <- pnorm((upper[i]/rtW[, groupings[1]] - Yorg[,1: (i-1)] %*% 
+         eorg <- pnorm((upper[i]/rtW[, groupings[i]] - Yorg[,1: (i-1)] %*% 
                            as.matrix(factor[i, 1:(i-1)]))/factor[i,i])
          forg <- forg*(eorg-dorg)
          if(do.ant){
             ## Antithetic values
             Yant[, (i-1)] <- 
                qnorm( pmax( pmin(dant + (1-U[, i-1])*(eant-dant), ONE), ZERO))
-            dant <- pnorm((lower[i]/rtWant[, groupings[1]] - Yant[,1: (i-1)] %*% 
+            dant <- pnorm((lower[i]/rtWant[, groupings[i]] - Yant[,1: (i-1)] %*% 
                               as.matrix(factor[i, 1:(i-1)]))/factor[i,i])
-            eant <- pnorm((upper[i]/rtWant[, groupings[1]] - Yant[,1: (i-1)] %*% 
+            eant <- pnorm((upper[i]/rtWant[, groupings[i]] - Yant[,1: (i-1)] %*% 
                               as.matrix(factor[i, 1:(i-1)]))/factor[i,i])
             fant <- fant*(eant-dant)
          }
@@ -318,106 +318,148 @@ trunc_var <- function(a, b)
 ##' @param factor Cholesky factor (lower triangular matrix) of 'scale'
 ##' @param mean.sqrt.mix in NVM case numeric(1) (giving E(sqrt(W))), otherwise
 ##'        numeric(d) with elements E(sqrt(W_i))
-##' @param precond.method character, "ExpLength" (=> sorted by expected length),
-##'        otherwise sorted by 'trunc_var()'.
 ##' @param tol if a calculated diagonal element of factor is < sqrt(tol),
 ##'        factor is deemed singular and preconditioning fails.
-##' @return list of length 4 with reordered integration limits, scale matrix and
+##' @param use.C logical if preconditioning is to be performed in C
+##' @param verbose logical if warnings shall be thrown        
+##' @return list of length 5 with reordered integration limits, scale matrix and
 ##'         Cholesky factor as well as a d-vector 'perm' giving the ordering obtained.
 ##'         If preconditioning was unsuccessful, 'NULL' is returned
 ##' @author Erik Hintz and Marius Hofert
 ##' @note See Genz and Bretz (2002, p. 957).
 ##' It may happen that the original 'scale' admits a (numerically stable full rank)
 ##' 'factor' and that the reordered 'scale' is numerically singular so that a
-##' full rank 'factor' cannot be found. This is detected by 'precondition'
+##' full rank 'factor' cannot be found. This is detected by 'precondition()'
 ##' and if this happens, NULL is returned. pnvmix1() then throws a warning
 ##' and estimation is carried out with un-preconditioned inputs.
-precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
-                         precond.method = "ExpLength", tol = 1e-16)
-{
+precondition <- function(lower, upper, scale, factor, mean.sqrt.mix, 
+                         tol = 1e-16, use.C = FALSE, verbose = FALSE){
+   
    d <- length(lower)
-   ## If scalar 'mean.sqrt.mix' was provided, turn it into a vector to be
-   ## compatible with the GeNVM case 
+   ## If scalar 'mean.sqrt.mix' provided => repeat to vector of length d for
+   ## compatibility with the gNVM case 
    if(length(mean.sqrt.mix) == 1) mean.sqrt.mix <- rep(mean.sqrt.mix, d) 
    stopifnot(all(mean.sqrt.mix > 0), length(mean.sqrt.mix) == d) # check
-   y <- rep(0, d - 1) # to store conditional expected values 
-   perm <- 1:d # to record the final permuation used 
-   exp.lengths <- rep(NA, d) # record expected lengths 
-   ## Main
-   for(j in 1:(d-1)) {
-      ## Case j = 1 somewhat special
-      if(j == 1) {
-         denom <- sqrt(diag(scale))
-         c <- 0
+   if(!use.C){
+      ## Use pure R to perform preconditioning 
+      y <- rep(0, d - 1) # to store conditional expected values 
+      perm <- 1:d # to record the final permuation used 
+      ## Main
+      for(j in 1:(d-1)) {
+         if(j == 1) {
+            denom <- sqrt(diag(scale))
+            c <- 0
+         } else {
+            denom <- diag(scale)[j:d] - .rowSums(factor[j:d, 1:(j-1), drop = FALSE]^2,
+                                                 m = d-j+1, n = j-1)
+            if(all(denom > 0)) denom <- sqrt(denom) else {
+               if(verbose) warning("Computation failed due to singularity; returning NULL.")
+               return(NULL)
+            }
+            c <- factor[j:d, 1:(j-1), drop = FALSE] %*% y[1:(j-1)]
+         }
+         ## Transformed limits with indices greater than j
+         next.uppers <- (upper[j:d] / mean.sqrt.mix[j:d] - c) / denom
+         next.lowers <- (lower[j:d] / mean.sqrt.mix[j:d] - c) / denom
+         ## Find i = argmin { <expected length of interval j> }
+         i <- tail(which.min(pnorm(next.uppers) - pnorm(next.lowers))) + j - 1
+         ## Swap variables i and j if they are different
+         if(i != j) {
+            tmp   <- swap(i = i, j = j, lower = lower, upper = upper, scale = scale)
+            lower <- tmp$lower
+            upper <- tmp$upper
+            scale <- tmp$scale
+            perm[c(i, j)] <- perm[c(j, i)]
+            mean.sqrt.mix[c(i, j)] <- mean.sqrt.mix[c(j, i)]
+            ## If j>1 and an actual swap has occured, need to reorder Cholesky factor:
+            if(j > 1) {
+               factor[c(i,j),]   <- factor[c(j,i),, drop = FALSE]
+               factor[j,(j+1):i] <- matrix(0, ncol = i - j, nrow = 1)
+            }
+         }
+         ## Update Cholesky factor
+         if(j == 1) {
+            factor[1, 1] <- sqrt(scale[1, 1])
+            factor[2:d, 1] <- scale[2:d, 1, drop = FALSE] / factor[1, 1]
+            ## Store y1
+            low.j.up.j <- c(lower[1], upper[1]) / (mean.sqrt.mix[1]*factor[1, 1])
+            y[1] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) /
+               (max(pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]), tol)) 
+         } else {
+            factorjjsq <- scale[j,j] - sum(factor[j,1:(j-1)]^2)
+            if(all(factorjjsq > tol)) factor[j,j] <- sqrt(factorjjsq) else {
+               warning("Factorjjsq < 0, NULL returned.")
+               return(NULL)
+            }
+            factor[(j+1):d, j] <-
+               if(j < d-1) {
+                  (scale[(j+1):d, j] - factor[(j+1):d, 1:(j-1), drop = FALSE] %*%
+                      factor[j, 1:(j-1)]) / factor[j, j]
+               } else {
+                  (scale[(j+1):d, j] - factor[(j+1):d, 1:(j-1)] %*%
+                      factor[j, 1:(j-1)]) / factor[j, j]
+               }
+            ## Get yj
+            scprod     <- sum(factor[j, 1:(j-1)] * y[1:(j-1)]) # needed twice
+            low.j.up.j <- c(lower[j] / mean.sqrt.mix[j] - scprod,
+                            upper[j] / mean.sqrt.mix[j] - scprod) / factor[j, j]
+            y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) /
+               (max(pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]), tol))
+         }
+      } # for()
+      factorddsq <- scale[d, d] - sum(factor[d, 1:(d-1)]^2)
+      if(factorddsq > tol) {
+         factor[d,d] <- sqrt(factorddsq)
       } else {
-         denom <- diag(scale)[j:d] - .rowSums(factor[j:d, 1:(j-1), drop = FALSE]^2,
-                                              m = d-j+1, n = j-1)
-         if(any(denom <= 0)) return(NULL) else denom <- sqrt(denom)
-         c <- factor[j:d, 1:(j-1), drop = FALSE] %*% y[1:(j-1)]
+         warning("Factorddsq <= tol => Trying chol()")
+         ## Try 'chol()' for reordered 'scale' (more accurate)
+         factor <- tryCatch(t(chol(scale)), error = function(e) e)
+         if(!is.matrix(factor)){
+            if(verbose) warning("chol() failed; returning NULL.")
+            return(NULL)
+         } # else 'factor' is correct => return
       }
-      
-      ## Transformed limits with indices greater than j:
-      next.uppers <- (upper[j:d] / mean.sqrt.mix[j:d] - c) / denom
-      next.lowers <- (lower[j:d] / mean.sqrt.mix[j:d] - c) / denom
-      
-      ## Find i = argmin { <expected length of interval j> }
-      i <- if(precond.method == "ExpLength") {
-         which.min(pnorm(next.uppers) - pnorm(next.lowers)) + j - 1
+      ## Return
+      return(list(lower = lower, upper = upper, scale = scale, factor = factor, 
+                  perm = perm))
+   } else {
+      ## Use C function "precond" to perform preconditioning
+      ## Grab lower triangular part of 'scale' (length d*(d+1)/2)
+      scale.tri <- scale[lower.tri(scale, diag = TRUE)]  
+      precond_C <- .C("precond", as.double(lower), as.double(upper), 
+                      as.double(scale.tri), as.double(rep(0, d*(d+1)/2)), 
+                      as.double(mean.sqrt.mix), as.double(1e-16),
+                      as.integer(d), as.integer(1:d), as.integer(1))
+      ## Arguments = return of "precond": 
+      ## [[1]]: lower; [[2]]: upper; [[3]]: scale.tri (vector);
+      ## [[4]]: factor.tri (vector); [[5]]: mean.sqrt.mix; [[6]]: tol; [[7]]: d;
+      ## [[8]]: perm; [[9]]: status (1: ok; 2: recompute chol in R, >= 10: error)
+      if(precond_C[[9]] > 2){
+         if(verbose) warning("Computation failed due to singularity; returning NULL.")
+         return(NULL) # error 
       } else {
-         ## Find i = argmin { <truncated variance of variable j> }
-         which.min(trunc_var(next.lowers, next.uppers)) + j - 1
-      }
-      
-      ## Swap i and j if they are different
-      if(i != j) {
-         tmp   <- swap(i = i, j = j, lower = lower, upper = upper, scale = scale)
-         lower <- tmp$lower
-         upper <- tmp$upper
-         scale <- tmp$scale
-         perm[c(i, j)] <- perm[c(j, i)]
-         mean.sqrt.mix[c(i, j)] <- mean.sqrt.mix[c(j, i)]
-         ## If j>1 and an actual swap has occured, need to reorder Cholesky factor:
-         if(j > 1) {
-            factor[c(i,j),]   <- factor[c(j,i),, drop = FALSE]
-            factor[j,(j+1):i] <- matrix(0, ncol = i - j, nrow = 1)
+         ## Compute 'scale' from triangular part
+         scale <- matrix(NA, ncol = d, nrow = d)
+         scale[lower.tri(scale, diag = TRUE)] <- precond_C[[3]]
+         scale[upper.tri(scale, diag = TRUE)] <- 
+            t(scale)[upper.tri(scale, diag = TRUE)]
+         if(precond_C[[9]] == 2){
+            ## Try to compute Cholesky factor via chol() 
+            factor <- tryCatch(t(chol(scale)), error = function(e) e)
+            if(!is.matrix(factor)){
+               if(verbose) warning("chol() failed; returning NULL.")
+               return(NULL) # error 
+            } # else: factor correct 
+         } else {
+            ## Status = 1 => 'factor.tri' in 'precond_C' correct
+            factor <- matrix(0, ncol = d, nrow = d)
+            factor[lower.tri(factor, diag = TRUE)] <- precond_C[[4]]
          }
       }
-      ## Update Cholesky factor
-      if(j == 1) {
-         factor[1, 1] <- sqrt(scale[1, 1])
-         factor[2:d, 1] <- scale[2:d, 1, drop = FALSE] / factor[1, 1]
-         ## Store y1
-         y[1] <- -(dnorm(upper[1]/mean.sqrt.mix[1]) - dnorm(lower[1]/mean.sqrt.mix[1])) /
-            (max(pnorm(upper[1]/mean.sqrt.mix[1]) - pnorm(lower[1]/mean.sqrt.mix[1]), tol)) # avoid division by zero
-      } else {
-         factorjjsq <- scale[j,j] - sum(factor[j,1:(j-1)]^2)
-         if(any(factorjjsq <= tol)) return(NULL) else factor[j,j] <- sqrt(factorjjsq)
-         factor[(j+1):d, j] <-
-            if(j < d-1) {
-               (scale[(j+1):d, j] - factor[(j+1):d, 1:(j-1), drop = FALSE] %*%
-                   factor[j, 1:(j-1)]) / factor[j, j]
-            } else {
-               (scale[(j+1):d, j] - factor[(j+1):d, 1:(j-1)] %*%
-                   factor[j, 1:(j-1)]) / factor[j, j]
-            }
-         ## Get yj
-         scprod     <- sum(factor[j, 1:(j-1)] * y[1:(j-1)]) # needed twice
-         low.j.up.j <- c(lower[j] / mean.sqrt.mix[j] - scprod,
-                         upper[j] / mean.sqrt.mix[j] - scprod) / factor[j, j]
-         y[j] <- (dnorm(low.j.up.j[1]) - dnorm(low.j.up.j[2])) /
-            (max(pnorm(low.j.up.j[2]) - pnorm(low.j.up.j[1]), tol))
-      }
-   } # for()
-   factorddsq <- scale[d, d] - sum(factor[d, 1:(d-1)]^2)
-   if(factorddsq > tol) {
-      factor[d,d] <- sqrt(factorddsq)
-   } else {
-      ## Try 'chol()' for reordered 'scale' (more accurate)
-      factor <- tryCatch(t(chol(scale)), error = function(e) e)
-      if(!is.matrix(factor)) return(NULL) # else 'factor' is correct => return
+      ## Return
+      return(list(lower = precond_C[[1]], upper = precond_C[[2]], scale = scale, 
+                  factor = factor, perm = precond_C[[8]]))
    }
-   ## Return
-   list(lower = lower, upper = upper, scale = scale, factor = factor, perm = perm)
 }
 
 
@@ -623,7 +665,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
             ## Compute/grab mixing realizations 
             ## If d == 1, U <- -1 as not needed anymore (no normals, only W)
             if(use.q){ # use quantile function (as opposed to RNG)
-               if(!mix.doStore |  # no storing, or storing but not stored yet
+               if(!mix.doStore | 
                   (mix.doStore & (numiter > min(numiter.stored, 
                                                 maxiter.stored)))){
                   ## No storing, or storing but not stored yet, or storing

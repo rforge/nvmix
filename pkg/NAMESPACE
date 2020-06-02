@@ -13,7 +13,7 @@ importFrom("methods",
 importFrom("qrng",
            "sobol", "ghalton")
 importFrom("utils",
-           "head")
+           "head", "tail")
 importFrom("Matrix",
 	   "nearPD")
 importFrom("graphics",
