@@ -33,7 +33,6 @@ void eval_nvmix_integral_c(double *lower, double *upper, int *groupings, int num
 {
     double yorg[r-1], dorg, difforg, scprodorg, ldorg, ldifforg, lforg;
     /* Antithetic equivalents: */
-
     double yant[r-1], dant, diffant, scprodant, ldant, ldiffant, lfant;
 
     
@@ -103,7 +102,7 @@ void eval_nvmix_integral_c(double *lower, double *upper, int *groupings, int num
                 ldifforg = pnorm(upperminorg / rtW[ind_W * n + j], 0, 1, 1, 1);
                 difforg = exp(ldifforg);
                 if(doant){
-                    ldiffant = pnorm(upperminorg / rtWant[ind_W  * n + j], 0, 1, 1, 1);
+                    ldiffant = pnorm(upperminorg / rtWant[ind_W * n + j], 0, 1, 1, 1);
                     diffant = exp(ldiffant);
                 }
             }
@@ -138,14 +137,13 @@ void eval_nvmix_integral_c(double *lower, double *upper, int *groupings, int num
         }
         
         current_limit += kfactor[0];
-        ind_W = groupings[current_limit] - 1;
-    
         /* Go through all r-1 columns of U */
         lforg = ldifforg;
         if(doant){
             lfant = ldiffant;
         }
         for(i = 0; i < r-1; i++){
+            ind_W = groupings[current_limit] - 1;
             /* U[i * n + j] corresponds to U[j, i] in the orginal matrix */
             tmp = dorg + U[i * n + j] * difforg;
             /* Check if too close to 0 or 1 */

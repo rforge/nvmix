@@ -182,6 +182,6 @@ groupings <- c(1, 2, 3, 4, 1) # since W_5 = W_1
 qmix <- list(function(u) qmix_(u, df = 2), function(u) rep(1, length(u)), 
              list("exp", rate=1), function(u) (1-u)^(-1/2)) # length 4 (# of groups)
 pg1 <- pgnvmix(b, groupings = groupings, qmix = qmix, scale = P)
-stopifnot(all.equal(pg1, 0.78768, tol = 5e-6, check.attributes = FALSE))
+stopifnot(all.equal(pg1, 0.78711, tol = 5e-6, check.attributes = FALSE))
 }
 \keyword{distribution}

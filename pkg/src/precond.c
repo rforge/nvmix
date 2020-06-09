@@ -131,8 +131,6 @@ void precond(double *lower, double *upper, double *scale,
     } /* for (j ..) */
     /* Update C[d,d] */
     /* Compute sum_{i=0}^{d-2} C[d, i]^2 */
-
-        
     free(y);
     sum = 0;
     for(int i = 0; i < d-1; i++){
