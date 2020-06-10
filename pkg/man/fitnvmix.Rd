@@ -12,7 +12,7 @@ fitnvmix(x, qmix, mix.param.bounds, nu.init = NA, loc = NULL, scale = NULL,
          init.size.subsample = min(n, 100), size.subsample = n,
          control = list(), verbose = TRUE)
 
-fitStudent(x, mix.param.bounds = c(1e-3, 1e2), ...)
+fitStudent(x, loc = NULL, scale = NULL, mix.param.bounds = c(1e-3, 1e2), ...)
 fitNorm(x)
 }
 \arguments{

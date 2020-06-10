@@ -408,10 +408,12 @@ estim_nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
       stopifnot(special.mix == "inverse.gamma" || special.mix == "pareto")
       ## In this case, dnvmix() uses a closed formula for the density
       loglik <- function(nu) {
-         ll <- sum(dnvmix(t(tx), qmix = special.mix, loc = loc, factor = factor, 
-                           nu = nu, log = TRUE, verbose = verbose))
-         if(verbose >= 3) cat(".") # print dot after each call to likelihood
          ll.counts <<- ll.counts + 1 # update 'll.counts' in the parent environment
+         if(any(nu < mix.param.bounds[, 1]) | any(nu > mix.param.bounds[, 2]))
+            return(-Inf) 
+         ll <- sum(dnvmix(t(tx), qmix = special.mix, loc = loc, factor = factor, 
+                          nu = nu, log = TRUE, verbose = verbose))
+         if(verbose >= 3) cat(".") # print dot after each call to likelihood
          ll # return
       }
    } else {
@@ -425,40 +427,42 @@ estim_nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
       ## Set up -loglikelihood as a function of 'nu'
       lconst <- rep(-lrdet - d/2*log(2*pi), length(maha2.2))
       loglik <- function(nu) {
+         ll.counts <<- ll.counts + 1 # update 'll.counts' in parent environment
+         if(any(nu < mix.param.bounds[, 1]) | any(nu > mix.param.bounds[, 2]))
+            return(-Inf) 
          set.seed(seed_) # reset seed => monotonicity 
          qmix. <- function(u) qW(u, nu = nu) # function of u only
          ## Call 'densmix_()' which by default returns the log-density
          ldens.obj <- densmix_(qW = qmix., maha2.2 = maha2.2, lconst = lconst,
                                d = d, control = control, verbose = verbose)
          if(verbose >= 3) cat(".") # print dot after each call to likelihood
-         ll.counts <<- ll.counts + 1 # update 'll.counts' in parent environment
          ## Return -log-density
          sum(ldens.obj$ldensities)
       }
    }
    sign <- 1 # to report the correct sign of likelihood 
    ## Optimize 'loglik' over 'nu'
-   opt.obj <- if(is.character(special.mix)){
-      ## Closed density => fast => use optim (which minimizes -loglik())
-      sign <- -1 
-      optim(init.nu, fn = function(nu) -loglik(nu), lower = mix.param.bounds[, 1],
-            upper = mix.param.bounds[, 2], method = "L-BFGS-B", 
-            control = control.optim)
-   } else if(dim(mix.param.bounds)[1] == 1){
-      ## One dimensional parameter but density not in closed form available 
+   opt.obj <- if(dim(mix.param.bounds)[1] == 1){
+      ## One dimensional parameter 
       optim1d_(loglik, lower = mix.param.bounds[1, 1], 
                upper = mix.param.bounds[1, 2], par.init = init.nu)
    } else {
+      ## Dimension > 1, no closed density => use optim with Nelder 
+      ## (works for non-differentiable functions) 
       sign <- -1 
-      optim(init.nu, fn = function(nu) -loglik(nu), lower = mix.param.bounds[, 1],
-            upper = mix.param.bounds[, 2], method = "L-BFGS-B", 
-            control = control.optim)
+      optim(init.nu, fn = function(nu) -loglik(nu), control = control.optim)
    }
    ## Return
    list(nu.est    = opt.obj$par,
         max.ll    = sign*opt.obj$value,
         ll.counts = ll.counts,
         opt.obj   = opt.obj) # also return full 'opt.obj'
+   
+   # ## Closed density => fast => use optim with L-BFGS-B (derivative based)
+   # sign <- -1 
+   # optim(init.nu, fn = function(nu) -loglik(nu), lower = mix.param.bounds[, 1],
+   #       upper = mix.param.bounds[, 2], method = "L-BFGS-B", 
+   #       control = control.optim)
 }
 
 
@@ -618,16 +622,21 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
       seed_ <- sample(1:1e4, 1)
       ## Set up log-lik as function of 'nu' and 'c' where 'c' is scaling the 
       ## argument 'scale = c*SCov' 
+      subsample <- x[sample(n, init.size.subsample),, drop = FALSE]
       loglik <- function(par) {
+         ll.counts <<- ll.counts + 1 # update 'll.counts' in the parent environment
+         ## Grab 'nu' and 'c' from 'par' for readability
+         nu <- par[1:mix.param.length] # last element is 'c' 
+         c  <- par[mix.param.length+1]
+         ## Return -Inf if 'par' outside range
+         if(any(nu < mix.param.bounds[, 1]) | any(nu > mix.param.bounds[, 2]) |
+            c < 0.1) return(-Inf)
          ## Define 'qmix_' as string (=> density known) or function 
          qmix_ <- if(is.character(special.mix)) special.mix else qW 
          set.seed(seed_) # same seed for different calls 
-         ll <- sum(dnvmix(x[sample(n, init.size.subsample),, drop = FALSE],
-                          qmix = qmix_, loc = loc.est,
-                          scale = par[mix.param.length + 1] * SCov, 
-                          nu = par[1:mix.param.length],  log = TRUE))
+         ll <- sum(dnvmix(subsample, qmix = qmix_, loc = loc.est, 
+                          scale = c * SCov, nu = nu, log = TRUE))
          if(verbose >= 3) cat(".") # print dot after each call to loglik
-         ll.counts <<- ll.counts + 1 # update 'll.counts' in the parent environment
          ll # return
       }
       ## Initial value for 'par' (was not provided)
@@ -635,9 +644,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                     1/mean(qW(runif(1e4), nu = rowMeans(mix.param.bounds))))
       ## Optimize log-lik
       opt.obj <- optim(init.par, fn = function(par) -loglik(par), 
-                       lower = c(mix.param.bounds[, 1], 0.1),
-                       upper = c(mix.param.bounds[, 2], NA),
-                       method = "L-BFGS-B", control = control$control.optim)
+                       control = control$control.optim)
       ## Grab estimates for 'nu' and 'scale'
       nu.est    <- opt.obj$par[1:mix.param.length]
       scale.est <- opt.obj$par[mix.param.length + 1] * SCov

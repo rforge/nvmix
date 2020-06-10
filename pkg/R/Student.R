@@ -362,13 +362,16 @@ rStudentcopula <- function(n, df, scale = diag(2),
 
 ##' @title Fitting the Parameters of a Multivariate Student t Distribution
 ##' @param x (n,d) data matrix
+##' @param loc location vector; estimated if not supplied
+##' @param scale (d,d) scale matrix; estimated if not supplied 
 ##' @param mix.param.bounds see ?fitnvmix
 ##' @param ... additional arguments passed to the underlying fitnvmix()
 ##' @return see ?fitnvmix
 ##' @author Marius Hofert
-fitStudent <- function(x, mix.param.bounds = c(1e-3, 1e2), ...)
+fitStudent <- function(x, loc = NULL, scale = NULL, mix.param.bounds = c(1e-3, 1e2), ...)
 {
-   fit <- fitnvmix(x, qmix = "inverse.gamma", mix.param.bounds = mix.param.bounds, ...)
+   fit <- fitnvmix(x, qmix = "inverse.gamma", 
+                   loc = loc, scale = scale, mix.param.bounds = mix.param.bounds, ...)
    ## Consistency with other *Student() functions
    nms <- names(fit)
    nms[nms == "nu"] <- "df"
