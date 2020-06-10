@@ -14,14 +14,15 @@
  * @param d dimension of the original problem
  * @param r rank of factor
  * @param kfactor vector of length r giving height of each step in 'factor'
- * @param factor lower triangular Cholesky factor as vector
+ * @param factor lower triangular Cholesky factor as vector (factor[row, col] = factor[col*(d-1)-col*(col-1)/2+row])
  * @param ZERO smallest number x > 0 such that x != 0
  * @param ONE   largest number x < 1 such that x != 1
  * @param res 2-vector to store results (mean + estimated variance)
  * @return 2-vector consisting of mean(f(U)) and var(f(U)) using antithetic variates
  * @note lower and upper can have -/+Inf entries. While pnorm() would give the
- correct result, it safes time to check each time if the argument is -/+Inf
+ *       correct result, it safes time to check each time if the argument is -/+Inf
  *       and setting the value to 0/1 rather than calling pnorm().
+ *       Access factor[row, col] as factor[col*(d-1)-col*(col-1)/2+row]
  * @author Erik Hintz and Marius Hofert
  */
 
@@ -44,7 +45,8 @@ void eval_nvmix_integral_c(double *lower, double *upper, int *groupings, int num
     /* f:       current value of (e1-d1) * (e2-d2) * ... * (ei-di) */
     /* scprod:  scalar product sum factor_{ij} y_j */
     
-    double tmp; /* to store temporary values */
+    int tmpint; /* to store temporary values (integer) */
+    double tmp; /* to store temporary values (double) */
     double lowermaxorg, upperminorg, scprodorgnew;  /* needed in singular case */
     double lowermaxant, upperminant, scprodantnew;
     double sum = 0; /* to store sum_{i=1}^n (y_i + yant_i)/2 */
@@ -171,9 +173,10 @@ void eval_nvmix_integral_c(double *lower, double *upper, int *groupings, int num
 
             /* Calculate the scalar product sum factor[i,j] y[j] for j = 1:(i-1) */
             for(l = 0; l < (i+1); l++){
-                scprodorg += yorg[l] * factor[l * d + current_limit];
+                tmpint = l*(d-1)-l*(l-1)/2+current_limit;
+                scprodorg += yorg[l] * factor[tmpint];
                 if(doant){
-                    scprodant += yant[l] * factor[l * d + current_limit];
+                    scprodant += yant[l] * factor[tmpint];
                 }
             }
             
@@ -187,11 +190,12 @@ void eval_nvmix_integral_c(double *lower, double *upper, int *groupings, int num
             /* Non-singular case: */
             if(r == d){
                 /* Divide by C[i,i] != 0 */
-                lowermaxorg = lowermaxorg / factor[current_limit * (d+1)];
-                upperminorg = upperminorg / factor[current_limit * (d+1)];
+                tmpint = current_limit*d - current_limit*(current_limit-1)/2;
+                lowermaxorg = lowermaxorg / factor[tmpint];
+                upperminorg = upperminorg / factor[tmpint];
                 if(doant){
-                    lowermaxant = lowermaxant / factor[current_limit * (d+1)];
-                    upperminant = upperminant / factor[current_limit * (d+1)];
+                    lowermaxant = lowermaxant / factor[tmpint];
+                    upperminant = upperminant / factor[tmpint];
                 }
             } else if(kfactor[i+1] > 1){
                 /* Singular case: Go through the next rows of factor, adjust limit. Note: In the
@@ -203,9 +207,10 @@ void eval_nvmix_integral_c(double *lower, double *upper, int *groupings, int num
                         scprodantnew = 0;
                     }
                     for(l = 0; l < (i+1); l++){
-                        scprodorgnew += yorg[l] * factor[l * d + current_limit + m];
+                        tmpint = l*(d-1) - l*(l-1)/2 + current_limit + m;
+                        scprodorgnew += yorg[l] * factor[tmpint];
                         if(doant){
-                            scprodantnew += yant[l] * factor[l * d + current_limit + m];
+                            scprodantnew += yant[l] * factor[tmpint];
                         }
                     }
                     /* Update 'lowermaxorg' if necessary */

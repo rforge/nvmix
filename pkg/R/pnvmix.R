@@ -113,8 +113,7 @@ pnvmix_g_ <- function(U, rtW, rtWant, groupings = rep(1, d), upper,
       } else {
          lower  <- temp$lower
          upper  <- temp$upper
-         scale  <- temp$scale
-         factor <- temp$factor
+         factor <- temp$factor # *vector* containing lower triangular part 
          groupings <- groupings[temp$perm] 
       }
    } 
@@ -123,6 +122,10 @@ pnvmix_g_ <- function(U, rtW, rtWant, groupings = rep(1, d), upper,
    ZERO <- .Machine$double.eps
    
    if(return.all) {
+      ## Here (and only here) do we need 'factor' as a matrix (readability)
+      factor_ <- matrix(0, ncol = d, nrow = d)
+      factor_[lower.tri(factor_, diag = TRUE)] <- factor
+      factor <- factor_
       ## Matrix to store results (y_i from paper)
       Yorg <- matrix(NA, ncol = d - 1, nrow = dim(U)[1])
       ## First 'iteration' (d1, e1 in the paper)
@@ -172,7 +175,7 @@ pnvmix_g_ <- function(U, rtW, rtWant, groupings = rep(1, d), upper,
             d        = as.integer(d),
             r        = as.integer(rank),
             kfactor  = as.integer(k.factor),
-            factor   = as.double(factor),
+            factor   = as.double(factor), # lower triangular part as vector 
             ZERO     = as.double(ZERO),
             ONE      = as.double(ONE),
             doant    = as.integer(do.ant))
@@ -291,25 +294,6 @@ reorder_limits_scale <- function(perm, upper, lower = rep(-Inf, d), scale = diag
 }
 
 
-##' @title Variance of a Normal Rv over a Truncated Interval (a, b)
-##' @param a l-vector
-##' @param b l-vector
-##' @return l-vector
-##' @author Erik Hintz
-##' @note formula in Genz and Bretz (2009, p. 38)
-trunc_var <- function(a, b)
-{
-   p.diff <- pnorm(b) - pnorm(a)
-   ## Cases -Inf * 0 and Inf * 0:
-   adnorma <- a*dnorm(a)
-   adnorma[which(is.nan(adnorma))] <- 0
-   bdnormb <- b*dnorm(b)
-   bdnormb[which(is.nan(bdnormb))] <- 0
-   ## Return
-   1 + (adnorma - bdnormb)/p.diff - ((dnorm(a)-dnorm(b))/p.diff)^2
-}
-
-
 ##' @title Preconditioning (Reordering Variables According to their Expected
 ##'        Integration Limits)
 ##' @param lower see ?pnvmix
@@ -323,7 +307,8 @@ trunc_var <- function(a, b)
 ##' @param use.C logical if preconditioning is to be performed in C
 ##' @param verbose logical if warnings shall be thrown        
 ##' @return list of length 5 with reordered integration limits, scale matrix and
-##'         Cholesky factor as well as a d-vector 'perm' giving the ordering obtained.
+##'         Cholesky factor as well as a d-vector 'perm' giving the ordering obtained..
+##'         Only the lower triangular part of 'scale' and 'factor' are returned. 
 ##'         If preconditioning was unsuccessful, 'NULL' is returned
 ##' @author Erik Hintz and Marius Hofert
 ##' @note See Genz and Bretz (2002, p. 957).
@@ -420,7 +405,9 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
          } # else 'factor' is correct => return
       }
       ## Return
-      return(list(lower = lower, upper = upper, scale = scale, factor = factor, 
+      return(list(lower = lower, upper = upper, 
+                  scale = scale[lower.tri(scale, diag = TRUE)], 
+                  factor = factor[lower.tri(factor, diag = TRUE)], 
                   perm = perm))
    } else {
       ## Use C function "precond" to perform preconditioning
@@ -435,31 +422,30 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
       ## [[1]]: lower; [[2]]: upper; [[3]]: scale.tri (vector);
       ## [[4]]: factor.tri (vector); [[5]]: mean.sqrt.mix; [[6]]: tol; [[7]]: d;
       ## [[8]]: perm; [[9]]: status (1: ok; 2: recompute chol in R, >= 10: error)
-      if(precond_C[[9]] > 2){
+      if(precond_C[[9]] == 1){ # preconditioning terminated; return
+         return(list(lower = precond_C[[1]], upper = precond_C[[2]], 
+                     scale = precond_C[[3]], factor = precond_C[[4]], 
+                     perm = precond_C[[8]]))
+      } else if(precond_C[[9]] > 2){
          if(verbose) warning("Computation failed due to singularity; returning NULL.")
          return(NULL) # error 
       } else {
+         ## Try recomputing cholesky factor 
          ## Compute 'scale' from triangular part
          scale <- matrix(NA, ncol = d, nrow = d)
          scale[lower.tri(scale, diag = TRUE)] <- precond_C[[3]]
          scale[upper.tri(scale, diag = TRUE)] <- 
             t(scale)[upper.tri(scale, diag = TRUE)]
-         if(precond_C[[9]] == 2){
-            ## Try to compute Cholesky factor via chol() 
-            factor <- tryCatch(t(chol(scale)), error = function(e) e)
-            if(!is.matrix(factor)){
-               if(verbose) warning("chol() failed; returning NULL.")
-               return(NULL) # error 
-            } # else: factor correct 
-         } else {
-            ## Status = 1 => 'factor.tri' in 'precond_C' correct
-            factor <- matrix(0, ncol = d, nrow = d)
-            factor[lower.tri(factor, diag = TRUE)] <- precond_C[[4]]
-         }
+         factor <- tryCatch(t(chol(scale)), error = function(e) e)
+         if(!is.matrix(factor)){
+            if(verbose) warning("chol() failed; returning NULL.")
+            return(NULL) # error 
+         } # else 'factor' is correct now => return
+         return(list(lower = precond_C[[1]], upper = precond_C[[2]], 
+                     scale = precond_C[[3]], 
+                     factor = factor[lower.tri(factor, diag = TRUE)], 
+                     perm = precond_C[[8]]))
       }
-      ## Return
-      return(list(lower = precond_C[[1]], upper = precond_C[[2]], scale = scale, 
-                  factor = factor, perm = precond_C[[8]]))
    }
 }
 
@@ -474,7 +460,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
 ##' @param mean.sqrt.mix see details in ?pnvmix
 ##' @param loc see details in ?pnvmix
 ##' @param scale see details in ?pnvmix
-##' @param factor see details in ?pnvmix
+##' @param factor lower triangular part of 'factor' as a vector 
 ##' @param k.factor vector of length rank(scale) with heights of each step in
 ##'        'factor'
 ##' @param method see details in ?pnvmix
@@ -515,13 +501,7 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
    stopifnot(length(lower) == d, lower <= upper, is.function(mix_))
    if(any(lower == upper))
       return(list(value = 0, error = 0, numiter = 0))
-   
-   ## Get (lower triangular) Cholesky factor if not provided
-   ## (only needed if the internal function pnvmix1() is called directly)
-   ## Note: This will only work if 'scale' is full rank. In the singular case,
-   ## pnvmix() needs to be called and handles the singularity issues
-   ##  (more efficient, as done only once)
-   if(is.null(factor)) factor <- t(chol(scale)) # lower triangular Cholesky factor
+
    ## Preconditioning (resorting the limits; only for d > 2 and non-singular case)
    if(precond & d > 2 & rank == d) {
       ## Note that 'mean.sqrt.mix' has already been calculated in pnvmix()
@@ -534,11 +514,15 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
       } else {
          lower  <- temp$lower
          upper  <- temp$upper
-         factor <- temp$factor
+         factor <- temp$factor # lower triangular part only
          groupings <- groupings[temp$perm] 
       }
+   } else if(is.null(factor)){ 
+      ## 'factor' was not provided (happens when pnvmix1() is *not* called from pgnmvix())
+      factor <- t(chol(scale))
+      factor <- factor[lower.tri(factor, diag = TRUE)] # lower triangular part only
    }
-   
+
    ## 1 Basics for while loop below ###########################################
    
    ## Error is calculated as CI.factor * sd( estimates) / sqrt(B)
@@ -1104,12 +1088,15 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
       ## Compute result for ith row of lower and upper (in essence,
       ## because of the preconditioning, one has to treat each such
       ## row separately)
+      ## Note: Only lower triangular part of 'factor' needed in pnvmix1()
       tmp <- 
          pnvmix1(up, lower = low, groupings = groupingsFin, mix_ = mix_,
                  use.q = use.q, do.ant = do.ant,
                  is.const.mix = is.const.mix,
-                 mean.sqrt.mix = mean.sqrt.mix, loc = loc, scale = scaleFin,
-                 factor = factorFin, k.factor = k.factorFin, method = method,
+                 mean.sqrt.mix = mean.sqrt.mix, loc = loc, 
+                 scale = scaleFin,
+                 factor = factorFin[lower.tri(factorFin, diag = TRUE)], 
+                 k.factor = k.factorFin, method = method,
                  precond = control$precond, tol = tol, do.reltol = do.reltol,
                  CI.factor = control$CI.factor, fun.eval = control$fun.eval,
                  max.iter.rqmc = control$max.iter.rqmc, increment = increment,

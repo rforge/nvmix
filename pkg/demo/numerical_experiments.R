@@ -545,7 +545,7 @@ pnvmix_timing_mvt <- function(d, n, rep, tol = 1e-3, df = 2){
 #' @return plots estimated CPUs as fct of 'd' for 'pmvt()' and 'pStudent()'
 #' @author Erik Hintz
 #' 
-pnvmix_timing_mvt_plot <- function(pnvmix.t.timing){
+pnvmix_timing_mvt_plot <- function(pnvmix.t.timing, ratio = FALSE){
    ## Input checking 
    stopifnot(length(dim(pnvmix.t.timing)) == 3)
    ## Grab dimensions used from dimnames:
@@ -1097,7 +1097,7 @@ fitnvmix_testing_plot <- function(fitnvmix.results, index.qmix = 1,
 maxiter        <- 11 # maximum number of iterations
 max.fun.evals  <- 3 * 2^8 * 2^seq(from = 1, to = maxiter, by = 1)
 ## Dimension(s) of the underlying normal variance mixture
-d              <- c(5, 50, 100, 500) 
+d              <- c(5, 50, 500) 
 ## Number of repetitions in each dimension
 n              <- 15
 ## Specification of mixtures

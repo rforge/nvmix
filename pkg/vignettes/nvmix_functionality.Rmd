@@ -185,7 +185,7 @@ also compute the regression coefficients which act as a summary measure of
 the speed of convergence.
 ```{r, fig.align = "center", fig.width = 7, fig.height = 7, fig.show = "hold", eval = eval}
 ## Setup
-df <- 2.1 # degrees of freedom
+df <- 1.5 # degrees of freedom
 maxiter <- 9 # note: i iterations require 3 * 2^8 * 2^i function evaluations
 max.fun.evals <- 3 * 2^8 * 2^seq(from = 2, to = maxiter, by = 1)
 errors <- matrix(, ncol = length(max.fun.evals), nrow = 4)
