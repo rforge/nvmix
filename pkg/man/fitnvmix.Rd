@@ -152,39 +152,40 @@ mix.param.bounds <- c(1, 5) # nu in [1, 5]
 
 ### Example 1: Fitting a multivariate t distribution ###########################
 
-## Define 'qmix' as the quantile function of an IG(nu/2, nu/2) distribution
-qmix <- function(u, nu) 1 / qgamma(1 - u, shape = nu/2, rate = nu/2)
-## Sample data using 'rnvmix'
-x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
-## Call 'fitvnmix' with 'qmix' as a function (so all densities/weights are estimated)
-(MyFit11 <- fitnvmix(x, qmix = qmix, mix.param.bounds = mix.param.bounds))
-## Call 'fitnvmix' with 'qmix = "inverse.gamma"' in which case analytical formulas
-## for weights and densities are used:
-(MyFit12 <- fitnvmix(x, qmix = "inverse.gamma", 
-                     mix.param.bounds = mix.param.bounds))
-## Alternatively, use the wrapper 'fitStudent()' 
-(MyFit13 <- fitStudent(x))
-## Check
-stopifnot(all.equal(MyFit11$nu, MyFit12$nu, MyFit13$nu, tol = 5e-2))
-## Can also provide 'loc' and 'scale' in which case only 'nu' is estimated
-(MyFit13 <- fitnvmix(x, qmix = "inverse.gamma", mix.param.bounds = mix.param.bounds,
-                     loc = loc, scale = scale))
-(MyFit14 <- fitStudent(x, loc = loc, scale = scale))
-stopifnot(all.equal(MyFit13$nu, MyFit14$df, tol = 1e-6))
+if(FALSE){
+   ## Define 'qmix' as the quantile function of an IG(nu/2, nu/2) distribution
+   qmix <- function(u, nu) 1 / qgamma(1 - u, shape = nu/2, rate = nu/2)
+   ## Sample data using 'rnvmix'
+   x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
+   ## Call 'fitvnmix' with 'qmix' as a function (so all densities/weights are estimated)
+   (MyFit11 <- fitnvmix(x, qmix = qmix, mix.param.bounds = mix.param.bounds))
+   ## Call 'fitnvmix' with 'qmix = "inverse.gamma"' in which case analytical formulas
+   ## for weights and densities are used:
+   (MyFit12 <- fitnvmix(x, qmix = "inverse.gamma", 
+                        mix.param.bounds = mix.param.bounds))
+   ## Alternatively, use the wrapper 'fitStudent()' 
+   (MyFit13 <- fitStudent(x))
+   ## Check
+   stopifnot(all.equal(MyFit11$nu, MyFit12$nu, MyFit13$nu, tol = 5e-2))
+   ## Can also provide 'loc' and 'scale' in which case only 'nu' is estimated
+   (MyFit13 <- fitnvmix(x, qmix = "inverse.gamma", mix.param.bounds = mix.param.bounds,
+                        loc = loc, scale = scale))
+   (MyFit14 <- fitStudent(x, loc = loc, scale = scale))
+   stopifnot(all.equal(MyFit13$nu, MyFit14$df, tol = 1e-6))
+}
 
 ### Example 2: Fitting a Pareto mixture ########################################
 
-if(FALSE){
-   ## Define 'qmix' as the quantile function of a Par(nu, 1) distribution
-   qmix <- function(u, nu) (1-u)^(-1/nu)
-   ## Sample data using 'rnvmix':
-   x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
-   ## Call 'fitvnmix' with 'qmix' as function (=> densities/weights estimated)
-   (MyFit21 <- fitnvmix(x, qmix = qmix, mix.param.bounds = mix.param.bounds))
-   ## Call 'fitnvmix' with 'qmix = "pareto"' in which case an analytical formula
-   ## for the density is used
-   (MyFit22 <- fitnvmix(x, qmix = "pareto", mix.param.bounds = mix.param.bounds))
-   stopifnot(all.equal(MyFit21$nu, MyFit22$nu, tol = 5e-2))  
-}
+## Define 'qmix' as the quantile function of a Par(nu, 1) distribution
+qmix <- function(u, nu) (1-u)^(-1/nu)
+## Sample data using 'rnvmix':
+x <- rnvmix(n, qmix = qmix, nu = nu, loc = loc, scale = scale)
+## Call 'fitvnmix' with 'qmix' as function (=> densities/weights estimated)
+(MyFit21 <- fitnvmix(x, qmix = qmix, mix.param.bounds = mix.param.bounds))
+## Call 'fitnvmix' with 'qmix = "pareto"' in which case an analytical formula
+## for the density is used
+(MyFit22 <- fitnvmix(x, qmix = "pareto", mix.param.bounds = mix.param.bounds))
+stopifnot(all.equal(MyFit21$nu, MyFit22$nu, tol = 5e-2))  
+
 }
 \keyword{distribution}
