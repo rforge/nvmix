@@ -672,7 +672,6 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
       while(iter.ECME < control$ECME.maxiter & !converged) { 
          ## Print progress
          if(verbose >= 2) cat(paste0("  Iteration ",iter.ECME + 1, '\n'))
-         
          ## 2.1  Update 'loc.est' and 'scale.est' while 'nu.est' held fixed ####
          if(do.loc | do.scale){ # otherwise can skip this step 
             converged.locscale   <- FALSE

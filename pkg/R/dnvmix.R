@@ -370,9 +370,10 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
                weights <- abs(c(U.W.lint[1, 1], 
                                 U.W.lint[2:last_sml, 1] -
                                    U.W.lint[1:(last_sml-1), 1]))
-               logsumexp(as.matrix(log(weights) + 
+               res <- logsumexp(as.matrix(log(weights) + 
                                       (c(-Inf, U.W.lint[1:(last_sml-1), 3]) + 
                                           U.W.lint[1:last_sml, 3])/2, ncol = 1))
+               if(is.nan(res)) -Inf else res
             } else {
                ## Case 2: No observations in (0, u.left) 
                log(u.left) + l.tol.int.lower - log(2)
@@ -405,9 +406,10 @@ densmix_adaptrqmc <- function(qW, maha2.2, lconst, d, k = d, control, UsWs)
                weights <- abs(c(U.W.lint[ (first_gtr+1):numObs, 1] -
                                    U.W.lint[first_gtr:(numObs-1), 1],
                                 .Machine$double.neg.eps))
-               logsumexp(as.matrix(log(weights) + 
+               res <- logsumexp(as.matrix(log(weights) + 
                                       (c(U.W.lint[(first_gtr+1):numObs, 3], -Inf) + 
                                           U.W.lint[first_gtr:numObs, 3])/2, ncol = 1))
+               if(is.nan(res)) -Inf else res
             } else {
                ## Case 2: No or only one observations in (u.right, 1)
                log1p(-u.right) + l.tol.int.lower - log(2)
