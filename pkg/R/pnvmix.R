@@ -116,6 +116,8 @@ pnvmix_g_ <- function(U, rtW, rtWant, groupings = rep(1, d), upper,
          factor <- temp$factor # *vector* containing lower triangular part 
          groupings <- groupings[temp$perm] 
       }
+   } else { # lower triangular part of 'factor' as vector 
+      factor <- factor[lower.tri(factor, diag = TRUE)] 
    } 
    ## For evaluating qnorm() close to 0 and 1
    ONE <- 1-.Machine$double.neg.eps

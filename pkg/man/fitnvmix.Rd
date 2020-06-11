@@ -142,7 +142,7 @@ fitNorm(x)
 ## Sampling parameters
 set.seed(274) # for reproducibility
 nu               <- 2.8 # parameter used to sample data
-d                <- 5 # dimension
+d                <- 4 # dimension
 n                <- 75 # small sample size to have examples run fast
 loc              <- rep(0, d) # location vector
 A                <- matrix(runif(d * d), ncol = d)
