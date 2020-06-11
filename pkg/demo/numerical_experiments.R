@@ -355,7 +355,7 @@ precond_testing_variance_plot  <- function(pnvmix.variances, scatterplot = TRUE,
               xlab = "Estimated variance ratio with versus without reordering",
               ylab = "Density")
          # abline(v = 1, col = 'red', lty = 2) 
-         legend("topright", expression(paste("Var(", tilde(g), "(U)) / Var(g(U))")),
+         legend("topright", expression(paste("Var(", tilde(g), "(U))" / Var(g(U)))),
                 lty = 1, col = "black", bty = 'n')
       }
    }
@@ -638,7 +638,7 @@ dnvmix_testing <- function(d = 10, n = 1000, qmix = "inverse.gamma",
       control.noAdapt$dnvmix.doAdapt <- FALSE
       ## In this case 'dnvmix()' only uses 'control$dnvmix.max.iter.rqmc.pilot' 
       ## many iterations which defaults to 4 (< control$max.iter.rqmc)
-      control.noAdapt$dnvmix.max.iter.rqmc.pilot <- 12
+      control.noAdapt$dnvmix.max.iter.rqmc.pilot <- 800
    } else {
       control.noAdapt <- control.doAdapt
    }
@@ -718,7 +718,7 @@ dnvmix_testing <- function(d = 10, n = 1000, qmix = "inverse.gamma",
                         <- dnvmix(x, qmix = qmix.[[i]], loc = loc, scale = scale, 
                                   log = TRUE, control = control.doAdapt, 
                                   nu = nu.dens[i], verbose = verbose))[1] 
-         error.doAdapt <- attr(ldens.est.doAdapt, "error")
+         error.doAdapt <- attr(ldens.est.doAdapt, "abs. error")
       } else {
          CPUused.doAdapt   <- NA
          ldens.est.doAdapt <- rep(NA, n)
@@ -731,7 +731,7 @@ dnvmix_testing <- function(d = 10, n = 1000, qmix = "inverse.gamma",
                         <- dnvmix(x, qmix = qmix.[[i]], loc = loc, scale = scale, 
                                   log = TRUE, control = control.noAdapt, 
                                   nu = nu.dens[i], verbose = verbose))[1]
-         error.noAdapt <- attr(ldens.est.noAdapt, "error")
+         error.noAdapt <- attr(ldens.est.noAdapt, "abs. error")
       } else {
          CPUused.noAdapt   <- NA
          ldens.est.noAdapt <- rep(NA, n)
@@ -838,11 +838,11 @@ dnvmix_testing_plot <- function(dnvmix.results, index.qmix, plot.title = FALSE)
       pch.used <- c(pch.used, NA)
       col.used <- c(col.used, cols[2])
       ## Mark points for which the estimation is unreliable (ie 'error = NA')
-      if(any(is.na(error.doAdapt))){
-         anyerrorNA <- TRUE
-         whichNA <- which(is.na(error.doAdapt)) 
-         points(sqrt(maha)[whichNA], ldens.est.doAdapt[whichNA], col = cols[2], pch = 9)
-      }
+      #if(any(is.na(error.doAdapt))){
+      #   anyerrorNA <- TRUE
+      #   whichNA <- which(is.na(error.doAdapt)) 
+      #   points(sqrt(maha)[whichNA], ldens.est.doAdapt[whichNA], col = cols[2], pch = 9)
+      #}
       ## Plot 'ldens.est.noadapt' as a function of 'sqrt(maha)'
       if(plot.noadapt){
          lines(sqrt(maha), ldens.est.noAdapt,  col = cols[3], lty = 2,
@@ -855,11 +855,11 @@ dnvmix_testing_plot <- function(dnvmix.results, index.qmix, plot.title = FALSE)
          pch.used <- c(pch.used, NA)
          col.used <- c(col.used, cols[3])
          ## Mark points for which the estimation is unreliable (ie 'error = NA')
-         if(any(is.na(error.noAdapt))){
-            anyerrorNA <- TRUE
-            whichNA <- which(is.na(error.noAdapt)) 
-            points(sqrt(maha)[whichNA], ldens.est.noAdapt[whichNA], col = cols[3], pch = 9)
-         }
+         #if(any(is.na(error.noAdapt))){
+         #   anyerrorNA <- TRUE
+         #   whichNA <- which(is.na(error.noAdapt)) 
+         #   points(sqrt(maha)[whichNA], ldens.est.noAdapt[whichNA], col = cols[3], pch = 9)
+         #}
       }
    } else if(plot.noadapt){
       ## Plot *only* 'ldens.est.noadapt' as a function of 'sqrt(maha)'
@@ -1209,8 +1209,8 @@ if(doRUN){ # approximately 30 min
 ## Specifications for the mixing distributions considered 
 qmix.strings <- c("constant", "inverse.gamma", "inverse.burr", "pareto")
 
-if(doRUN){
-   ### 5.1. Load data, grab stocks #############################################
+if(doRUN){ # approx. 5 min 
+   ### 5.1. Load data, grab stocks ################################################
    set.seed(123) # for reproducibility (RQMC methods depend on .Random.seed)
    data("SP500_const") # load the constituents data from qrmdata
    time <- c("2007-01-03", "2009-12-31") # time period
@@ -1223,7 +1223,7 @@ if(doRUN){
    x <- x[, stocks]
    stopifnot(all(!is.na(x))) # no NAs 
    
-   ### 5.2. Fitting marginal ARMA(1,1)-GARCH(1,1) models #######################
+   ### 5.2. Fitting marginal ARMA(1,1)-GARCH(1,1) models ##########################
    X <- -returns(x) # -log-returns
    n <- nrow(X) # 755
    d <- ncol(X) # 5
@@ -1276,7 +1276,7 @@ if(doRUN){
    }
    
    ### 5.4. Estimating joint quantile shortfall probs for the different models,
-   ### ie P(X_i <= F_{X_i}^{-1}(u), i = 1,...,d) ###############################
+   ### ie P(X_i <= F_{X_i}^{-1}(u), i = 1,...,d) ##################################
    n <- 32 
    u <- 1 - seq(0.95, to = 0.9995, length.out = n) # small levels 
    tailprobs <- array(NA, dim = c(length(u), length(qmix.strings), 2), 
@@ -1390,7 +1390,7 @@ if(doPLOT){
          filename  <- paste0("fig_dnvmix_", curr.qmix, ".pdf")
          pdf(file = filename, width = width, height = height)
       }
-      dnvmix_testing_plot(dnvmix.results, index.qmix = i)
+      dnvmix_testing_plot(dnvmix.results, index.qmix = 2)
       if(!doPDF) mtext(paste0(qmix[j], "-mixture"), line = 1.5)
       if(doPDF) dev.off()
    }
@@ -1492,4 +1492,4 @@ if(doPLOT){
    if(doPDF) dev.off() 
 }
 
-## END DEMO 
+##### END DEMO #######
