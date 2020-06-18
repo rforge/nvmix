@@ -20,10 +20,10 @@ get_set_param <- function(control = list())
       dnvmix.reltol = 1e-2, # If !NA, 'reltol' is used instead of 'abstol'
       dnvmix.max.iter.rqmc.pilot = 4,
       dnvmix.doAdapt = TRUE,
-      dnvmix.tol.int.lower = 1e-30,
-      dnvmix.order.lower = 15,
+      dnvmix.tol.int.lower = 1e-100,
+      dnvmix.order.lower = 5,
       dnvmix.tol.bisec = c(1e-6, 1e-1, 1e-1),
-      dnvmix.tol.stratlength = 1e-5,
+      dnvmix.tol.stratlength = 1e-50,
       dnvmix.max.iter.bisec = 15,
       ## For pgammamix():
       pgammamix.reltol = NA,
@@ -118,7 +118,7 @@ get_set_param <- function(control = list())
    }
    ## Define 'max.iter.rqmc': If it was not provided (=> NA), set defaults
    if(is.na(ctrl$max.iter.rqmc)) {
-      ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 12 else 800
+      ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 12 else 1000
    } else {
       ## If it was provided (=> not NA), check if it's reasonable
       stopifnot(ctrl$max.iter.rqmc > 1)

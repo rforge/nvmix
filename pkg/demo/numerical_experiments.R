@@ -1390,7 +1390,7 @@ if(doPLOT){
          filename  <- paste0("fig_dnvmix_", curr.qmix, ".pdf")
          pdf(file = filename, width = width, height = height)
       }
-      dnvmix_testing_plot(dnvmix.results, index.qmix = 2)
+      dnvmix_testing_plot(dnvmix.results, index.qmix = i)
       if(!doPDF) mtext(paste0(qmix[j], "-mixture"), line = 1.5)
       if(doPDF) dev.off()
    }

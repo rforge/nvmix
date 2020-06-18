@@ -130,20 +130,20 @@ get_set_param(control = list())
           is only performed where the integrand is > than the maximum of
           \code{dnvmix.tol.int.lower} and \eqn{10^{-c} g_{max}}, where
           \eqn{g_{max}} is the theoretical maximum of the integrand and \eqn{c}
-          is the specified \code{dnvmix.order.lower}. Default to \code{1e-30}
-	  and \code{20}, respectively.}
+          is the specified \code{dnvmix.order.lower}. Default to \code{1e-100}
+	  and \code{5}, respectively.}
 	\item{\code{dnvmix.tol.bisec}}{\code{\link{numeric}} \code{vector} of
           length 3 specifying bisection tolerances in the adaptive RQMC algorithm.
           First/second/third element specify the tolerance on \eqn{u}, \eqn{W} and
-          the log-integrand and default to \code{1e-16}, \code{1e-1} and 
+          the log-integrand and default to \code{1e-6}, \code{1e-1} and 
           \code{1e-1}, respectively.}
 	\item{\code{dnvmix.max.iter.bisec}}{\code{\link{numeric}}, maximum number
           of iterations in the internal bisection procedure to find good cutting
-          points allowed, defaults to \code{50}.}
+          points allowed, defaults to \code{15}.}
 	\item{\code{dnvmix.tol.stratlength}}{\code{\link{numeric}}, nonnegative.
           If the stratum found by the adaptive integration method has length >
           \code{dnvmix.tol.stratlength} RQMC integration is used there; otherwise
-          a crude approximation. Defaults to \code{1e-20}.}
+          a crude approximation. Defaults to \code{1e-50}.}
       }
     }
     \item{For \code{fitnvmix()}:}{
@@ -175,7 +175,7 @@ get_set_param(control = list())
         \item{\code{weights.reltol}}{\code{numeric} non-negative. Relative
           tolerance to estimate internal weights used to update
 	  \eqn{loc} and \eqn{scale} estimates in the ECME iterations. Defaults to 
-	  \code{5e-2}.}
+	  \code{1e-2}.}
         \item{\code{weights.interpol.reltol}}{\code{numeric}
 	  non-negative. Some weights can be obtained by interpolating
 	  previously calculated weights; if the maximal relative
@@ -187,7 +187,7 @@ get_set_param(control = list())
         \item{\code{control.optim}}{\code{\link{list}} of control parameters
           passed to the underlying \code{optim} in the initial step as well as
           in the ECME iterations. See \code{\link{optim}()} for details; defaults to
-          \code{list(maxit=15)}.}
+          \code{list(maxit=50)}.}
         \item{\code{control.optim.laststep}}{like \code{control.optim};
           this list of control arguments is passed to \code{optim} in the last-step. 
           Only relevant when \code{laststep.do.nu = TRUE} and defaults to
@@ -226,8 +226,8 @@ get_set_param(control = list())
         \item{\code{riskmeasures.abstol, riskmeasures.reltol}}{
         \code{\link{numeric}}, absolute or relative error tolerance for 
         estimating riskmeasures, notably for \code{ES_nvmix()}. By default,
-         \code{riskmeasures.reltol=1e-2} and \code{riskmeasures.abstol=NA},
-         so that a relative tolerance is used.}
+         \code{riskmeasures.reltol=NA} and \code{riskmeasures.abstol=1e-3},
+         so that an absolute tolerance is used.}
        }
     }
   }
