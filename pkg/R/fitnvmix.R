@@ -24,6 +24,7 @@
 weights_ <- function(maha2.2, qW, nu, lrdet, d, special.mix, control, verbose)
 {
    verbose <- as.logical(verbose) # only logical needed here
+   weights.warn.count <- 0 # record number of warnings when estimating weights
    if(!is.na(special.mix)) { # weights are known analytically
       weights <- switch(special.mix,
                         "inverse.gamma" = {
@@ -73,7 +74,9 @@ weights_ <- function(maha2.2, qW, nu, lrdet, d, special.mix, control, verbose)
          ## Which weights cannot be reliably estimated?
          which.errorNA     <- which(is.na(lcond.obj$error) | is.na(ldens.obj$error))
          if(any(which.errorNA)) {
-            if(verbose) warning('Some weights cannot be reliably estimated')
+            weights.warn.count <- 1
+            if(verbose) 
+               warning("Some weights cannot be reliably estimated, corresponding error estimate NA")
             ## Check if 'weights' decreasing in 'maha2.2'
             n <- length(weights)
             for(i in 1:n) {
@@ -105,7 +108,8 @@ weights_ <- function(maha2.2, qW, nu, lrdet, d, special.mix, control, verbose)
          }
       }
    }
-   list(weights = weights, numiter = numiter, error = error)
+   list(weights = weights, numiter = numiter, error = error, 
+        weights.warn.count = weights.warn.count)
 }
 
 ##' @title Estimate weights for fitnvmix() via non-adaptive RQMC
@@ -404,6 +408,7 @@ estim_nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
    ## Obtain 'factor' if not provided
    if(is.na(factor)) factor <- t(chol(scale))
    ll.counts <- 0 # counts number of calls to 'neg.log.likelihood.nu()'
+   dnvmix.warn.count <- 0 # counts number of dnvmix warnings
    if(is.character(special.mix)) { # analytical density available 
       stopifnot(special.mix == "inverse.gamma" || special.mix == "pareto")
       ## In this case, dnvmix() uses a closed formula for the density
@@ -434,7 +439,10 @@ estim_nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
          qmix. <- function(u) qW(u, nu = nu) # function of u only
          ## Call 'densmix_()' which by default returns the log-density
          ldens.obj <- densmix_(qW = qmix., maha2.2 = maha2.2, lconst = lconst,
-                               d = d, control = control, verbose = verbose)
+                               d = d, control = control, verbose = FALSE)
+         ## Increase warning counter if necessary
+         if(any(is.na(ldens.obj$relerror))) 
+            dnvmix.warn.count <<- dnvmix.warn.count + 1  
          if(verbose >= 3) cat(".") # print dot after each call to likelihood
          ## Return -log-density
          sum(ldens.obj$ldensities)
@@ -443,26 +451,18 @@ estim_nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
    sign <- 1 # to report the correct sign of likelihood 
    ## Optimize 'loglik' over 'nu'
    opt.obj <- if(dim(mix.param.bounds)[1] == 1){
-      ## One dimensional parameter 
+      ## One dimensional parameter => manual search for *initial* nu, then optimize()
       optim1d_(loglik, lower = mix.param.bounds[1, 1], 
                upper = mix.param.bounds[1, 2], par.init = init.nu)
    } else {
-      ## Dimension > 1, no closed density => use optim with Nelder 
+      ## Dimension > 1 => use optim with Nelder 
       ## (works for non-differentiable functions) 
       sign <- -1 
       optim(init.nu, fn = function(nu) -loglik(nu), control = control.optim)
    }
    ## Return
-   list(nu.est    = opt.obj$par,
-        max.ll    = sign*opt.obj$value,
-        ll.counts = ll.counts,
-        opt.obj   = opt.obj) # also return full 'opt.obj'
-   
-   # ## Closed density => fast => use optim with L-BFGS-B (derivative based)
-   # sign <- -1 
-   # optim(init.nu, fn = function(nu) -loglik(nu), lower = mix.param.bounds[, 1],
-   #       upper = mix.param.bounds[, 2], method = "L-BFGS-B", 
-   #       control = control.optim)
+   list(nu.est = opt.obj$par, max.ll = sign*opt.obj$value, ll.counts = ll.counts,
+        opt.obj = opt.obj, dnvmix.warn.count = dnvmix.warn.count) 
 }
 
 
@@ -574,12 +574,12 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                 nrow = (nrow <- if(control$laststep.do.nu) control$ECME.maxiter+2
                         else control$ECME.maxiter + 1))
       rownames(nu.Ests) <- if(control$laststep.do.nu) {
-         c("Initial",
+         c(paste0("Initial (n0 = ", init.size.subsample, ")"),
            sapply(1:control$ECME.maxiter,
                   function(i) paste0("ECME-iteration ", i)),
            "Laststep")
       } else {
-         c("Initial",
+         c(paste0("Initial (n0 = ", init.size.subsample, ")"),
            sapply(1:control$ECME.maxiter,
                   function(i) paste0("ECME-iteration ", i)))
       }
@@ -588,6 +588,9 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                              "Log-likelihood")
       current.iter.total <- 1
    }
+   ## Counters for warnings 
+   dnvmix.warn.count <- 0
+   weights.warn.count <- 0
    
    ## 1 Initial estimates for nu, loc, scale ##################################
    
@@ -613,10 +616,13 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                   control.optim = control$control.optim, verbose = verbose)
       nu.est <- opt.obj$nu.est
       max.ll <- opt.obj$max.ll
+      dnvmix.warn.count <- opt.obj$dnvmix.warn.count + dnvmix.warn.count
    } else {
       ## Neither 'scale' nor 'nu' provided
       if(verbose >= 2) 
-         cat("Step 1: Initial estimate for 'nu' and 'scale' by optimizing log-likelihood ")
+         cat(paste0("Step 1: Initial estimate for 'nu' and 'scale' by optimizing log-likelihood over subsample of size ", 
+             init.size.subsample, " "))
+             
       ll.counts <- 0 # counts number of calls to loglik function
       ## Generate and store seed 
       seed_ <- sample(1:1e4, 1)
@@ -634,10 +640,12 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
          ## Define 'qmix_' as string (=> density known) or function 
          qmix_ <- if(is.character(special.mix)) special.mix else qW 
          set.seed(seed_) # same seed for different calls 
-         ll <- sum(dnvmix(subsample, qmix = qmix_, loc = loc.est, 
-                          scale = c * SCov, nu = nu, log = TRUE))
+         ll.obj <- dnvmix(subsample, qmix = qmix_, loc = loc.est, 
+                          scale = c * SCov, nu = nu, log = TRUE, verbose = FALSE)
+         if(any(is.na(attr(ll.obj, "rel. error"))))
+            dnvmix.warn.count <<- dnvmix.warn.count + 1 
          if(verbose >= 3) cat(".") # print dot after each call to loglik
-         ll # return
+         sum(ll.obj) # return
       }
       ## Initial value for 'par' (was not provided)
       init.par <- c(rowMeans(mix.param.bounds),  
@@ -691,10 +699,13 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                maha2.2.new <- maha2.2.new[order.maha2.2.new] # sorted increasingly
                if(iter.locscaleupdate == 1) {
                   ## Only in the first iteration do we approximate *all* weights by RQMC.
-                  weights <- 
+                  weights.obj <- 
                      weights_(maha2.2.new, qW = qW, nu = nu.est, lrdet = lrdet, d = d, 
                               special.mix = special.mix, control = control, 
-                              verbose = verbose)$weights
+                              verbose = FALSE)
+                  weights <- weights.obj$weights
+                  weights.warn.count <- 
+                     weights.warn.count + weights.obj$weights.warn.count
                   weights.new <- weights[order(order.maha2.2.new)] # reorder 
                   maha2.2     <- maha2.2.new # need to store maha-distances for interpolation
                   length.maha <- n # store length of 'maha2.2' and 'weights'
@@ -742,12 +753,13 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                   ## Now need to approximate weights for those maha in 'notInterpol'
                   if(notInterpolcounter > 1) {
                      notInterpol <- notInterpol[1:(notInterpolcounter-1)]
-                     weights.new[notInterpol] <- weights_(maha2.2.new[notInterpol],
-                                                          qW = qW, nu = nu.est,
-                                                          lrdet = lrdet, d = d,
-                                                          special.mix = special.mix,
-                                                          control = control,
-                                                          verbose = verbose)$weights
+                     weights.obj <- 
+                        weights_(maha2.2.new[notInterpol], qW = qW, nu = nu.est,
+                                 lrdet = lrdet, d = d, special.mix = special.mix,
+                                 control = control, verbose = FALSE)
+                     weights.new[notInterpol] <- weights.obj$weights
+                     weights.warn.count <- 
+                        weights.warn.count + weights.obj$weights.warn.count
                      ## Add estimated weights to 'weights' and corresponding
                      ## 'maha2.2.new' to 'maha2.2' so that they can be reused
                      maha2.2 <- c(maha2.2, maha2.2.new[notInterpol])
@@ -808,11 +820,12 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                estim_nu(tx, qW = qW, init.nu = nu.est, loc = loc.est, 
                         scale = scale.est, mix.param.bounds = mix.param.bounds,
                         special.mix = special.mix, control = control, 
-                        control.optim = control$control.optim, verbose = verbose)
+                        control.optim = control$control.optim, verbose = FALSE)
             ## Extract results and check convergence 
             nu.est.rel.diff <- abs(((nu.est.new <- est.obj$nu.est) - nu.est)/nu.est)
-            nu.est          <- nu.est.new
-            max.ll          <- est.obj$max.ll
+            nu.est <- nu.est.new
+            max.ll <- est.obj$max.ll
+            dnvmix.warn.count <- dnvmix.warn.count + est.obj$dnvmix.warn.count
             if(verbose >= 3) 
                cat(paste0("DONE (", est.obj$ll.counts, " calls to likelihood needed)", '\n'))
          } else {
@@ -828,7 +841,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
          iter.ECME <- iter.ECME + 1
          if(control$addReturns) {
             ## Store new 'nu.est' along with log-likelihood
-            nu.Ests[current.iter.total, ] <- c(nu.est, -max.ll)
+            nu.Ests[current.iter.total, ] <- c(nu.est, max.ll)
             ## If 'converged', set all future iteration values to current one
             if(converged) {
                nu.Ests[current.iter.total:(dim(nu.Ests)[1]), ] <-
@@ -858,7 +871,8 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                           scale = scale.est, mix.param.bounds = mix.param.bounds,
                           special.mix = special.mix, control = control,
                           control.optim = control$control.optim.laststep,
-                          verbose = verbose)
+                          verbose = FALSE)
+      dnvmix.warn.count <- dnvmix.warn.count + est.obj$dnvmix.warn.count
       nu.est <- est.obj$nu.est
       max.ll <- est.obj$max.ll
       if(control$addReturns) {
@@ -872,7 +886,13 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
    if(verbose >= 2) cat(paste0("RETURN.", '\n'))
    
    ## 4 Return  ################################################################
-   
+   ## Handle warnings
+   if(verbose){
+      if(dnvmix.warn.count > 0)
+         warning(paste0("Error estimation in ", dnvmix.warn.count, " call(s) to the likelihood function was unreliable."))
+      if(weights.warn.count > 0)
+         warning(paste0("Error estimation in ", weights.warn.count, " update(s) of the weights was unreliable."))
+   }
    if(control$addReturns) {
       list(nu = nu.est, loc = loc.est, scale = scale.est, iter = iter.ECME,
            max.ll = -max.ll, nu.Ests = nu.Ests, iter.converged = iter.converged)

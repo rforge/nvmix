@@ -18,7 +18,7 @@ get_set_param <- function(control = list())
       ## For dnvmix():
       dnvmix.abstol = 1e-3,
       dnvmix.reltol = 1e-2, # If !NA, 'reltol' is used instead of 'abstol'
-      dnvmix.max.iter.rqmc.pilot = 4,
+      dnvmix.max.iter.rqmc.pilot = 6,
       dnvmix.doAdapt = TRUE,
       dnvmix.tol.int.lower = 1e-100,
       dnvmix.order.lower = 5,
@@ -118,7 +118,7 @@ get_set_param <- function(control = list())
    }
    ## Define 'max.iter.rqmc': If it was not provided (=> NA), set defaults
    if(is.na(ctrl$max.iter.rqmc)) {
-      ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 12 else 1000
+      ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 12 else 1250
    } else {
       ## If it was provided (=> not NA), check if it's reasonable
       stopifnot(ctrl$max.iter.rqmc > 1)

@@ -420,7 +420,7 @@ precondition <- function(lower, upper, scale, factor, mean.sqrt.mix,
                       as.double(mean.sqrt.mix), as.double(1e-16),
                       as.integer(d), as.integer(1:d), as.integer(1),
                       NAOK = TRUE) # if 'lower'/'upper' contain +/-Inf
-      ## Arguments = return of "precond": 
+      ## Arguments = return of 'void precond()': 
       ## [[1]]: lower; [[2]]: upper; [[3]]: scale.tri (vector);
       ## [[4]]: factor.tri (vector); [[5]]: mean.sqrt.mix; [[6]]: tol; [[7]]: d;
       ## [[8]]: perm; [[9]]: status (1: ok; 2: recompute chol in R, >= 10: error)
