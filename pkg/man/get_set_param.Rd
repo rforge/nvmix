@@ -52,7 +52,7 @@ get_set_param(control = list())
             \item{\code{"doubling"}:}{next iteration has as many sample points
               as all the previous iterations combined,}
             \item{\code{"num.init"}:}{all iterations use an additional
-              \code{fun.eval[1]}-many points.}
+              \code{fun.eval[1]}-many points (default for most functions).}
           }
         }
         \item{\code{CI.factor}}{multiplier of the Monte Carlo confidence interval
@@ -64,10 +64,10 @@ get_set_param(control = list())
         \item{\code{fun.eval}}{\code{\link{numeric}(2)} providing the size of
           the first point set to be used to estimate integrals
 	  (typically a power of 2) and the maximal number of function
-          evaluations. \code{fun.eval} defaults to \code{c(2^7, 1e8)}.}
+          evaluations. \code{fun.eval} defaults to \code{c(2^7, 1e12)}.}
         \item{\code{max.iter.rqmc}}{\code{\link{numeric}}, providing the maximum
-          number of iterations allowed in the RQMC approach; the default is \code{17}
-          if \code{increment = "doubling"} and \code{200} otherwise.}
+          number of iterations allowed in the RQMC approach; the default is \code{15}
+          if \code{increment = "doubling"} and \code{1250} otherwise.}
         \item{\code{B}}{number of randomizations for obtaining an error estimate
           in the RQMC approach; the default is \code{15}.}
       }
@@ -124,7 +124,7 @@ get_set_param(control = list())
 	of the mixing variable; defaults to \code{TRUE}.}
 	\item{\code{dnvmix.max.iter.rqmc.pilot}}{\code{\link{numeric}}, providing
           the maximum number of unstratified, non-adaptive pilot runs the internal 
-          integration procedure performs. Defaults to \code{4}.}
+          integration procedure performs. Defaults to \code{6}.}
 	\item{\code{dnvmix.tol.int.lower}, \code{dnvmix.order.lower}}{
           both \code{\link{numeric}} and nonnegative. RQMC integration
           is only performed where the integrand is > than the maximum of
@@ -211,14 +211,15 @@ get_set_param(control = list())
         update; defaults to \code{1e-2}.}
         \item{\code{newton.df.max.iter.rqmc}}{\code{\link{numeric}}, maximum
         number of iterations to estimate the univariate distribution function
-        required in the Newton update; defaults to \code{50}. Note that here,
-        internally used is \code{increment = "doubling"}.}
+        required in the Newton update; defaults to \code{150}. Note that
+        internally used is \code{increment = "doubling"}, no matter what.}
        }
     }
     \item{For \code{qqplot_maha()}:}{
       \describe{
-        \item{\code{qqplot.df.reltol}}{\code{\link{numeric}}, corresponds to
-        \code{newton.df.reltol}. Defaults to \code{5e-3}.}
+        \item{\code{qqplot.df.reltol}}{\code{\link{numeric}}, with the same
+        meaning as \code{newton.df.reltol} for the function \code{qnvmix()}. 
+        Defaults to \code{5e-3}.}
        }
     }
     \item{For \code{ES_nvmix()}:}{
@@ -226,8 +227,8 @@ get_set_param(control = list())
         \item{\code{riskmeasures.abstol, riskmeasures.reltol}}{
         \code{\link{numeric}}, absolute or relative error tolerance for 
         estimating riskmeasures, notably for \code{ES_nvmix()}. By default,
-         \code{riskmeasures.reltol=NA} and \code{riskmeasures.abstol=1e-3},
-         so that an absolute tolerance is used.}
+         \code{riskmeasures.reltol=5e-2} and \code{riskmeasures.abstol=NA},
+         so that a relative tolerance is used.}
        }
     }
   }
@@ -236,7 +237,7 @@ get_set_param(control = list())
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
-  Hintz, E., Hofert, M. and Lemieux, C. (2019),
+  Hintz, E., Hofert, M. and Lemieux, C. (2020),
   Normal variance mixtures: Distribution, density and parameter estimation.
   \url{https://arxiv.org/abs/1911.03017}.
 }

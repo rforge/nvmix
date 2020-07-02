@@ -182,7 +182,7 @@ rNorm_sumconstr(n, weights, s, method = c("PRNG", "sobol", "ghalton"), skip = 0)
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
-  Hintz, E., Hofert, M. and Lemieux, C. (2019)
+  Hintz, E., Hofert, M. and Lemieux, C. (2020)
   \emph{Normal variance mixtures: Distribution, density and parameter
     estimation}.
   \url{https://arxiv.org/abs/1911.03017}

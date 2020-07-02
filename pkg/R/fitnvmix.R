@@ -820,7 +820,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                estim_nu(tx, qW = qW, init.nu = nu.est, loc = loc.est, 
                         scale = scale.est, mix.param.bounds = mix.param.bounds,
                         special.mix = special.mix, control = control, 
-                        control.optim = control$control.optim, verbose = FALSE)
+                        control.optim = control$control.optim, verbose = verbose)
             ## Extract results and check convergence 
             nu.est.rel.diff <- abs(((nu.est.new <- est.obj$nu.est) - nu.est)/nu.est)
             nu.est <- nu.est.new
@@ -871,7 +871,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                           scale = scale.est, mix.param.bounds = mix.param.bounds,
                           special.mix = special.mix, control = control,
                           control.optim = control$control.optim.laststep,
-                          verbose = FALSE)
+                          verbose = verbose)
       dnvmix.warn.count <- dnvmix.warn.count + est.obj$dnvmix.warn.count
       nu.est <- est.obj$nu.est
       max.ll <- est.obj$max.ll

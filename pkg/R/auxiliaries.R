@@ -33,7 +33,7 @@ get_set_param <- function(control = list())
       newton.conv.abstol = 5e-4,
       newton.df.reltol = 2.5e-4,
       newton.logdens.abstol = 1e-2,
-      newton.df.max.iter.rqmc = 50, # 'doubling' used here!
+      newton.df.max.iter.rqmc = 150, # 'doubling' used here!
       qqplot.df.reltol = 5e-3,
       ## For fitnvmix():
       ## Algorithm specifications:
@@ -54,7 +54,7 @@ get_set_param <- function(control = list())
       control.optim.laststep = list(),
       ## For riskmeasures:
       riskmeasures.abstol = NA,
-      riskmeasures.reltol = 1e-2,
+      riskmeasures.reltol = 5e-2,
       ## For dependence measures:
       dependencemeasures.abstol = 1e-3,
       dependencemeasures.reltol = NA,
@@ -118,7 +118,7 @@ get_set_param <- function(control = list())
    }
    ## Define 'max.iter.rqmc': If it was not provided (=> NA), set defaults
    if(is.na(ctrl$max.iter.rqmc)) {
-      ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 12 else 1250
+      ctrl$max.iter.rqmc <- if(ctrl$increment == "doubling") 15 else 1250
    } else {
       ## If it was provided (=> not NA), check if it's reasonable
       stopifnot(ctrl$max.iter.rqmc > 1)
