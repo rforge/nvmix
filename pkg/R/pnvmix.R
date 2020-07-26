@@ -862,6 +862,8 @@ pgnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d),
    n <- nrow(upper) # number of evaluation points
    d <- ncol(upper) # dimension
    if(!is.matrix(lower)) lower <- rbind(lower) # 1-row matrix if lower is a vector
+   if(is.data.frame(upper)) upper <- as.matrix(upper)
+   if(is.data.frame(lower)) lower <- as.matrix(lower)
    if(!is.matrix(scale)) scale <- as.matrix(scale)
    stopifnot(dim(lower) == c(n, d), length(loc) == d, # 'mean.sqrt.mix' is tested in pnvmix1()
              dim(scale) == c(d, d), length(groupings) == d)

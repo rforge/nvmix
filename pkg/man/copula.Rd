@@ -23,7 +23,7 @@ rnvmixcopula(n, qmix, scale = diag(2), factor = NULL,
              method = c("PRNG", "sobol", "ghalton"), skip = 0,
              control = list(), verbose = FALSE, ...)
           
-dStudentcopula(u, df, scale = diag(d), log = FALSE, verbose = TRUE)
+dStudentcopula(u, df, scale = diag(d), factor = NULL, log = FALSE, verbose = TRUE)
 pStudentcopula(upper, lower = matrix(0, nrow = n, ncol = d), df, scale = diag(d), 
                control = list(), verbose = TRUE)
 rStudentcopula(n, df, scale = diag(2), method = c("PRNG", "sobol", "ghalton"), 
@@ -31,8 +31,8 @@ rStudentcopula(n, df, scale = diag(2), method = c("PRNG", "sobol", "ghalton"),
             
 pgStudentcopula(upper, lower = matrix(0, nrow = n, ncol = d), groupings = 1:d,
                 df, scale = diag(d), control = list(), verbose = TRUE)
-dgStudentcopula(u, groupings = 1:d, df, scale = diag(d), scale.inv = NULL,
-                control = list(), verbose = TRUE, log = FALSE)                
+dgStudentcopula(u, groupings = 1:d, df, scale = diag(d), factor = NULL, 
+                factor.inv = NULL, control = list(), verbose = TRUE, log = FALSE)        
 rgStudentcopula(n, groupings = 1:d, df, scale = diag(2), factor = NULL, 
                 method = c("PRNG", "sobol", "ghalton"), skip = 0)             
 }
@@ -58,8 +58,6 @@ rgStudentcopula(n, groupings = 1:d, df, scale = diag(2), factor = NULL,
     Note that \code{scale} must be positive definite; sampling from
     singular ungrouped normal variance mixtures can be achieved by providing
     \code{factor}.}
-    \item{scale.inv}{inverse of \code{scale}; if not provided, computed via
-    \code{solve(scale)}.}
   \item{factor}{% more general here than for dnvmix() or pnvmix()
     \eqn{(d, k)}-\code{\link{matrix}} such that
     \code{factor \%*\% t(factor)} equals \code{scale}; the non-square
@@ -71,6 +69,8 @@ rgStudentcopula(n, groupings = 1:d, df, scale = diag(2), factor = NULL,
     from the right to an \eqn{(n, k)}-matrix of independent
     standard normals to obtain a sample from a multivariate normal
     with zero mean vector and covariance matrix \code{scale}).}
+  \item{factor.inv}{inverse of \code{factor}; if not provided, computed via
+    \code{solve(factor)}.} 
   \item{method}{see \code{\link{rnvmix}()}.}
   \item{skip}{see \code{\link{rnvmix}()}.}
   \item{control}{\code{\link{list}} specifying algorithm specific

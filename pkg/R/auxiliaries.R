@@ -320,8 +320,11 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
                          } else rep(1, n)} 
                    }
                    ## Construct grouped quantile fun/RNG
-                   function(u) sapply(1:num.groups, function(i) 
-                      mixfun(u, df = df[i])) # also works with 'rmix'
+                   function(u){
+                      res <- sapply(1:num.groups, function(i) 
+                         mixfun(u, df = df[i])) # also works with 'rmix'
+                      if(is.matrix(res)) res else rbind(res, deparse.level = 0)
+                   } 
                 },
                 "pareto" = {
                    if(hasArg(alpha)) {
@@ -348,8 +351,11 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
                       function(n, alpha) (1 - runif(n))^(-1/alpha)
                    }
                    ## Construct grouped quantile fun/RNG
-                   function(u) sapply(1:num.groups, function(i) 
-                      mixfun(u, alpha = alpha[i])) # also works with 'rmix'
+                   function(u){
+                      res <- sapply(1:num.groups, function(i) 
+                         mixfun(u, df = alpha[i])) # also works with 'rmix'
+                      if(is.matrix(res)) res else rbind(res, deparse.level = 0)
+                   } 
                 },
                 stop(paste0("Currently unsupported '", mix.prov,"'")))
       } else {
@@ -395,8 +401,7 @@ get_mix_ <- function(qmix = NULL, rmix = NULL, callingfun = NULL,
             W. <- sapply(1:num.groups, function(i){ 
                if(hasaddArg[i]) do.call(mix_usr[[i]], append(list(u), addArgs[[i]])) else
                   do.call(mix_usr[[i]], list(u))})
-            if(!is.matrix(W.)) W. <- rbind(W.) # eg if 'u' is a 1-vector 
-            W.
+            if(is.matrix(W.)) W. else rbind(W., deparse.level = 0)
          }
       }
    } 

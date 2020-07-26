@@ -36,7 +36,8 @@ dStudent <- function(x, df, loc = rep(0, d), scale = diag(d),
 ##' @param ... additional arguments passed to the underlying dnvmix()
 ##' @return n-vector of t_nu(loc, scale) density values
 ##' @author Erik Hintz and Marius Hofert
-dStudentcopula <- function(u, df, scale = diag(d), log = FALSE, verbose = TRUE)
+dStudentcopula <- function(u, df, scale = diag(d), factor = NULL, log = FALSE, 
+                           verbose = TRUE)
 {
    ## Checks 
    if(!is.matrix(u)) u <- rbind(u)
@@ -53,8 +54,9 @@ dStudentcopula <- function(u, df, scale = diag(d), log = FALSE, verbose = TRUE)
    res[!not01 & notNA] <- if(log) -Inf else 0 
    u <- u[notNA & not01,, drop = FALSE] # non-missing data inside (0,1)^d
    ## Call 'dnvmixcopula()' with non-missing, (0,1)^d rows 
-   res[notNA & not01] <- dnvmixcopula(u, qmix = "inverse.gamma", scale = scale, 
-                                      verbose = verbose, df = df,  log = log)
+   res[notNA & not01] <- 
+      dnvmixcopula(u, qmix = "inverse.gamma", scale = scale, factor = factor, 
+                   verbose = verbose, df = df, log = log)
    res
 }
 
@@ -72,13 +74,14 @@ dStudentcopula <- function(u, df, scale = diag(d), log = FALSE, verbose = TRUE)
 ##' @return n-vector of t_nu(loc, scale) density values
 ##' @author Erik Hintz and Marius Hofert
 dgStudent <- function(x, groupings = 1:d, df, loc = rep(0, d), scale = diag(d), 
-                      scale.inv = NULL, control = list(), log = FALSE, verbose = TRUE)
+                      factor = NULL, factor.inv = NULL, control = list(), 
+                      log = FALSE, verbose = TRUE)
 {
    if(!is.matrix(x)) x <- rbind(x)
    d <- ncol(x) # for 'loc', 'scale'
    ## Call 'dgnvmix()'
    dgnvmix(x, groupings = groupings, qmix = "inverse.gamma", loc = loc, 
-           scale = scale, scale.inv = scale.inv, df = df, factor = NULL, 
+           scale = scale, factor = factor, factor.inv = factor.inv, df = df, 
            control = control, log = log, verbose = verbose)
 }
 
@@ -95,8 +98,8 @@ dgStudent <- function(x, groupings = 1:d, df, loc = rep(0, d), scale = diag(d),
 ##'         (error estimate of the RQMC estimator) and "numiter"
 ##'         (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
-dgStudentcopula <- function(u, groupings = 1:d, df, scale = diag(d), 
-                            scale.inv = NULL, control = list(), verbose = TRUE, 
+dgStudentcopula <- function(u, groupings = 1:d, df, scale = diag(d), factor = NULL,
+                            factor.inv = NULL, control = list(), verbose = TRUE, 
                             log = FALSE)
 {
    ## Checks 
@@ -116,8 +119,9 @@ dgStudentcopula <- function(u, groupings = 1:d, df, scale = diag(d),
    ## Compute quantiles
    qu <- sapply(1:d, function(i) qt(u[, i], df = df[groupings[i]]))
    if(!is.matrix(qu)) qu <- rbind(qu) # otherwise dimension not correct in dgnvmix()
-   num <- dgnvmix(qu, qmix = "inverse.gamma", scale = scale, scale.inv = scale.inv,
-                  df = df, groupings = groupings, verbose = verbose, 
+   num <- dgnvmix(qu, qmix = "inverse.gamma", scale = scale, factor = factor, 
+                  factor.inv = factor.inv, df = df, groupings = groupings, 
+                  verbose = verbose, 
                   control = control, log = TRUE) # vector 
    ## Matrix with marginal density applied on the columns of 'qu' 
    temp <- sapply(1:d, function(i) dt(qu[, i], df = df[groupings[i]], log = TRUE))
