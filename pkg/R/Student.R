@@ -383,3 +383,151 @@ fitStudent <- function(x, loc = NULL, scale = NULL, mix.param.bounds = c(1e-3, 1
    ## Return
    fit
 }
+
+
+
+#' Fitting grouped t-copulas
+#' @param x (n, d) matrix of data the underlying copula of which is to be estimated
+#' @param u (n, d) matrix of copula observations in (0,1) 
+#' @param df.init NULL or vector with initial estimates for 'df'; can contain NAs 
+#' @param scale NULL or known 'scale' matrix (estimated via p.w. Kendall's tau if not provided)
+#' @param groupings see ?pgnvmix()
+#' @param df.bounds 2-vector giving bounds on the dof parameter
+#' @param control see ?get_set_param()
+#' @param verbose logical if warnings shall be returned 
+#' @return List of three:
+#'         'df'      vector of estimated dof parameters
+#'         'scale'   estimated scale matrix 
+#'         'll'      estimated log-likelihood at optimum
+#'         'df.init' vector of initial estimates for the dof parameters 
+#' @author Erik Hintz  
+#' @note Either 'x' or 'u' or both can be provided   
+fitgStudentcopula <- function(x, u, df.init = NULL, scale = NULL, 
+                           groupings = rep(1, d), df.bounds = c(0.5, 30),
+                           control = list(), verbose = TRUE){
+   
+   ## 0 Setup ##################################################################
+   ## Both 'x' and 'u' can be provided
+   x.provided <- FALSE 
+   if(hasArg(x)){
+      if(!is.matrix(x)) x <- cbind(x) 
+      x.provided <- TRUE
+      notNA <- rowSums(is.na(x)) == 0
+      x <- x[notNA,, drop = FALSE] # non-missing data (rows)
+      n <- nrow(x) # sample size
+      d <- ncol(x) # dimension 
+      if(!hasArg(u)){ # pseudo-observations *not* provided 
+         u <- copula::pobs(x) 
+      } else { # pseudo-observations provided; remove NA and check dimension
+         if(!is.matrix(u)) u <- cbind(u) 
+         notNA <- rowSums(is.na(u)) == 0
+         u <- u[notNA,, drop = FALSE] # non-missing data (rows)
+         ## Check
+         if(!all.equal(dim(u), c(n, d)))
+            stop("Dimensions of 'u' and 'x' do not match.")
+         if(any(u >= 1 | u <= 0))
+            stop("Elements in 'u' must be in (0,1).")
+      }
+   } else {
+      if(!hasArg(u))
+         stop("Either 'u' or 'x' or both must be provided.")
+      if(!is.matrix(u)) u <- rbind(u) 
+      notNA <- rowSums(is.na(u)) == 0
+      u <- u[notNA,, drop = FALSE] # non-missing data (rows)
+      n <- nrow(u) # sample size
+      d <- ncol(u) # dimension 
+   }
+   ## At least two data points must be provided
+   if(n <= 1)
+      stop("Data-set must have at least two rows.")
+   
+   ## Initialize various quantities
+   control <- get_set_param(control)
+   numgroups <- length(unique(groupings)) # number of groups 
+   stopifnot(all(groupings %in% 1:numgroups)) 
+   
+   ## 1 Estimation of 'scale' ##################################################   
+   
+   if(is.null(scale)){ # 'scale' not provided => estimate it
+      scale <- sin(pcaPP::cor.fk(u) * pi/2)
+      ## Ensure positive-definitness
+      scale <- as.matrix(Matrix::nearPD(scale)$mat)
+   } else stopifnot(all.equal(dim(scale), c(d, d)))
+   factor.inv <- solve(t(chol(scale))) # for repeated calls of 'dgStudentcopula()' => faster 
+   
+   ## 2 Estimation of 'df' #####################################################   
+   
+   ## 2.1 Find starting values #################################################  
+   
+   if(!is.null(df.init)){
+      stopifnot(length(df.init) == numgroups)
+      initNA <- which(is.na(df.init))
+      if(length(initNA) < numgroups) 
+         stopifnot(all(df.init[!initNA] >= df.bounds[1]), all(df.init[!initNA] <= df.bounds[2]))
+   } else {
+      df.init <- rep(NA, numgroups)
+      initNA <- 1:numgroups
+   }
+   
+   if(length(initNA) > 0){
+      ## -log-likelihood (for faster evaluation)
+      nLLt <- function(nu, P, u) {
+         x <- qt(u, df = nu)
+         -sum(dStudent(x, sigma = P, df = nu, log = TRUE) - rowSums(dt(x, df = nu, log = TRUE)))
+      }
+      ## Estimate dof in each group where 'df.init' was not provided 
+      for(k in initNA){
+         ind.sub <- which(groupings == k)
+         d.sub <- length(ind.sub) # dimension of the group 
+         if(d.sub > 1){
+            ## Group at least bivariate => Estimate 'df' of t-copula 
+            df.init[k] <- optimize(nLLt, interval = df.bounds, u = u[, ind.sub],
+                                   P = scale[ind.sub, ind.sub])$minimum
+         } else {
+            ## Group 'univariate', so margin is merely uniform 
+            if(x.provided){
+               ## If 'x' provided, assume x[, ind.sub] ~ t_{nu} => estimate 'nu' as MLE
+               df.init[k] <- fitStudent(cbind(x[, ind.sub]))$df
+            } else {
+               df.init[k] <- 5
+            }
+         }
+      }
+   }
+   
+   ## 2.2 Joint estimation of 'df' #############################################   
+   
+   if(numgroups == 1){
+      ## One group => classical t copula => 'df.init' is MLE
+      df <- df.init 
+   } else {
+      ## -loglikelihood as a function of 'df' 
+      seed <- sample(1:1e3, 1) # for reproducibility 
+      nLLgt <- function(df){
+         set.seed(seed) # => monotonicity 
+         if(any(df < df.bounds[1]) | any(df > df.bounds[2])) return(Inf)
+         -sum(dgStudentcopula(u, groupings = groupings, df = df, control = control,
+                              factor.inv = factor.inv, log = TRUE))
+      }
+      ll.init <- -nLLgt(df.init) # likelihood of initial parameter 'df.init' 
+      ## Call 'optim' and grab 'df' along with likelihood 
+      opt.obj <- optim(df.init, nLLgt, control = control$control.optim)
+      df <- opt.obj$par
+      ## Check 'convergence' returned by optim()
+      if(verbose){
+         if(opt.obj$convergence == 1)
+            warning("Maximum number of iterations exhaused in optim(); consider increasing 'optim.maxit' in the control argument.")
+         if(opt.obj$convergence == 10)
+            warning("optim() detected degeneracy of the Nelder-Mead simplex.")
+      }
+      ll.mle <- -opt.obj$value 
+      ## Check if likelihood increased
+      if(verbose & (ll.mle < ll.init) )
+         warning("'df.init' yields larger likelihood than 'df' returned from 'optim()'.")
+   }
+   
+   ## 3. Return ################################################################ 
+   
+   list(df = df, scale = scale, ll = ll.mle, df.init = df.init)
+   
+}

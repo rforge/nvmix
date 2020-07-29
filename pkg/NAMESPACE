@@ -18,6 +18,10 @@ importFrom("Matrix",
 	   "nearPD")
 importFrom("graphics",
            "lines", "plot")
+importFrom("copula",
+           "pobs")
+importFrom("pcaPP",
+           "cor.fk")
 
 ### Exports ####################################################################
 
@@ -25,6 +29,7 @@ export("dnvmix", "pnvmix", "rnvmix", "pgnvmix", "rgnvmix", "dgnvmix",
        "fitnvmix", "qnvmix", "qqplot_maha",
        "dStudent", "dgStudent", "pStudent", "rStudent", "fitStudent", "pgStudent", "rgStudent", 
        "pgStudentcopula", "rgStudentcopula", "dgStudentcopula",
+       "fitgStudentcopula", 
        "dNorm", "pNorm", "rNorm", "fitNorm", "rNorm_sumconstr",
        "get_set_param",
        "dnvmixcopula", "pnvmixcopula", "rnvmixcopula",

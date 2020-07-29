@@ -13,7 +13,7 @@
 ## 
 ## 4.    Numerical experiments for 'fitnmvix'
 ## 
-## 5.    Data analysis of DJ30 data
+## 5.    Data analysis of 5 Stock portfolio
 ## 
 ## 6.    Plots
 ## 
