@@ -42,15 +42,15 @@ get_set_param <- function(control = list())
       laststep.do.nu = FALSE,
       resample = FALSE,
       ## Tolerances:
-      ECME.maxiter = 25,
+      ECME.maxiter = 35,
       ECME.miniter = 5,
       max.iter.locscaleupdate = 50,
       weights.abstol = NA, # currently not used
       weights.reltol = 1e-2,
       weights.interpol.reltol = 1e-2,
-      ECME.rel.conv.tol = c(1e-2, 1e-2, 5e-3), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
+      ECME.rel.conv.tol = c(1e-2, 1e-2, 1e-3), # [1] => 'loc'; [2] => 'scale'; [3] => 'nu'
       ## For the underlying 'optim':
-      control.optim = list(maxit = 50),
+      control.optim = list(maxit = 75),
       control.optim.laststep = list(),
       ## For riskmeasures:
       riskmeasures.abstol = NA,
@@ -64,10 +64,7 @@ get_set_param <- function(control = list())
       max.iter.rqmc = NA, # defined below, depending on 'increment'
       CI.factor = 3.5,
       fun.eval = c(2^7, 1e12),
-      B = 15,
-      ## Additional returns for testing? (eg estimates after each iteration in
-      ## 'fitnvmix')
-      addReturns = FALSE)
+      B = 15)
    if(length(control) > 0) {
       ## If input provided, grab input controls and overwrite:
       names.control <- names(ctrl)

@@ -101,9 +101,17 @@ fitgStudentcopula(x, u, df.init = NULL, scale = NULL, groupings = rep(1, d),
   non-copula alternatives \code{\link{dnvmix}()}, \code{\link{rnvmix}()}
   and \code{\link{pnvmix}()}.
   
-  The function \code{fitgStudentcopula()} returns a \eqn{4}-\code{\link{list}},
-  with the MLE for \code{df}, an estimate for \code{scale}, the estimated 
-  likelihood at the optimum \code{ll} and the initial estimate for \code{df}. 
+  The function \code{fitgStudentcopula()} returns an S3 object of 
+  \code{\link{class}} \code{"fitgStudentcopula"}, basically a \code{\link{list}}
+  which contains, among others, the components
+  \describe{
+    \item{\code{df}}{Estimated degrees-of-freedom for each group.}
+    \item{\code{scale}}{Estimated or provided \code{scale} matrix.}
+    \item{\code{max.ll}}{Estimated log-likelihood at reported estimates.}
+    \item{\code{df.init}}{Initial estimate for the degrees-of-freedom.}
+   }
+   The methods \code{print()} and \code{summary()} are defined for the class
+   \code{"fitgStudentcopula"}.
 }
 \details{
   Functionalities for normal variance mixture copulas provided here
@@ -186,11 +194,23 @@ stopifnot(all.equal(p1, p2, tol = 1e-3, check.attributes = FALSE))
 ### Examples for rnvmixcopula() ###################################################
 
 ## Draw random variates and compare
-n <- 100
+n <- 60
 set.seed(1)
 X  <- rnvmixcopula(n, qmix = "inverse.gamma", df = df, scale = P) # with scale
 set.seed(1)
 X. <- rnvmixcopula(n, qmix = "inverse.gamma", df = df, factor = t(chol(P))) # with factor
 stopifnot(all.equal(X, X.))
+
+
+### Example for the grouped case ##################################################
+
+d <- 4 # dimension
+set.seed(42) # for reproducibility
+P <- matrix(runif(1, min = -1, max = 1), nrow = d, ncol = d) # build the correlation matrix P
+diag(P) <- 1
+groupings <- c(1, 1, 2, 2) # two groups of size two each 
+df <- c(1, 4) # dof for each of the two groups
+U <- rgStudentcopula(n, groupings = groupings, df = df, scale = P)
+(fit <- fitgStudentcopula(u = U, groupings = groupings, verbose = FALSE))
 }
 \keyword{distribution}

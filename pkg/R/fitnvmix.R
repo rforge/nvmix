@@ -492,16 +492,7 @@ estim_nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
 ##'        and ?fitnvmix
 ##' @param verbose numeric or logical. 0: No warnings; 1: Warnings;
 ##'        2: Warnings + short tracing; 3: Warnings + complete tracing.
-##' @return list of three (if qmix = "constant"), otherwise 5 or 7
-##'         $nu: estimate for nu (omitted if qmix = "constant")
-##'         $loc: estimate for the location vector
-##'         $scale: estimate for scale matrix
-##'         $iter: number of ECME iterations
-##'         $max.ll: log-likelihood at (nu, loc, scale)
-##'         $nu.Ests: matrix of estimates of 'nu' with corresponding loglikelihood
-##'                   in each iteration (only if isTRUE(control.addRetruns))
-##'         $iter.converged: iterations needed until convergence
-##'                          (only if isTRUE(control.addRetruns))
+##' @return S3 object of class 'fitnvmix' 
 ##' @author Erik Hintz, Marius Hofert, Christiane Lemieux
 fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA, 
                      loc = NULL, scale = NULL,
@@ -509,7 +500,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
                      control = list(), verbose = TRUE)
 {
    ## 0 Setup ##################################################################
-   
+   call <- match.call() # for return 
    if(!is.matrix(x))
       x <- rbind(x)
    ## Initialize various quantities
@@ -531,7 +522,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
    n     <- nrow(x)
    d     <- ncol(x)
    ## Estimate 'loc' and 'scale'?
-   do.loc <- TRUE
+   do.loc   <- TRUE
    do.scale <- TRUE
    if(!is.null(loc)){
       stopifnot(length(loc <- as.vector(loc)) == d)
@@ -543,11 +534,19 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
       do.scale <- FALSE
    }
    ## Case of MVN: MLEs are sample mean and sample cov matrix
-   if(is.character(special.mix) & special.mix == "constant") {
+   is.mvn <- (is.character(special.mix) & special.mix == "constant")
+   if(is.mvn) {
       loc.est <- if(do.loc) colMeans(x) else loc
       scale.est <- if(do.scale) as.matrix(nearPD(cov(x))$mat) else scale 
-      return(list(loc = loc.est, scale = scale.est, iter = 0))
+      max.ll <- sum(dNorm(x, loc = loc.est, scale = scale.est, log = TRUE))
+      return(class_fitnvmix(loc = loc.est, scale = scale.est, 
+                            max.ll = max.ll, n = n, d = d, is.mvn = TRUE,
+                            do.loc = do.loc, do.scale = do.scale,
+                            call = call))
    }
+   is.mvt <- # needed below to return 'df' instead of 'nu' 
+      (is.character(special.mix) & special.mix == "inverse.gamma")
+   
    ## Use only sub-sample to estimate 'nu'?
    if(size.subsample < n) {
       sampled.ind <- sample(n, size.subsample)
@@ -566,30 +565,29 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
       stopifnot(dim(mix.param.bounds)[2] == 2)
       dim(mix.param.bounds)[1]
    } else stop("'mix.param.bounds' has to be either a vector of length 2 or a matrix with 2 columns")
-   ## Return additional information?
-   if(control$addReturns) {
-      ## Matrix storing all 'nu' estimates with corresponding likelihoods
-      nu.Ests <- 
-         matrix(NA, ncol = mix.param.length + 1,
-                nrow = (nrow <- if(control$laststep.do.nu) control$ECME.maxiter+2
-                        else control$ECME.maxiter + 1))
-      rownames(nu.Ests) <- if(control$laststep.do.nu) {
-         c(paste0("Initial (n0 = ", init.size.subsample, ")"),
-           sapply(1:control$ECME.maxiter,
-                  function(i) paste0("ECME-iteration ", i)),
-           "Laststep")
-      } else {
-         c(paste0("Initial (n0 = ", init.size.subsample, ")"),
-           sapply(1:control$ECME.maxiter,
-                  function(i) paste0("ECME-iteration ", i)))
-      }
-      colnames(nu.Ests) <- c(sapply(1:mix.param.length,
-                                    function(i) paste0("nu[", i, "]")),
-                             "Log-likelihood")
-      current.iter.total <- 1
+   
+   ## Matrix storing all 'nu' estimates with corresponding likelihoods
+   nu.ests.ll <- 
+      matrix(NA, ncol = mix.param.length + 1,
+             nrow = (nrow <- if(control$laststep.do.nu) control$ECME.maxiter + 2
+                     else control$ECME.maxiter + 1))
+   rownames(nu.ests.ll) <- if(control$laststep.do.nu) {
+      c(paste0("Initial",
+        sapply(1:control$ECME.maxiter,
+               function(i) paste0("ECME-iteration ", i)),
+        "Laststep"))
+   } else {
+      c(paste0("Initial (n0 = ", init.size.subsample, ")"),
+        sapply(1:control$ECME.maxiter,
+               function(i) paste0("ECME-iteration ", i)))
    }
+   colnames(nu.ests.ll) <- c(sapply(1:mix.param.length,
+                                 function(i) paste0("nu[", i, "]")),
+                          "log-likelihood")
+   current.iter.total <- 1
+   
    ## Counters for warnings 
-   dnvmix.warn.count <- 0
+   dnvmix.warn.count  <- 0
    weights.warn.count <- 0
    
    ## 1 Initial estimates for nu, loc, scale ##################################
@@ -599,7 +597,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
    if(!do.scale) scale.est <- scale 
    ## Sample covariance matrix based on full sample
    SCov <- as.matrix(nearPD(cov(x))$mat) 
-   ## Check if 'init.nu' was provided. If so, calculate 'scale' as (1/E(W))*SCov
+   ## Check if 'init.nu' was provided. If so, estimate 'scale' as (1/E(W))*SCov
    if(!is.na(nu.init)) {
       stopifnot(length(nu.init) == mix.param.length)
       if(verbose >= 2) cat("Step 1: Initial estimate for 'nu': Was provided")
@@ -608,10 +606,11 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
    } else if(!do.scale){
       ## 'scale' was provided => only estimate 'nu'
       if(verbose >= 2) 
-         cat("Step 1: Initial estimate for 'nu' by optimizing log-likelihood ")
+         cat(paste0("Step 1: Initial estimate for 'nu' by optimizing log-likelihood over subsample of size ", init.size.subsample, " "))
+      subsample <- x[sample(n, init.size.subsample),, drop = FALSE]
       opt.obj <- 
-         estim_nu(tx, qW = qW, init.nu = rowMeans(mix.param.bounds), loc = loc.est, 
-                  scale = scale.est, mix.param.bounds = mix.param.bounds,
+         estim_nu(t(subsample), qW = qW, init.nu = rowMeans(mix.param.bounds), 
+                  loc = loc.est, scale = scale.est, mix.param.bounds = mix.param.bounds,
                   special.mix = special.mix, control = control, 
                   control.optim = control$control.optim, verbose = verbose)
       nu.est <- opt.obj$nu.est
@@ -620,9 +619,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
    } else {
       ## Neither 'scale' nor 'nu' provided
       if(verbose >= 2) 
-         cat(paste0("Step 1: Initial estimate for 'nu' and 'scale' by optimizing log-likelihood over subsample of size ", 
-             init.size.subsample, " "))
-             
+         cat(paste0("Step 1: Initial estimate for 'nu' and 'scale' by optimizing log-likelihood over subsample of size ", init.size.subsample, " "))
       ll.counts <- 0 # counts number of calls to loglik function
       ## Generate and store seed 
       seed_ <- sample(1:1e4, 1)
@@ -660,13 +657,12 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
       if(verbose >= 3)
          cat(paste0(" DONE (", ll.counts, " calls to likelihood needed)", '\n'))
    }
-   ## Store additional values if needed
-   if(control$addReturns) {
-      ## Matrix storing all 'nu' estimates with corresponding likelihoods
-      nu.Ests[current.iter.total, ] <- c(nu.est, max.ll)
-      current.iter.total <- current.iter.total + 1
-      iter.converged <- control$ECME.maxiter + 2
-   }
+   ## Store additional values 
+   ## Matrix storing all 'nu' estimates with corresponding likelihoods
+   nu.ests.ll[current.iter.total, ] <- c(nu.est, max.ll)
+   current.iter.total <- current.iter.total + 1
+   iter.converged <- control$ECME.maxiter + 2
+   
    
    ## 2 ECME iteration ########################################################
    
@@ -837,24 +833,20 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
          converged <- if(iter.ECME >= control$ECME.miniter) {
             prod(abs(nu.est.rel.diff) < control$ECME.rel.conv.tol[3])
          } else FALSE
-         ## Update counter and 'nu.Ests'
+         ## Update counter and 'nu.ests.ll'
          iter.ECME <- iter.ECME + 1
-         if(control$addReturns) {
-            ## Store new 'nu.est' along with log-likelihood
-            nu.Ests[current.iter.total, ] <- c(nu.est, max.ll)
-            ## If 'converged', set all future iteration values to current one
-            if(converged) {
-               nu.Ests[current.iter.total:(dim(nu.Ests)[1]), ] <-
-                  matrix(c(nu.est, -max.ll), ncol = mix.param.length+1,
-                         nrow = dim(nu.Ests)[1]+1-current.iter.total,
-                         byrow = TRUE)
-               iter.converged <- current.iter.total
-            }
-            current.iter.total <- current.iter.total + 1
-         }
+         ## Store new 'nu.est' along with log-likelihood
+         nu.ests.ll[current.iter.total, ] <- c(nu.est, max.ll)
+         ## If 'converged', set all future iteration values to current one
+         if(converged) iter.converged <- iter.ECME
+         current.iter.total <- current.iter.total + 1
+         
       } # end while()
-      if(iter.ECME == control$ECME.maxiter & !converged & verbose >= 1)
-         warning("Maximum number of ECME iterations exhausted, consider increasing 'ECME.maxiter' in the 'control' argument.")
+      ECME.convd <- if(iter.ECME == control$ECME.maxiter & !converged){
+         if(verbose >= 1) # print warning 
+            warning("Maximum number of ECME iterations exhausted, consider increasing 'ECME.maxiter' in the 'control' argument.")
+         FALSE
+      } else TRUE
    } #end if(control$ECMEstep)
    
    ## 3 Another last 'nu.est' update with full sample? #########################
@@ -875,17 +867,21 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
       dnvmix.warn.count <- dnvmix.warn.count + est.obj$dnvmix.warn.count
       nu.est <- est.obj$nu.est
       max.ll <- est.obj$max.ll
-      if(control$addReturns) {
-         ## Store new 'nu.est' along with log-likelihood
-         nu.Ests[dim(nu.Ests)[1], ] <- c(nu.est, -max.ll)
-         current.iter.total <- current.iter.total + 1
-      }
+
+      ## Store new 'nu.est' along with log-likelihood
+      nu.ests.ll[current.iter.total, ] <- c(nu.est, max.ll)
+      ## Grab relevant rows of 'nu.ests.ll'
+      nu.ests.ll <- nu.ests.ll[1:current.iter.total, , drop = FALSE]
       if(verbose >= 3) 
          cat(paste0("DONE (", est.obj$ll.counts, " calls to likelihood needed)", '\n'))
+   } else {
+      ## Grab relevant rows of 'nu.ests.ll'
+      nu.ests.ll <- nu.ests.ll[1:(current.iter.total-1), , drop = FALSE]
    }
+
+   ## 4 Return  ################################################################
    if(verbose >= 2) cat(paste0("RETURN.", '\n'))
    
-   ## 4 Return  ################################################################
    ## Handle warnings
    if(verbose){
       if(dnvmix.warn.count > 0)
@@ -893,11 +889,245 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
       if(weights.warn.count > 0)
          warning(paste0("Error estimation in ", weights.warn.count, " update(s) of the weights was unreliable."))
    }
-   if(control$addReturns) {
-      list(nu = nu.est, loc = loc.est, scale = scale.est, iter = iter.ECME,
-           max.ll = -max.ll, nu.Ests = nu.Ests, iter.converged = iter.converged)
+   
+   ## Return S3-class object of type 'fitnvmix'
+   return(class_fitnvmix(nu = nu.est, loc = loc.est, scale = scale.est, 
+                         max.ll = max.ll, n = n, d = d, 
+                         init.size.subsample = init.size.subsample,
+                         size.subsample = size.subsample, 
+                         dnvmix.warn.count = dnvmix.warn.count, 
+                         iter.converged = iter.converged, nu.ests.ll = nu.ests.ll,
+                         qmix = qmix, is.mvn = is.mvn, is.mvt = is.mvt,
+                         do.loc = do.loc, do.scale = do.scale, call = call,
+                         ECME.convd = ECME.convd))
+}
+
+
+### S3 class functions and methods #############################################
+
+#' Function to define S3 class 'fitnvmix'
+#'
+#' @param nu MLE for 'nu'
+#' @param scale MLE for 'scale'
+#' @param loc MLE for 'loc' 
+#' @param max.ll maximum log-likelihood at MLEs
+#' @param n number of data points
+#' @param d dimension of input data 
+#' @param init.size.subsample subsample size for initial parameter
+#' @param size.subsample subsample size for ECME iterations
+#' @param dnvmix.warn.count number of warnings caused by 'dnvmix()'
+#' @param weights.warn.count number of warings caused by 'get_weights()'
+#' @param iter.converged number of iterations needed until convergence
+#' @param nu.ests.ll matrix of estimates of 'nu' with corresponding loglikelihood
+#                 in each iteration
+#' @param qmix 'qmix' which was passed to 'fitnvmix()' 
+#' @param is.mvn logical if distribution is multivariate normal
+#' @param is.mvt logical if distribution is multivariate t 
+#' @param do.loc logical if 'loc' is being estimated
+#' @param do.scale logical if 'scale' is being estimated
+#' @param call language object; function call to 'fitnvmix()'
+#' @param ECME.convd logical if ECME converged 
+#' @return S3 object of class 'fitnvmix' 
+#' @author Erik Hintz 
+class_fitnvmix <- function(nu, scale, loc, max.ll, n, d, init.size.subsample, 
+                           size.subsample, dnvmix.warn.count = 0, weights.warn.count = 0, 
+                           iter.converged, nu.ests.ll, qmix, is.mvn = FALSE, 
+                           is.mvt = FALSE, do.loc = TRUE, do.scale = TRUE,
+                           call, ECME.convd){
+   res <- if(is.mvn){
+      list(nu = NULL, loc = loc, scale = scale, max.ll = max.ll, 
+           warn.count = list(dnvmix = 0, weights = 0), # no warnings 
+           iter.converged = 0, nu.ests.ll = NULL, is.mvn = TRUE, is.mvt = FALSE,
+           qmix = "constant",
+           do.loc = do.loc, do.scale = do.scale, 
+           n = n, d = d, init.size.subsample = NULL, size.subsample = NULL,
+           call = call, ECME.convd = TRUE)
    } else {
-      list(nu = nu.est, loc = loc.est, scale = scale.est, iter = iter.ECME,
-           max.ll = -max.ll)
+      list(nu = nu, loc = loc, scale = scale, max.ll = max.ll,
+           warn.count = list(dnvmix = dnvmix.warn.count, weights = weights.warn.count),
+           iter.converged = iter.converged, nu.ests.ll = nu.ests.ll, is.mvn = FALSE,
+           is.mvt = is.mvt, qmix = qmix, do.loc = do.loc, do.scale = do.scale,
+           n = n, d = d, init.size.subsample = init.size.subsample, 
+           size.subsample = size.subsample, call = call, ECME.convd = ECME.convd)
    }
+   ## Return object of class 'fitnvmix'
+   structure(res, class = "fitnvmix")
+}
+
+## Method 'print' for S3 class 'fitnvmix' 
+print.fitnvmix <- function(x, ..., digits = max(3, getOption("digits") - 3)){
+   ## Print function call to fitnvmix()
+   cat("Call: ", deparse(x$call), "\n", sep = "")
+   ## Print information about input data
+   cat(sprintf(
+      "Input data: %d %d-dimensional observations.\n", x$n, x$d))
+   ## Print information about the distribution (and wether 'loc'/'scale' provided)
+   string.provided <- if(!x$do.loc & !x$do.scale){
+      "with known 'loc' vector and known 'scale' matrix."
+   } else if (!x$do.loc){
+      "with known 'loc' vector."
+   } else if(!x$do.scale){
+      "with known 'scale' matrix."
+   } else "with unkown 'loc' vector and unkown 'scale' matrix."
+   string.provided.mix <- if(x$is.mvn) "as multivariate normal" else if(x$is.mvt) 
+      "as multivariate t" else "through quantile function of the mixing variable "
+   cat("Normal variance mixture specified", string.provided.mix, "")
+   if(!x$is.mvt & !x$is.mvn){
+      cat("\n", "   ", deparse(x$qmix), "\n")
+   }
+   cat(string.provided, "\n")
+   ## Print log-likelihood at estimated parameters
+   estimated.string <- if(is.character(x$qmix)) "" else "Approximated "
+   cat(sprintf("%slog-likelihood at reported parameter estimates: %f \n", 
+               estimated.string, round(x$max.ll, digits), sep = ""))
+   if(!x$is.mvn){ 
+      ## Print subsample and convergence detection 
+      if(x$size.subsample < x$n)
+         cat(sprintf("Estimation carried out on subsample of size %d", 
+                     x$size.subsample, ".", "\n"))
+      convd.string <- if(x$ECME.convd) "convergence detected." else 
+         "convergence not detected."
+      cat(sprintf("Termination after %d iterations, %s \n", x$iter.converged, 
+                  convd.string))
+      ## Print mixing parameters
+      if(x$is.mvt){
+         cat("Estimated degrees-of-freedom:", '\n')
+         if(any(names(x) == "df")) print(x$df, digits = digits) else
+            print(x$nu, digits = digits)
+      } else {
+         cat("Estimated mixing parameter(s) 'nu':", '\n')
+         print(x$nu, digits = digits)
+      }
+   }
+   ## Print estimated 'loc' and 'scale' 
+   estim.prov.loc <- if(x$do.loc) "Estimated" else "Provided"
+   estim.prov.scale <- if(x$do.scale) "Estimated" else "Provided"
+   cat(estim.prov.loc, "'loc' vector: ", '\n')
+   print(x$loc, digits = digits) 
+   cat(estim.prov.scale, "'scale' matrix: ", '\n')
+   print(x$scale, digits = digits) 
+   invisible(x) # return 
+}
+
+
+## Method 'summary' for S3 class 'fitnvmix' 
+summary.fitnvmix <- function(object, ..., digits = max(3, getOption("digits") - 3)){
+   ## Print function call to fitnvmix()
+   cat("Call: ", deparse(object$call), "\n", sep = "")
+   ## Print information about input data
+   cat(sprintf(
+      "Input data: %d %d-dimensional observations.\n", object$n, object$d))
+   ## Print information about the distribution (and wether 'loc'/'scale' provided)
+   string.provided <- if(!object$do.loc & !object$do.scale){
+      "with known 'loc' vector and known 'scale' matrix."
+   } else if (!object$do.loc){
+      "with known 'loc' vector."
+   } else if(!object$do.scale){
+      "with known 'scale' matrix."
+   } else "with unkown 'loc' vector and unkown 'scale' matrix."
+   string.provided.mix <- if(object$is.mvn) "as multivariate normal" else if(object$is.mvt) 
+      "as multivariate t" else "through quantile function of the mixing variable "
+   cat("Normal variance mixture specified", string.provided.mix, "")
+   if(!object$is.mvt & !object$is.mvn){
+      cat("\n", "   ", deparse(object$qmix), "\n")
+   }
+   cat(string.provided, "\n")
+   ## Print log-likelihood at estimated parameters
+   estimated.string <- if(is.character(object$qmix)) "" else "Approximated "
+   cat(sprintf("%slog-likelihood at reported parameter estimates: %f \n", 
+               estimated.string, round(object$max.ll, digits), sep = ""))
+   if(!object$is.mvn){ 
+      ## Print subsample and convergence detection 
+      if(object$size.subsample < object$n)
+         cat(sprintf("Estimation carried out on subsample of size %d", 
+                     object$size.subsample, ".", "\n"))
+      convd.string <- if(object$ECME.convd) "convergence detected." else 
+         "convergence not detected."
+      cat(sprintf("Termination after %d iterations, %s \n", object$iter.converged, 
+                  convd.string))
+      ## Print mixing parameters
+      if(object$is.mvt){
+         cat("Estimated degrees-of-freedom:", '\n')
+         if(any(names(object) == "df")) print(object$df, digits = digits) else
+            print(object$nu, digits = digits)
+      } else {
+         cat("Estimated mixing parameter(s) 'nu':", '\n')
+         print(object$nu, digits = digits)
+      }
+   }
+   ## Print estimated 'loc' and 'scale' 
+   estim.prov.loc <- if(object$do.loc) "Estimated" else "Provided"
+   estim.prov.scale <- if(object$do.scale) "Estimated" else "Provided"
+   cat(estim.prov.loc, "'loc' vector: ", '\n')
+   print(object$loc, digits = digits) 
+   cat(estim.prov.scale, "'scale' matrix: ", '\n')
+   print(object$scale, digits = digits) 
+   ## -- up to here same as print.fitnvmix() -- 
+   cat("\n")
+   if(object$init.size.subsample < object$n)
+      cat("Initial estimate obtained from subsample of size ", 
+          object$init.size.subsample, ". \n", sep = "")
+   print(object$nu.ests.ll)
+   ## Print information about warnings
+   if(any(object$warn.count > 0)){
+      cat("Error estimation in ")
+      if(object$warn.count$dnvmix > 0){
+         cat(paste0(object$warn.count$dnvmix, " call(s) to the likelihood function "))
+         if(object$warn.count$weights > 0)
+            cat("and in ")
+      }
+      if(object$warn.count$weights > 0){
+         cat(paste0(object$warn.count$weights, " update(s) of the weights "))
+      }
+      cat("may have been unreliable. \n")
+   }
+   invisible(object) # return 
+}
+
+## Method 'plot' for S3 class 'fitnvmix' 
+plot.fitnvmix <- function(x, ...){
+   if(x$is.mvn){
+      cat("Nothing to plot in the case of a multivariate normal distribution.")
+   } else {
+      ## Grab length of 'nu' and ranges for the two y-axes 
+      length.par <- if(x$is.mvt){
+         ylab = "Estimated df"
+         1
+      } else {
+         ylab <- expression(hat(nu))
+         length(x$nu)
+      }
+      y_rg_nu <- range(x$nu.ests.ll[, 1:length.par]) # range of estimates
+      y_rg_ll <- range(x$nu.ests.ll[, length.par + 1]) # range of log-likelihood
+      iters <- 1:nrow(x$nu.ests.ll) # iterations
+      ## Prepare legend
+      lgnd <- if(x$is.mvt) c("log-likelihood", "df") else {
+         tmp <- vector("expression", length.par + 1)
+         tmp[[1]] <- "log-likelihood"
+         for(i in 1:length.par)
+            tmp[[i+1]] <- bquote(hat(nu)[.(i)])
+         tmp
+      }
+      ## Plot 
+      def.par <- par(no.readonly = TRUE) # save default, for resetting...
+      par(mar = c(4, 3, 3, 3) + 0.15)
+      ## Plot estimates as a function of iterations 
+      plot(NA, xlab = "Iteration", ylab = "", axes = F, ylim = y_rg_nu, 
+           xlim = range(iters-1))
+      for(i in 1:length.par)
+         lines(iters-1, x$nu.ests.ll[, i], col = i+1, lty = i+1)
+      axis(2, ylim = y_rg_nu, lwd = 1)
+      mtext(2, text = ylab, line = 1.9)
+      ## Plot log-likelihood, axes and legend 
+      par(new = T)
+      plot(iters-1, c(NA, x$nu.ests.ll[-1, length.par + 1]), type = 'l', 
+           axes = F, xlab = "", ylab = "")
+      axis(4, ylim = y_rg_ll, lwd = 1, line = 0)
+      mtext(4, text = "log-likelihood", line = 2)
+      axis(1, pretty(range(iters-1), length(iters)))
+      legend("topright", legend = lgnd, lty = 1:(length.par + 1),
+             col = 1:(length.par+1), bty = 'n')
+      par(def.par) # reset to default
+   }
+   invisible(x)
 }
