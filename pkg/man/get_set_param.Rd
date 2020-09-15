@@ -5,7 +5,8 @@
   Algorithm specific parameters for functionalities in the \code{nvmix}
   package, notably for \code{\link{fitnvmix}()}, \code{\link{dnvmix}()}, 
   \code{\link{pnvmix}()}, \code{\link{qnvmix}()}, \code{\link{pgammamix}()}, 
-  \code{\link{dgammamix}()} and \code{\link{ES_nvmix}()}.
+  \code{\link{dgammamix}()} and \code{\link{ES_nvmix}()} as well as the 
+  corresponding functions for grouped mixtures. 
 }
 \usage{
 get_set_param(control = list())
@@ -19,7 +20,9 @@ get_set_param(control = list())
   than 30 elements specifying algorithm specific parameters for the
   functions \code{\link{fitnvmix}()}, \code{\link{dnvmix}()}, 
   \code{\link{pnvmix}()}, \code{\link{qnvmix}()}, \code{\link{pgammamix}()}, 
-  \code{\link{dgammamix}()} and \code{\link{ES_nvmix}()}.
+  \code{\link{dgammamix}()} and \code{\link{ES_nvmix}()}, as well as the 
+  corresponding functions for grouped mixtures such as \code{\link{pgnvmix}()}
+  and \code{\link{dgnvmix}()}. 
   Parameter values passed to \code{get_set_param()} via the
   \code{control} argument overwrite the defaults; for parameters not
   specified in the \code{control} argument, the default values are being
@@ -168,7 +171,7 @@ get_set_param(control = list())
           smaller than the number of observations. Defaults to \code{FALSE}.}
         \item{\code{ECME.miniter}, \code{ECME.maxiter}}{\code{\link{numeric}} 
         positive, minimum and maximum number
-          of ECME iterations. Default to \code{5} and \code{25}, respectively.}
+          of ECME iterations. Default to \code{5} and \code{50}, respectively.}
         \item{\code{max.iter.locscaleupdate}}{\code{\link{numeric}} positive.
           Maximum number of location-scale updates (while helding \eqn{nu} fixed)
           in each individual ECME iteration; defaults to \code{50}.}
@@ -183,11 +186,11 @@ get_set_param(control = list())
 	  \code{weights.interpol.reltol}, this is done. Defaults to \code{1e-2}.}
         \item{\code{ECME.rel.conv.tol}}{\code{\link{numeric}(3)} vector
           specifying relative convergence tolerances for \code{loc}, \code{scale}
-          and \code{nu} (in this order). Defaults to \code{c(1e-2, 1e-2, 5e-3)}.}
+          and \code{nu} (in this order). Defaults to \code{c(1e-2, 1e-2, 1e-3)}.}
         \item{\code{control.optim}}{\code{\link{list}} of control parameters
           passed to the underlying \code{optim} in the initial step as well as
           in the ECME iterations. See \code{\link{optim}()} for details; defaults to
-          \code{list(maxit=50)}.}
+          \code{list(maxit=75)}.}
         \item{\code{control.optim.laststep}}{like \code{control.optim};
           this list of control arguments is passed to \code{optim} in the last-step. 
           Only relevant when \code{laststep.do.nu = TRUE} and defaults to

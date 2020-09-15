@@ -151,6 +151,16 @@ fitgStudentcopula(x, u, df.init = NULL, scale = NULL, groupings = rep(1, d),
   McNeil, A. J., Frey, R. and Embrechts, P. (2015).
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
   Princeton University Press.
+  
+  Luo, X. and Shevchenko, P. (2010).
+  The \emph{t} copula with multiple parameters of degrees of freedom: bivariate 
+  characteristics and application to risk management.
+  \emph{Quantitative Finance} 10(9),
+  1039-1054.
+  
+  Daul, S., De Giorgi, E. G., Lindskog, F. and McNeil, A (2003).
+  The grouped \emph{t} copula with an application to credit risk.
+  \emph{Available at SSRN 1358956}.
 }
 \seealso{
   \code{\link{dnvmix}()}, \code{\link{pnvmix}()}, \code{\link{qnvmix}()},

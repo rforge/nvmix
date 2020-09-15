@@ -58,15 +58,11 @@ dNorm(x, loc = rep(0, d), scale = diag(d), factor = NULL,
   (containing the number of iterations).
 }
 \details{
+  For the density to exist, \code{scale} must be full rank. 
   Internally used is \code{factor}, so \code{scale} is not required
-  to be provided if \code{factor} is given.
-
-  The default factorization used to obtain \code{factor} is the Cholesky
-  decomposition via \code{\link{chol}()}. To this end, \code{scale}
-  must have full rank.
-
-  The number of rows of \code{factor} equals the dimension \eqn{d} of
-  the sample. Typically (but not necessarily), \code{factor} is square.
+  to be provided if \code{factor} is given. The default factorization 
+  used to obtain \code{factor} is the Cholesky
+  decomposition via \code{\link{chol}()}. 
 
   \code{dStudent()} and \code{dNorm()} are wrappers of
   \code{dnvmix(, qmix = "inverse.gamma", df = df)} and

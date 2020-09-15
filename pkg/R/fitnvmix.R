@@ -492,7 +492,7 @@ estim_nu <- function(tx, qW, init.nu, loc, scale, factor = NA, mix.param.bounds,
 ##'        and ?fitnvmix
 ##' @param verbose numeric or logical. 0: No warnings; 1: Warnings;
 ##'        2: Warnings + short tracing; 3: Warnings + complete tracing.
-##' @return S3 object of class 'fitnvmix' 
+##' @return S3 object of class 'fitnvmix'; see below in 'class_fitnvmix()'
 ##' @author Erik Hintz, Marius Hofert, Christiane Lemieux
 fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA, 
                      loc = NULL, scale = NULL,
@@ -1112,8 +1112,8 @@ plot.fitnvmix <- function(x, ...){
       def.par <- par(no.readonly = TRUE) # save default, for resetting...
       par(mar = c(4, 3, 3, 3) + 0.15)
       ## Plot estimates as a function of iterations 
-      plot(NA, xlab = "Iteration", ylab = "", axes = F, ylim = y_rg_nu, 
-           xlim = range(iters-1))
+      plot(NA, xlab = "Iteration", ylab = "", ylim = y_rg_nu, 
+           xlim = range(iters-1), xaxt = "n", yaxt = "n")
       for(i in 1:length.par)
          lines(iters-1, x$nu.ests.ll[, i], col = i+1, lty = i+1)
       axis(2, ylim = y_rg_nu, lwd = 1)

@@ -42,7 +42,7 @@ get_set_param <- function(control = list())
       laststep.do.nu = FALSE,
       resample = FALSE,
       ## Tolerances:
-      ECME.maxiter = 35,
+      ECME.maxiter = 50,
       ECME.miniter = 5,
       max.iter.locscaleupdate = 50,
       weights.abstol = NA, # currently not used

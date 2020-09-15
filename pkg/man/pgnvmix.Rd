@@ -23,7 +23,8 @@ pgStudent(upper, lower = matrix(-Inf, nrow = n, ncol = d), groupings = 1:d, df,
   \code{k = groupings[i]}. If \code{groupings = 1:d}, each variable has a different
   mixing distribution. }   
   \item{qmix}{specification of the mixing variables \eqn{W_i} via quantile 
-  functions; see McNeil et al. (2015, Chapter 6). Supported are the following types of
+  functions; see McNeil et al. (2015, Chapter 6) and Hintz et al. (2020). 
+  Supported are the following types of
     specification (see also the examples below):
     \describe{\item{\code{\link{character}}:}{\code{\link{character}} string
 	specifying a supported distribution; currently available are
@@ -125,11 +126,6 @@ pgStudent(upper, lower = matrix(-Inf, nrow = n, ncol = d), groupings = 1:d, df,
   probabilities.
   \emph{Journal of Computational and Graphical Statistics} 11(4),
   950--971.
-
-  Genz, A. and Kwong, K. (2000).
-  Numerical evaluation of singular multivariate normal distributions.
-  \emph{Journal of Statistical Computation and Simulation} 68(1),
-  1--21.
 }
 \seealso{
   \code{\link{rgnvmix}()}, \code{\link{dgnvmix}()}, \code{\link{get_set_param}()}

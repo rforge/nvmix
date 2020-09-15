@@ -794,8 +794,8 @@ pnvmix1 <- function(upper, lower = rep(-Inf, d), groupings = rep(1, d),
 ##'        indicating whether a warning is given if the required precision
 ##'        'control$pnvmix.abstol'/'control$pnvmix.reltol' has not been reached.
 ##' @param ... additional arguments passed to the underlying mixing distribution
-##' @return numeric vector with the computed probabilities and attributes "error"
-##'         (error estimate of the RQMC estimator) and "numiter"
+##' @return numeric vector with the computed probabilities and attributes "abs. error"
+##'         and "rel. error" (error estimates of the RQMC estimator) and "numiter"
 ##'         (number of iterations)
 ##' @author Erik Hintz and Marius Hofert
 pnvmix <- function(upper, lower = matrix(-Inf, nrow = n, ncol = d), 

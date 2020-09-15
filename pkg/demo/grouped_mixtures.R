@@ -1,4 +1,4 @@
-## Demo "groupe_mixtures"  (07-29-2020)
+## Demo "grouped_mixtures"  (09-12-2020)
 ## By Erik Hintz, Marius Hofert and Christiane Lemieux 
 
 ## Numerical experiments for 'pgnvmix()', 'dgnvmix()', 'corgvnmix()', 
@@ -12,13 +12,13 @@ library(Matrix)
 library(qrmdata)
 library(qrmtools)
 library(rugarch)
+library(quadprog)
 
 doPDF <- FALSE
 
 cat("Note: This demo may take up to 24 hours.")
 
 #### 1. Estimating the df #################################################################
-
 
 set.seed(271)
 runs <- 15 # number of different runs (i.e., different settings of 'scale' and 'upper')
@@ -340,7 +340,6 @@ n_ <- seq(from = 250, to = 2500, by = 250)
 num.rep <- 15
 d <- 6 # dimension 
 df <- c(1, 4, 7) # dof for each group 
-
 groupings <- rep(1:3, each = 2) # 2 components in each group 
 control <- list(control.optim = list(maxit = 1000))
 set.seed(1)
@@ -355,7 +354,7 @@ for(j in 1:num.rep){
    set.seed(j) # to make results easily reproducible
    sample <- rgStudentcopula(max(n_), groupings = groupings, scale = scale, df = df)
    for(i in seq_along(n_)){
-      fit <- fitgStudentcop(u = sample[1:n_[i], ], groupings = groupings, 
+      fit <- fitgStudentcopula(u = sample[1:n_[i], ], groupings = groupings, 
                             scale = scale, control = control)
       fit.res[i, j, , "init"] <- fit$df.init
       fit.res[i, j, , "MLE"] <- fit$df
@@ -392,7 +391,7 @@ mtext(side = 4,  "MLEs for a grouped t copula (d=6), 15 repetitions for each n")
 legend("topright", c("df1", "df2", "df3"), col = cols, pch = 1:3, bty = 'n')
 if(doPDF) dev.off()
 
-#### 5. Data analysis example ##################################################
+#### 5. Data analysis example (Example 2) ######################################
 
 ## Load data, assign groups, clean #############################################
 
@@ -474,11 +473,10 @@ print(fit.nogroup$df) # 6.257661
 names_ <- c("Ungrouped t", "Initial estimates", "Grouped t (maxit = 1500)", 
             "Grouped t (maxit = 3500)")
 n <- 32 
-u <- 1 - seq(0.95, to = 0.9995, length.out = n) # small levels 
-maxit <- seq(from = 500, to = 3500, by = 500) # 'maxit' for 'optim()' 
+u <- 1 - seq(0.95, to = 0.9995, length.out = n) # small levels for tail probabilities 
 
 ### Grouped 
-
+maxit <- seq(from = 500, to = 3500, by = 500) # 'maxit' for 'optim()' 
 fit.df <- matrix(NA, ncol = numgroups, nrow = length(maxit)+1)
 colnames(fit.df) <- sector_names_
 rownames(fit.df) <- c(0, maxit)
@@ -551,7 +549,7 @@ for(i in 1:6)
 if(doPDF) dev.off()
 ## Plot of the likelihoods ("zoomed in")
 if(doPDF) pdf(file = "fig_dj30_ll_zoomed.pdf", width = 6.5, height = 6.5)
-plot(NA, xlim = range(n_), ylim = c(4000, 4100), ylab = "log-likelihood", xlab = "Maxit")
+plot(NA, xlim = range(n_), ylim = c(4000, 4180), ylab = "log-likelihood", xlab = "Maxit")
 for(i in 1:6)
    lines(n_, ll[,i ], lty = i)
 if(doPDF) dev.off()
@@ -568,4 +566,148 @@ for(j in 1:4){
 legend("bottomright", names_[c(2, 1, 4, 3)], col = cols[c(2, 1, 4, 3)], lty = rep(1, 4), box.lty = 0)
 if(doPDF) dev.off() 
 
+
+
+#### 6. Portfolio management example (Example 3) ######################################
+
+set.seed(271)
+## Grab data, compute returns 
+time <- c("2013-01-01", "2014-12-31") # time period
+x <- DJ_const[paste0(time, collapse = "/"),] # data
+stopifnot(all(!is.na(x))) # no NAs 
+X <- returns(x) # log-returns
+n <- nrow(X) # 503
+d <- ncol(X) # 30
+
+
+##' Given 'mu_t', 'sigma_t', 'next_X', compute portfolio return of optimal portfolio
+##'
+##' @param mu_t d-vector (expected excess return next period)
+##' @param sigma_t (d, d) matrix (VCOV matrix of return next period)
+##' @param next_X d-vector (actual returns next period)
+##' @return numeric, 'constrained' portfolio return of next period
+##'         (constrained = no shortselling)
+##' @author Erik Hintz 
+next_returns <- function(mu_t, sigma_t, next_X){
+   sigma_t_inv <- solve(sigma_t)
+   ## Unconstrained weights 
+   w.unconstr <- sigma_t_inv %*% mu_t
+   w.unconstr <- w.unconstr / abs(sum(w.unconstr)) # relative weights
+   ret.unconstr <- sum(next_X * w.unconstr)
+   ## Shortselling-constrained weights
+   ret.constr <- if(all(w.unconstr >= 0)) ret.unconstr else {
+      qp.sol <- solve.QP(Dmat = sigma_t, dvec = mu_t, Amat = diag(d), bvec = rep(0, d))
+      w.constr <- qp.sol$solution
+      w.constr  <- w.constr  / abs(sum(w.constr)) # relative weights
+      sum(next_X * w.constr)
+   }
+   ## Return
+   ret.constr
+}
+
+M <- 250 # sampling window
+T <- nrow(X) # final time 
+## Create result object
+models <- c("historical", "ungrouped t", "grouped t")
+res.pfret <- matrix(NA, ncol = T-M, nrow = 3)
+rownames(res.pfret) <- models 
+## Specify time-series model (standard t residuals) 
+uspec <- rep(list(ugarchspec(distribution.model = "std")), d) # GARCH specs
+n.sample <- 1e4
+t.error <- c() # to store indices where 'fit.ARMA.GARCH()' returns an error 
+## For each point in time 
+for(t in (M+1):T){
+   X_t <- X[(t-M):(t-1), ] # relevant data 
+   next_X <- as.vector(X[t, ]) # return next period 
+   
+   ### 1. Model-free (historical) ############################################
+   res.pfret["historical", t - M] <- next_returns(mu_t = colMeans(X_t), sigma_t = cov(X_t),
+                                                  next_X = next_X)
+   
+   ### 2. Model based ##########################################################
+   
+   ## Fit marginal ARMA(1,1)-GARCH(1,1) models 
+   fit.ARMA.GARCH <- fit_ARMA_GARCH(X_t, ugarchspec.list = uspec) # fit ARMA-GARCH
+   if(!all(sapply(fit.ARMA.GARCH$error, is.null))){
+      ## At least one error 
+      t.error <- c(t.error, t)
+      next 
+   }
+   Z <- sapply(fit.ARMA.GARCH$fit, residuals, standardize = TRUE) # standardized residuals
+   U <- pobs(Z) # pseudo-observations 
+   
+   ## Helper function with input copula sample 'U.'; returns model based estimates of
+   ## 'mu_t' and 'sigma_t' 
+   next_mu_sigma <- function(U.){
+      nu <- sapply(1:d, function(j) fit.ARMA.GARCH$fit[[j]]@fit$coef["shape"]) 
+      ## Realizations of standardized residuals
+      Z. <- sapply(1:d, function(j) sqrt((nu[j]-2)/nu[j]) * qt(U.[,j], df = nu[j])) # Z
+      ## Simulate from fitted model
+      X. <- sapply(1:d, function(j)
+         fitted(ugarchsim(fit.ARMA.GARCH$fit[[j]], n.sim = n.sample, m.sim = 1, 
+                          startMethod = "sample",
+                          rseed = 271, custom.dist = list(name = "sample",
+                                                          distfit = Z.[,j, drop = FALSE]))))
+      ## Return mu_t, sigma_t 
+      list(mu_t = colMeans(X.), sigma_t = cov(X.))
+   }
+   
+   ## 3.1 ungrouped t copula ######################################################
+   
+   ## Estimate parameter matrix
+   P <- sin(pcaPP::cor.fk(U) * pi/2)
+   P <- as.matrix(Matrix::nearPD(P)$mat) # ensure positive-definiteness
+   
+   ## Estimate dof (only in first iteration)
+   if(t == (M+1)){
+      fit.copula <- fitgStudentcopula(u = U)
+      df.ungrouped <- fit.copula$df
+   }
+   
+   ## Sample from the fitted copula
+   U. <- rgStudentcopula(n.sample, groupings = rep(1, d), df = df.ungrouped,
+                         scale = P)
+   ## Estimate 'mu_t' and 'sigma_t' from simulated stock returns based on 'U.'
+   mu_sig <- next_mu_sigma(U.)
+   ## Compute return for next period
+   res.pfret["ungrouped t", t - M] <- 
+      next_returns(mu_t = mu_sig$mu_t, sigma_t = mu_sig$sigma_t, next_X = next_X)
+   
+   ## 3.2 Grouped t copula ######################################################
+   
+   ## Estimate dof (only in first iteration)
+   if(t == (M+1)){
+      set.seed(271)
+      ## Only in the first iteration
+      fit.copula <- fitgStudentcopula(u = U, groupings = groupings, 
+                                      control = list(control.optim = list(maxit = 1000)))
+      df.grouped <- fit.copula$df
+   }
+   
+   ## Sample from the fitted copula
+   U. <- rgStudentcopula(n.sample, groupings = groupings, df = df.grouped, scale = P)
+   ## Estimate 'mu_t' and 'sigma_t' from simulated stock returns based on 'U.'
+   mu_sig <- next_mu_sigma(U.)
+   ## Compute return for next period 
+   res.pfret["grouped t", t - M] <- 
+      next_returns(mu_t = mu_sig$mu_t, sigma_t = mu_sig$sigma_t, next_X = next_X)
+   cat("\n", t, "\n")
+}
+stopifnot(length(t.error) <= 0.075 * (T-M)) # error in at most 7.5% of the runs 
+
+(end <- (Sys.time() - start))
+
+## Estimate mean return, CER, SR from 'res.pfret' for the different models
+res.table <- matrix(NA, ncol = 3, nrow = 3)
+colnames(res.table) <- c("Mean return", "CER", "SR") 
+rownames(res.table) <- c("historical", "ungrouped t", "grouped t")
+res.table[, 1] <- sapply(1:3, function(i) mean(res.pfret[i, ], na.rm = TRUE))
+res.table[, 2] <- sapply(1:3, function(i) mean(res.pfret[i, ], na.rm = TRUE) - 
+                            sd(res.pfret[i, ], na.rm = TRUE)^2/2)
+res.table[, 3] <- sapply(1:3, function(i) mean(res.pfret[i, ], na.rm = TRUE) / 
+                            sd(res.pfret[i, ], na.rm = TRUE))
+## Print table 
+print(round(res.table*100, 3))
+
+save.image("~/Documents/work/overleaf_repos/pro/gnvmix/MDPI_risk/demo_grouped.RData")
 ##### END DEMO #######
