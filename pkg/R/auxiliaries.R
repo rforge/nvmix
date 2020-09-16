@@ -33,7 +33,7 @@ get_set_param <- function(control = list())
       newton.conv.abstol = 5e-4,
       newton.df.reltol = 2.5e-4,
       newton.logdens.abstol = 1e-2,
-      newton.df.max.iter.rqmc = 150, # 'doubling' used here!
+      newton.df.max.iter.rqmc = 350, # 'doubling' used here!
       qqplot.df.reltol = 5e-3,
       ## For fitnvmix():
       ## Algorithm specifications:
@@ -42,7 +42,7 @@ get_set_param <- function(control = list())
       laststep.do.nu = FALSE,
       resample = FALSE,
       ## Tolerances:
-      ECME.maxiter = 50,
+      ECME.maxiter = 200,
       ECME.miniter = 5,
       max.iter.locscaleupdate = 50,
       weights.abstol = NA, # currently not used

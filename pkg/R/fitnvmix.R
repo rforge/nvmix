@@ -968,7 +968,7 @@ print.fitnvmix <- function(x, ..., digits = max(3, getOption("digits") - 3)){
       "with known 'loc' vector."
    } else if(!x$do.scale){
       "with known 'scale' matrix."
-   } else "with unkown 'loc' vector and unkown 'scale' matrix."
+   } else "with unknown 'loc' vector and unknown 'scale' matrix."
    string.provided.mix <- if(x$is.mvn) "as multivariate normal" else if(x$is.mvt) 
       "as multivariate t" else "through quantile function of the mixing variable "
    cat("Normal variance mixture specified", string.provided.mix, "")
@@ -1024,7 +1024,7 @@ summary.fitnvmix <- function(object, ..., digits = max(3, getOption("digits") - 
       "with known 'loc' vector."
    } else if(!object$do.scale){
       "with known 'scale' matrix."
-   } else "with unkown 'loc' vector and unkown 'scale' matrix."
+   } else "with unknown 'loc' vector and unknown 'scale' matrix."
    string.provided.mix <- if(object$is.mvn) "as multivariate normal" else if(object$is.mvt) 
       "as multivariate t" else "through quantile function of the mixing variable "
    cat("Normal variance mixture specified", string.provided.mix, "")

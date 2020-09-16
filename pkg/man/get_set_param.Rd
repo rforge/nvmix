@@ -171,7 +171,7 @@ get_set_param(control = list())
           smaller than the number of observations. Defaults to \code{FALSE}.}
         \item{\code{ECME.miniter}, \code{ECME.maxiter}}{\code{\link{numeric}} 
         positive, minimum and maximum number
-          of ECME iterations. Default to \code{5} and \code{50}, respectively.}
+          of ECME iterations. Default to \code{5} and \code{200}, respectively.}
         \item{\code{max.iter.locscaleupdate}}{\code{\link{numeric}} positive.
           Maximum number of location-scale updates (while helding \eqn{nu} fixed)
           in each individual ECME iteration; defaults to \code{50}.}
@@ -214,7 +214,7 @@ get_set_param(control = list())
         update; defaults to \code{1e-2}.}
         \item{\code{newton.df.max.iter.rqmc}}{\code{\link{numeric}}, maximum
         number of iterations to estimate the univariate distribution function
-        required in the Newton update; defaults to \code{150}. Note that
+        required in the Newton update; defaults to \code{350}. Note that
         internally used is \code{increment = "doubling"}, no matter what.}
        }
     }
