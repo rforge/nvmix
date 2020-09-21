@@ -5,8 +5,8 @@ Title: Multivariate Normal Variance Mixtures
 Description: Functions for working with (grouped) multivariate normal variance mixture
   distributions (evaluation of distribution functions and densities,
   random number generation and parameter estimation), including
-  Student's t distribution for non-integer degrees-of-freedom as well as the grouped t 
-  distribution and copula with multiple degrees-of-freedom parameters. 
+  Student's t distribution for non-integer degrees-of-freedom as well as the grouped t
+  distribution and copula with multiple degrees-of-freedom parameters.
   See Hintz, Hofert, Lemieux (2019) <arXiv:1911.03017> for more details.
 Authors@R: c(person(given = "Marius", family = "Hofert", role = c("aut", "cre"),
                     email = "marius.hofert@uwaterloo.ca"),
@@ -18,7 +18,7 @@ Author: Marius Hofert [aut, cre], Erik Hintz [aut], Christiane Lemieux [aut]
 Maintainer: Marius Hofert <marius.hofert@uwaterloo.ca>
 Depends: R (>= 3.2.0)
 Imports: stats, methods, qrng, Matrix, copula, pcaPP
-Suggests: knitr, RColorBrewer, lattice, qrmdata,  xts
+Suggests: RColorBrewer, lattice, qrmdata, xts, knitr, rmarkdown
 Enhances:
 License: GPL (>= 3) | file LICENCE
 NeedsCompilation: yes
