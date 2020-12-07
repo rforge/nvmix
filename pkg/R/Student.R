@@ -469,7 +469,7 @@ fitgStudentcopula <- function(x, u, df.init = NULL, scale = NULL,
       ## -log-likelihood (for faster evaluation)
       nLLt <- function(nu, P, u) {
          x <- qt(u, df = nu)
-         -sum(dStudent(x, sigma = P, df = nu, log = TRUE) - rowSums(dt(x, df = nu, log = TRUE)))
+         -sum(dStudent(x, scale = P, df = nu, log = TRUE) - rowSums(dt(x, df = nu, log = TRUE)))
       }
       ## Estimate dof in each group where 'df.init' was not provided
       for(k in initNA){
