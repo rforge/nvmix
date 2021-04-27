@@ -603,6 +603,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
       if(verbose >= 2) cat("Step 1: Initial estimate for 'nu': Was provided")
       nu.est <- nu.init
       if(do.scale) scale.est <- 1/mean(qW(runif(1e4), nu.est))* SCov
+      max.ll <- sum(dStudent(x, df = nu.est, scale = scale.est, log = TRUE))
    } else if(!do.scale){
       ## 'scale' was provided => only estimate 'nu'
       if(verbose >= 2)

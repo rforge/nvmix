@@ -372,7 +372,8 @@ rStudentcopula <- function(n, df, scale = diag(2),
 ##' @param ... additional arguments passed to the underlying fitnvmix()
 ##' @return see ?fitnvmix
 ##' @author Marius Hofert
-fitStudent <- function(x, loc = NULL, scale = NULL, mix.param.bounds = c(1e-3, 1e2), ...)
+fitStudent <- function(x, loc = NULL, scale = NULL, 
+                       mix.param.bounds = c(1e-3, 1e2), ...)
 {
    fit <- fitnvmix(x, qmix = "inverse.gamma",
             loc = loc, scale = scale, mix.param.bounds = mix.param.bounds, ...)
