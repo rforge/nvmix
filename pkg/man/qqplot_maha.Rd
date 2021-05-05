@@ -26,10 +26,11 @@ qqplot_maha(x, qmix, loc, scale, plot.diag = TRUE, plot.band = TRUE,
     \code{\link{character}} string or \code{\link{function}}.}
 }
 \value{
-  \code{qqplot_maha()} (invisibly) returns a list of two: \code{maha2}, the
+  \code{qqplot_maha()} (invisibly) returns a list of three: \code{maha2}, the
   sorted Mahalanobis distances of the data in \code{x} with respect to
-  \code{loc} and \code{scale} and \code{q}, the theoretical quantiles evaluated
-  at \code{ppoints(n)} where \code{n=nrow(x)}.
+  \code{loc} and \code{scale}; \code{q}, the theoretical quantiles evaluated
+  at \code{ppoints(n)} where \code{n=nrow(x)} and \code{ldens}, the (estimated)
+  logdensity at \code{q}.
 }
 \details{
   If \eqn{X} follows a multivariate normal variance mixture, the distribution of
