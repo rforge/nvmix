@@ -6,8 +6,8 @@
   Plotting squared Mahalanobis distances against their theoretical quantiles.
 }
 \usage{
-qqplot_maha(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE,
-            control = list(), ...)
+qqplot_maha(x, qmix, loc, scale, plot.diag = TRUE, plot.band = TRUE, 
+            verbose = TRUE, control = list(), ...)
 }
 \arguments{
   \item{x}{\eqn{(n, d)}-data \code{\link{matrix}}.}
@@ -16,6 +16,8 @@ qqplot_maha(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE,
   \item{scale}{see \code{\link{pnvmix}()}.}
   \item{plot.diag}{\code{\link{logical}} indicating if the diagonal \eqn{y=x}
     shall be included in the plot.}
+  \item{plot.band}{\code{\link{logical}} indicating if a confidence interval 
+    for the empirical quantiles shall be plotted.}  
   \item{verbose}{see \code{\link{pnvmix}()}.}
   \item{control}{\code{\link{list}} specifying algorithm specific
     parameters; see \code{\link{get_set_param}()}.}
@@ -40,9 +42,9 @@ qqplot_maha(x, qmix, loc, scale, plot.diag = TRUE, verbose = TRUE,
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
-  Hintz, E., Hofert, M. and Lemieux, C. (2020),
+  Hintz, E., Hofert, M. and Lemieux, C. (2021),
   Normal variance mixtures: Distribution, density and parameter estimation.
-  \url{https://arxiv.org/abs/1911.03017}.
+  \emph{Computational Statistics and Data Analysis} 157C, 107175.
 
   McNeil, A. J., Frey, R. and Embrechts, P. (2015).
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
