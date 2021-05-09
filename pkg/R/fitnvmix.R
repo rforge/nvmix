@@ -539,10 +539,11 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
       loc.est <- if(do.loc) colMeans(x) else loc
       scale.est <- if(do.scale) as.matrix(nearPD(cov(x))$mat) else scale
       max.ll <- sum(dNorm(x, loc = loc.est, scale = scale.est, log = TRUE))
-      return(class_fitnvmix(loc = loc.est, scale = scale.est,
-                            max.ll = max.ll, n = n, d = d, is.mvn = TRUE,
-                            do.loc = do.loc, do.scale = do.scale,
-                            call = call))
+      return(class_fitnvmix(
+         loc = loc.est, scale = scale.est, max.ll = max.ll, 
+         data = x, 
+         is.mvn = TRUE, do.loc = do.loc, do.scale = do.scale,
+         call = call))
    }
    is.mvt <- # needed below to return 'df' instead of 'nu'
       (is.character(special.mix) & special.mix == "inverse.gamma")
@@ -893,7 +894,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
 
    ## Return S3-class object of type 'fitnvmix'
    return(class_fitnvmix(nu = nu.est, loc = loc.est, scale = scale.est,
-                         max.ll = max.ll, n = n, d = d,
+                         max.ll = max.ll, data = x, 
                          init.size.subsample = init.size.subsample,
                          size.subsample = size.subsample,
                          dnvmix.warn.count = dnvmix.warn.count,
@@ -912,8 +913,7 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
 #' @param scale MLE for 'scale'
 #' @param loc MLE for 'loc'
 #' @param max.ll maximum log-likelihood at MLEs
-#' @param n number of data points
-#' @param d dimension of input data
+#' @param data input data matrix
 #' @param init.size.subsample subsample size for initial parameter
 #' @param size.subsample subsample size for ECME iterations
 #' @param dnvmix.warn.count number of warnings caused by 'dnvmix()'
@@ -930,25 +930,26 @@ fitnvmix <- function(x, qmix, mix.param.bounds, nu.init = NA,
 #' @param ECME.convd logical if ECME converged
 #' @return S3 object of class 'fitnvmix'
 #' @author Erik Hintz
-class_fitnvmix <- function(nu, scale, loc, max.ll, n, d, init.size.subsample,
+class_fitnvmix <- function(nu, scale, loc, max.ll, data, init.size.subsample,
                            size.subsample, dnvmix.warn.count = 0, weights.warn.count = 0,
                            iter.converged, nu.ests.ll, qmix, is.mvn = FALSE,
                            is.mvt = FALSE, do.loc = TRUE, do.scale = TRUE,
                            call, ECME.convd){
    res <- if(is.mvn){
       list(nu = NULL, loc = loc, scale = scale, max.ll = max.ll,
+           data = data,
            warn.count = list(dnvmix = 0, weights = 0), # no warnings
            iter.converged = 0, nu.ests.ll = NULL, is.mvn = TRUE, is.mvt = FALSE,
            qmix = "constant",
            do.loc = do.loc, do.scale = do.scale,
-           n = n, d = d, init.size.subsample = NULL, size.subsample = NULL,
+           init.size.subsample = NULL, size.subsample = NULL,
            call = call, ECME.convd = TRUE)
    } else {
-      list(nu = nu, loc = loc, scale = scale, max.ll = max.ll,
+      list(nu = nu, loc = loc, scale = scale, max.ll = max.ll, data = data,
            warn.count = list(dnvmix = dnvmix.warn.count, weights = weights.warn.count),
            iter.converged = iter.converged, nu.ests.ll = nu.ests.ll, is.mvn = FALSE,
            is.mvt = is.mvt, qmix = qmix, do.loc = do.loc, do.scale = do.scale,
-           n = n, d = d, init.size.subsample = init.size.subsample,
+           init.size.subsample = init.size.subsample,
            size.subsample = size.subsample, call = call, ECME.convd = ECME.convd)
    }
    ## Return object of class 'fitnvmix'
@@ -957,11 +958,14 @@ class_fitnvmix <- function(nu, scale, loc, max.ll, n, d, init.size.subsample,
 
 ## Method 'print' for S3 class 'fitnvmix'
 print.fitnvmix <- function(x, ..., digits = max(3, getOption("digits") - 3)){
+   ## Grab dimension 'd' and sample size 'n'
+   n <- nrow(x$data)
+   d <- ncol(x$data)
    ## Print function call to fitnvmix()
    cat("Call: ", deparse(x$call), "\n", sep = "")
    ## Print information about input data
    cat(sprintf(
-      "Input data: %d %d-dimensional observations.\n", x$n, x$d))
+      "Input data: %d %d-dimensional observations.\n", n, d))
    ## Print information about the distribution (and wether 'loc'/'scale' provided)
    string.provided <- if(!x$do.loc & !x$do.scale){
       "with known 'loc' vector and known 'scale' matrix."
@@ -983,7 +987,7 @@ print.fitnvmix <- function(x, ..., digits = max(3, getOption("digits") - 3)){
                estimated.string, round(x$max.ll, digits)), sep = "")
    if(!x$is.mvn){
       ## Print subsample and convergence detection
-      if(x$size.subsample < x$n)
+      if(x$size.subsample < n)
          cat(sprintf("Estimation carried out on subsample of size %d",
                      x$size.subsample, ".", "\n"))
       convd.string <- if(x$ECME.convd) "convergence detected." else
@@ -1013,11 +1017,14 @@ print.fitnvmix <- function(x, ..., digits = max(3, getOption("digits") - 3)){
 
 ## Method 'summary' for S3 class 'fitnvmix'
 summary.fitnvmix <- function(object, ..., digits = max(3, getOption("digits") - 3)){
+   ## Grab dimension 'd' and sample size 'n'
+   n <- nrow(object$data)
+   d <- ncol(object$data)
    ## Print function call to fitnvmix()
    cat("Call: ", deparse(object$call), "\n", sep = "")
    ## Print information about input data
    cat(sprintf(
-      "Input data: %d %d-dimensional observations.\n", object$n, object$d))
+      "Input data: %d %d-dimensional observations.\n", n, d))
    ## Print information about the distribution (and wether 'loc'/'scale' provided)
    string.provided <- if(!object$do.loc & !object$do.scale){
       "with known 'loc' vector and known 'scale' matrix."
@@ -1039,7 +1046,7 @@ summary.fitnvmix <- function(object, ..., digits = max(3, getOption("digits") - 
                estimated.string, round(object$max.ll, digits)), sep = "")
    if(!object$is.mvn){
       ## Print subsample and convergence detection
-      if(object$size.subsample < object$n)
+      if(object$size.subsample < n)
          cat(sprintf("Estimation carried out on subsample of size %d",
                      object$size.subsample, ".", "\n"))
       convd.string <- if(object$ECME.convd) "convergence detected." else
@@ -1063,9 +1070,11 @@ summary.fitnvmix <- function(object, ..., digits = max(3, getOption("digits") - 
    print(object$loc, digits = digits)
    cat(estim.prov.scale, "'scale' matrix: ", '\n')
    print(object$scale, digits = digits)
+   
    ## -- up to here same as print.fitnvmix() --
+   
    cat("\n")
-   if(object$init.size.subsample < object$n)
+   if(object$init.size.subsample < n)
       cat("Initial estimate obtained from subsample of size ",
           object$init.size.subsample, ". \n", sep = "")
    print(object$nu.ests.ll)

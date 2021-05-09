@@ -6,40 +6,91 @@
   Plotting squared Mahalanobis distances against their theoretical quantiles.
 }
 \usage{
-qqplot_maha(x, qmix, loc, scale, plot.diag = TRUE, plot.band = TRUE, 
-            verbose = TRUE, control = list(), ...)
+qqplot_maha(x, qmix, loc, scale, fitnvmix_object, 
+            trafo_to_normal = FALSE, test = c("KS", "AD", "none"),
+            bootstrap_pars = list(B = 500, level = 0.95),
+            plot = TRUE, verbose = TRUE, control = list(), 
+            digits = max(3, getOption("digits") - 3), plotpars = list(), ...)
 }
 \arguments{
   \item{x}{\eqn{(n, d)}-data \code{\link{matrix}}.}
   \item{qmix}{see \code{\link{pnvmix}()}.}
   \item{loc}{see \code{\link{pnvmix}()}.}
   \item{scale}{see \code{\link{pnvmix}()}.}
-  \item{plot.diag}{\code{\link{logical}} indicating if the diagonal \eqn{y=x}
-    shall be included in the plot.}
-  \item{plot.band}{\code{\link{logical}} indicating if a confidence interval 
-    for the empirical quantiles shall be plotted.}  
+  \item{fitnvmix_object}{Optional. Object of class \code{"fitnvmix"} typically
+  returned by \code{\link{fitnvmix}()}; if provided, \code{x}, \code{qmix}, 
+  \code{loc} and \code{scale} are ignored.}
+  \item{trafo_to_normal}{\code{\link{logical}}. If \code{TRUE}, the 
+  underlying Mahalanobis distances are mapped to normals by a probability-
+  quantile-transform so that the resulting QQ plot is essentially a normal
+  QQ plot. Defaults to \code{FALSE}.}
+  \item{test}{\code{\link{character}} specifying if (and which) GoF test 
+  shall be performed. \code{"KS"} performs a Kolmogorov-Smirnoff (see
+  \code{\link{ks.test}()}), \code{"AD"} an Anderson-Darling test (see 
+  \code{\link{ad.test}()} from the package \code{ADGofTest} and \code{"none"}
+  performs no test.}
+  \item{bootstrap_pars}{\code{\link{list}} with elements \code{B} 
+  (Bootstrap sample size for computing CIs; if \code{B <= 1}, 
+  no Bootstrap is performed) and 
+  \code{level} specifying the confidence level.}
+  \item{plot}{\code{\link{logical}} specifying if the results should be 
+  plotted.}
   \item{verbose}{see \code{\link{pnvmix}()}.}
-  \item{control}{\code{\link{list}} specifying algorithm specific
-    parameters; see \code{\link{get_set_param}()}.}
+  \item{control}{see \code{\link{get_set_param}()}.}
+  \item{digits}{integer specifying the number of digits of the test
+  statistic and the p-value to be displayed.}
+  \item{plotpars}{\code{\link{list}} specifying plotting parameters such
+  as logarithmic axes; see \code{\link{get_set_qqplot_param}()}.}
   \item{\dots}{additional arguments (for example, parameters) passed to the
     underlying mixing distribution when \code{qmix} is a
     \code{\link{character}} string or \code{\link{function}}.}
 }
 \value{
-  \code{qqplot_maha()} (invisibly) returns a list of three: \code{maha2}, the
-  sorted Mahalanobis distances of the data in \code{x} with respect to
-  \code{loc} and \code{scale}; \code{q}, the theoretical quantiles evaluated
-  at \code{ppoints(n)} where \code{n=nrow(x)} and \code{ldens}, the (estimated)
-  logdensity at \code{q}.
+  \code{qqplot_maha()} (invisibly) returns an object of the class 
+  \code{"qqplot_maha"} for which the methods \code{plot()} and \code{print()}
+  are defined. The return object contains, among others, the components
+  \describe{
+    \item{\code{maha2}}{Sorted, squared Mahalanobis distances of the data
+    from \code{loc} wrt to \code{scale}.}
+    \item{\code{theo_quant}}{The theoretical quantile function
+    evaluated at \code{ppoints(length(maha2))}.}
+    \item{\code{boot_CI}}{\eqn{(2,length(maha2))} matrix containing the 
+    Bootstrap CIs for the empirical quantiles.}
+    \item{\code{asymptSE}}{\code{\link{vector}} of length \code{length(maha2)}
+    with estimated, asympotic standard errors for the empirical quantiles.}
+   }
 }
 \details{
   If \eqn{X} follows a multivariate normal variance mixture, the distribution of
   the Mahalanobis distance \eqn{D^2 = (X-\mu)^T \Sigma^{-1} (X-\mu)}
   is a gamma mixture whose distribution function can be approximated.
-  The function \code{qqplot_maha()} plots the empirical Mahalanobis distances
+  
+  The function \code{qqplot_maha()} first estimates the theoretical quantiles 
+  by calling \code{\link{qgammamix}()} and then plots those against 
+  the empirical squared Mahalanobis distances
   from the data in \code{x} (with \eqn{\mu=}\code{loc} and
-  \eqn{Sigma=}\code{scale}) versus their theoretical quantiles which are
-  internally estimated via the function \code{\link{qgammamix}()}.
+  \eqn{\Sigma=}\code{scale}). Furthermore, the function computes 
+  asymptotic standard errors of the sample quantiles by using an asymptotic 
+  normality result for the order statistics which
+  are used to plot the asymptotic CI; see Fox (2008, p. 35 -- 36).+
+  
+  If \code{bootstrap_pars$B > 1} (which is the default), the function additionally
+  performs Bootstrap to construct a CI. Note that by default, the plot contains
+  both the asymptotic and the Bootstrap CI. 
+  
+  Finally, depending on the parameter \code{test}, the function performs a 
+  univariate GoF test of the observed Mahalanobis distances as described above.
+  The test result (i.e., the value of the statistic along with a p-value) are
+  typically plotted on the second y-axis. 
+  
+  The return object of class \code{"qqplot_maha"} contains all computed values
+  (such as p-value, test-statistics, Bootstrap CIs and more). We highlight that 
+  storing this return object makes the QQ plot
+  quickly reproducible, as in this case, the theoretical quantiles do not need
+  to be recomputed. 
+  
+  For changing plotting parameters (such as logarithmic axes or colors) 
+  via the argument \code{plotpars}, see \code{\link{get_set_qqplot_param}()}.
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
@@ -52,7 +103,8 @@ qqplot_maha(x, qmix, loc, scale, plot.diag = TRUE, plot.band = TRUE,
   Princeton University Press.
 }
 \seealso{
-  \code{\link{fitnvmix}()}, \code{\link{rnvmix}()}, \code{\link{pnvmix}()}
+  \code{\link{fitnvmix}()}, \code{\link{get_set_qqplot_param}()}, 
+  \code{\link{rnvmix}()}, \code{\link{pnvmix}()}, \code{\link{dnvmix}()}
 }
 \examples{
 ## Setup

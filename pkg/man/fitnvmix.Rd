@@ -88,6 +88,7 @@ fitNorm(x)
     \item{\code{loc}}{Estimated or provided \code{loc} vector.}
     \item{\code{scale}}{Estimated or provided \code{scale} matrix.}
     \item{\code{max.ll}}{Estimated log-likelihood at reported estimates.}
+    \item{\code{x}}{Input data matrix \code{x}.}
    }
    The methods \code{print()}, \code{summary()} and \code{plot()} are defined 
    for the class \code{"fitnvmix"}.
