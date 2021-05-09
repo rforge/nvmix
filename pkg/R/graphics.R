@@ -205,10 +205,10 @@ print.qqplot_maha <- function(x, ..., digits = max(3, getOption("digits") - 3)){
    cat("\n")
    ## Provide sample size
    cat(paste0("Input: ", length(x$maha2), " squared Mahalanobis distances."), "\n")
-   cat("\n")
    ## Check 'trafo_to_normal'
    if(x$trafo_to_normal)
       cat("Squared Mahalanobis distances were transformed to N(0, 1).", "\n", sep = "")
+   cat("\n")
    ## Check if a test was performed
    test_text <- if(is.null(x$testout)) "No GoF test performed." else {
       paste0(x$testout$method, ": D = ", round(x$testout$statistic, digits), ", p = ", 
