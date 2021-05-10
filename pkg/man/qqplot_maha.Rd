@@ -7,10 +7,10 @@
 }
 \usage{
 qqplot_maha(x, qmix, loc, scale, fitnvmix_object, 
-            trafo_to_normal = FALSE, test = c("KS", "AD", "none"),
-            bootstrap_pars = list(B = 500, level = 0.95),
+            trafo.to.normal = FALSE, test = c("KS", "AD", "none"),
+            boot.pars = list(B = 500, level = 0.95),
             plot = TRUE, verbose = TRUE, control = list(), 
-            digits = max(3, getOption("digits") - 3), plotpars = list(), ...)
+            digits = max(3, getOption("digits") - 3), plot.pars = list(), ...)
 }
 \arguments{
   \item{x}{\eqn{(n, d)}-data \code{\link{matrix}}.}
@@ -20,7 +20,7 @@ qqplot_maha(x, qmix, loc, scale, fitnvmix_object,
   \item{fitnvmix_object}{Optional. Object of class \code{"fitnvmix"} typically
   returned by \code{\link{fitnvmix}()}; if provided, \code{x}, \code{qmix}, 
   \code{loc} and \code{scale} are ignored.}
-  \item{trafo_to_normal}{\code{\link{logical}}. If \code{TRUE}, the 
+  \item{trafo.to.normal}{\code{\link{logical}}. If \code{TRUE}, the 
   underlying Mahalanobis distances are mapped to normals by a probability-
   quantile-transform so that the resulting QQ plot is essentially a normal
   QQ plot. Defaults to \code{FALSE}.}
@@ -29,7 +29,7 @@ qqplot_maha(x, qmix, loc, scale, fitnvmix_object,
   \code{\link{ks.test}()}), \code{"AD"} an Anderson-Darling test (see 
   \code{\link{ad.test}()} from the package \code{ADGofTest} and \code{"none"}
   performs no test.}
-  \item{bootstrap_pars}{\code{\link{list}} with elements \code{B} 
+  \item{boot.pars}{\code{\link{list}} with elements \code{B} 
   (Bootstrap sample size for computing CIs; if \code{B <= 1}, 
   no Bootstrap is performed) and 
   \code{level} specifying the confidence level.}
@@ -39,7 +39,7 @@ qqplot_maha(x, qmix, loc, scale, fitnvmix_object,
   \item{control}{see \code{\link{get_set_param}()}.}
   \item{digits}{integer specifying the number of digits of the test
   statistic and the p-value to be displayed.}
-  \item{plotpars}{\code{\link{list}} specifying plotting parameters such
+  \item{plot.pars}{\code{\link{list}} specifying plotting parameters such
   as logarithmic axes; see \code{\link{get_set_qqplot_param}()}.}
   \item{\dots}{additional arguments (for example, parameters) passed to the
     underlying mixing distribution when \code{qmix} is a
@@ -74,7 +74,7 @@ qqplot_maha(x, qmix, loc, scale, fitnvmix_object,
   normality result for the order statistics which
   are used to plot the asymptotic CI; see Fox (2008, p. 35 -- 36).+
   
-  If \code{bootstrap_pars$B > 1} (which is the default), the function additionally
+  If \code{boot.pars$B > 1} (which is the default), the function additionally
   performs Bootstrap to construct a CI. Note that by default, the plot contains
   both the asymptotic and the Bootstrap CI. 
   
@@ -90,7 +90,7 @@ qqplot_maha(x, qmix, loc, scale, fitnvmix_object,
   to be recomputed. 
   
   For changing plotting parameters (such as logarithmic axes or colors) 
-  via the argument \code{plotpars}, see \code{\link{get_set_qqplot_param}()}.
+  via the argument \code{plot.pars}, see \code{\link{get_set_qqplot_param}()}.
 }
 \author{Erik Hintz, Marius Hofert and Christiane Lemieux}
 \references{
@@ -107,22 +107,57 @@ qqplot_maha(x, qmix, loc, scale, fitnvmix_object,
   \code{\link{rnvmix}()}, \code{\link{pnvmix}()}, \code{\link{dnvmix}()}
 }
 \examples{
-## Setup
-n     <- 15
-d     <- 2
-df    <- 3.1 # degree-of-freedom parameter
-loc   <- rep(0, d)
-scale <- diag(d)
+## Sample from a heavy tailed multivariate t and construct QQ plot
+set.seed(1)
+d <- 2
+n <- 1000
+df <- 3.1
+rho <- 0.5
+loc <- rep(0, d)
+scale <- matrix(c(1, rho, rho, 1), ncol = 2)
+qmix <- "inverse.gamma"
+## Sample data 
+x <- rnvmix(n, qmix = qmix, loc = loc, scale = scale, df = df)
+# Construct QQ Plot with 'true' parameters and store result object
+qq1 <- qqplot_maha(x, qmix = qmix, df = df, loc = loc, scale = scale)
+## ... which is an object of class "qqplot_maha" with two methods
+stopifnot(class(qq1) == "qqplot_maha", "plot.qqplot_maha" \%in\% methods(plot),
+          "print.qqplot_maha" \%in\% methods(print))
+plot(qq1) # reproduce the plot
+plot(qq1, plotpars = list(log = "xy")) # we can also plot on log-log scale
+
+## In fact, with the 'plotpars' argument, we can change a lot of things
+plot(qq1, plotpars = list(col = rep("black", 4), lty = 4:6, pch = "*",  
+                          plot_test = FALSE, main = "Same with smaller y limits",
+                          sub = "MySub", xlab = "MyXlab", ylim = c(0, 1.5e3)))
+
+## What about estimated parameters?
+myfit <- fitStudent(x)
+## We can conveniently pass 'myfit', rather than specifying 'x', 'loc', ...
+set.seed(1)
+qq2.1 <- qqplot_maha(fitnvmix_object = myfit, test = "AD", trafo_to_normal = TRUE)
+set.seed(1)
+qq2.2 <- qqplot_maha(x, qmix = "inverse.gamma", loc = myfit$loc, 
+                     scale = myfit$scale, df = myfit$df, 
+                     test = "AD", trafo_to_normal = TRUE)
+stopifnot(all.equal(qq2.1$boot_CI, qq2.2$boot_CI)) # check 
+qq2.2 # it mentions here that the Maha distances were transformed to normal 
+
+
+## Another example where 'qmix' is a function, so quantiles are internally
+## estimated via 'qgammamix()'
+n <- 15 # small sample size to have examples run fast
 ## Define the quantile function of an IG(nu/2, nu/2) distribution
 qmix <- function(u, df) 1 / qgamma(1 - u, shape = df/2, rate = df/2)
 ## Sample data
-set.seed(1) # for reproducibility
 x <- rnvmix(n, qmix = qmix, df = df, loc = loc, scale = scale)
 ## QQ Plot of empirical quantiles vs true quantiles, all values estimated 
 ## via RQMC:
-qqplot_maha(x, qmix = qmix, loc = loc, scale = scale, df = df)
+set.seed(1)
+qq3.1 <- qqplot_maha(x, qmix = qmix, loc = loc, scale = scale, df = df)
 ## Same could be obtained by specifying 'qmix' as string in which case
-## qqplot_maha() calls qf()
-qqplot_maha(x, qmix = "inverse.gamma", loc = loc, scale = scale, df = df)
+## qqplot_maha() calls qf() 
+set.seed(1)
+qq3.2 <- qqplot_maha(x, qmix = "inverse.gamma", loc = loc, scale = scale, df = df)
 }
 \keyword{distribution}

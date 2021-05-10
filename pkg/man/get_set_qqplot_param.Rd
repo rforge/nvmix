@@ -6,10 +6,10 @@
   \code{qqplot_maha}.
 }
 \usage{
-get_set_qqplot_param(plotpars = list(log = ""))
+get_set_qqplot_param(plot.pars = list(log = ""))
 }
 \arguments{
-  \item{plotpars}{\code{\link{list}} specifying plotting
+  \item{plot.pars}{\code{\link{list}} specifying plotting
     parameters to be set; see below under details.}
 }
 \value{
@@ -17,17 +17,17 @@ get_set_qqplot_param(plotpars = list(log = ""))
   that is passed to \code{\link{qqplot_maha}()}, more specifically, to the
   underlying \code{plot()} method. 
   Parameter values passed to \code{get_set_qqplot_param()} via the
-  \code{plotpars} argument overwrite the defaults; for parameters not
-  specified in the \code{plotpars} argument, the default values are being
+  \code{plot.pars} argument overwrite the defaults; for parameters not
+  specified in the \code{plot.pars} argument, the default values are being
   returned.
 }
 \details{
   This function provides a convenient way to set plotting parameters in the 
-  argument \code{plotpars} of the 
+  argument \code{plot.pars} of the 
   function \code{\link{qqplot_maha}()} (more precisely, the underlying
   \code{plot()} method), such as logarithmic plotting, colors, linetypes and more. 
   
-  The input list \code{plotpars} can contain any of the following:
+  The input list \code{plot.pars} can contain any of the following:
 
   \describe{
     \item{\code{log}}{\code{\link{character}} specifying the logarithmic 
@@ -59,6 +59,8 @@ get_set_qqplot_param(plotpars = list(log = ""))
 \seealso{
   \code{\link{qqplot_maha}()}}
 \examples{
-get_set_qqplot_param(plotpars = list()) # obtain defaults
+get_set_qqplot_param(plot.pars = list()) # obtain defaults
+
+## See ?qqplot_maha() for more examples.
 }
 \keyword{distribution}

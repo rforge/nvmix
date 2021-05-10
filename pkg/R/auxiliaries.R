@@ -3,17 +3,17 @@
 ##' @title  Retrieve specific default parameters for plotting and overwrite them
 ##' @return list with default (or changed) values used in 'plot.qqplot_maha()'
 ##' @author Erik Hintz and Marius Hofert
-get_set_qqplot_param <- function(plotpars = list(log = "")){
+get_set_qqplot_param <- function(plot.pars = list(log = "")){
    ## Set up default pars:
    pars <- 
       list(log = "", xlim = NULL, ylim = NULL, xlab = "Theoretical quantiles", 
            ylab = "Sample quantiles", sub = "", main = "", plot_legend = TRUE, 
            plot_test = TRUE, plot_line = TRUE, pch = 1,  lty = 1:3, 
            col = c("black", "red", "azure4", "chocolate4"))
-   if(length(plotpars) > 0){
+   if(length(plot.pars) > 0){
       ## If input provided, grab input controls and overwrite:
       names.default <- names(pars)
-      pars[(names.provided <- names(plotpars))] <- plotpars
+      pars[(names.provided <- names(plot.pars))] <- plot.pars
       if (length(unmatched <- names.provided[!names.provided %in% names.default]))
          warning("Unknown names in control: ", paste(unmatched, collapse = ", "))
    }
