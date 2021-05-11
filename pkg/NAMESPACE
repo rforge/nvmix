@@ -52,3 +52,4 @@ S3method(summary, fitgStudentcopula)
 
 S3method(plot, qqplot_maha)
 S3method(print, qqplot_maha)
+S3method(testtext, qqplot_maha)

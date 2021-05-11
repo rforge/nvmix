@@ -1,5 +1,41 @@
 ### QQ-plot of Mahalanobis distances for visual GOF ############################
 
+
+
+#' Perform univariate goodness-of-fit test
+#'
+#' @param maha2 data vector (typically, squared maha distance)
+#' @param theodf a function of one argument; theoretical df against which test 
+#'        is performed
+#' @param test character, one of c("KS.AD", "KS", "AD", "none") 
+#'        where "KS" = Kolm. Smirn. and "AD" = And. Darl. 
+#' @return either NULL, otherwise a list with one or two elements,
+#'         each of which is the result returned by ks.test() and the other is 
+#'         ad.test(). The attribute gives a displayable string for the legend
+#' @author Erik Hintz
+        
+gof_test <- function(maha2, theodf, test = c("KS.AD", "KS", "AD", "none")){
+   test <- match.arg(test)
+   res <- if(test == "none") NULL else if(test == "KS"){
+      KS.out <- ks.test(maha2, y = theodf)
+      KS.out$method <- "Kolm. Smirn. GoF test" # shorter
+      list(KS.out = KS.out)
+   } else {
+      AD.out <- ad.test(maha2, distr.fun = theodf)
+      AD.out$method <- "And. Darl. GoF test"
+      if(test == "KS.AD"){
+         KS.out <- ks.test(maha2, y = theodf)
+         KS.out$method <- "Kolm. Smirn. GoF test" # shorter
+         list(KS.out = KS.out, AD.out = AD.out)
+      } else {
+         list(AD.out = AD.out)
+      }
+   }
+   res
+}
+   
+
+
 ##' @title QQ Plot of Mahalanobis distances versus their theoretical quantiles
 ##' @param x (n,d) data matrix
 ##' @param qmix see ?pnvmix()
@@ -23,10 +59,11 @@
 ##' @return invisibly returns an object of class 'qqplot_maha'. 
 ##' @author Erik Hintz, Marius Hofert, Christiane Lemieux
 qqplot_maha <- function(x, qmix, loc, scale, fitnvmix_object, 
-                        trafo.to.normal = FALSE, test = c("KS", "AD", "none"),
+                        trafo.to.normal = FALSE, test = c("KS.AD", "KS", "AD", 
+                                                          "none"),
                         boot.pars = list(B = 500, level = 0.95),
                         plot = TRUE, verbose = TRUE, control = list(), 
-                        digits = max(3, getOption("digits") - 3),
+                        digits = max(3, getOption("digits") - 4),
                         plot.pars = list(), ...){
    ## Initialize and check inputs
    control <- get_set_param(control)
@@ -89,16 +126,7 @@ qqplot_maha <- function(x, qmix, loc, scale, fitnvmix_object,
             names = FALSE) # (2, n) matrix 
    } else NULL
    ## Compute test statistic
-   testout <- switch(test, 
-                     "KS" = {
-                        tmp <- ks.test(maha2, y = theodf)
-                        tmp$method <- "Kolmogorov-Smirnov GoF test" # shorter
-                        tmp
-                     }, 
-                     "AD" = {
-                        ad.test(maha2, distr.fun = theodf)
-                     },
-                     NULL) # for "none" or anything else
+   testout <- gof_test(maha2, theodf = theodf, test = test)
    ## Create S3-class object of type 'qqplot_maha'
    out <- class_qqplot_maha(
       maha2 = maha2, theo_quant = theo_quant$q, boot_CI = boot_CI, 
@@ -138,7 +166,7 @@ class_qqplot_maha <- function(maha2, theo_quant, boot_CI, trafo.to.normal, asymp
 }
 
 ## Method 'print' for S3 class 'qqplot_maha'
-print.qqplot_maha <- function(x, ..., digits = max(3, getOption("digits") - 3)){
+print.qqplot_maha <- function(x, ..., digits = max(3, getOption("digits") - 4)){
    ## Print function call to qqplot_maha()
    cat("Call: ", deparse(x$call), "\n", sep = "")
    cat("\n")
@@ -149,10 +177,7 @@ print.qqplot_maha <- function(x, ..., digits = max(3, getOption("digits") - 3)){
       cat("Squared Mahalanobis distances were transformed to N(0, 1).", "\n", sep = "")
    cat("\n")
    ## Check if a test was performed
-   test_text <- if(is.null(x$testout)) "No GoF test performed." else {
-      paste0(x$testout$method, ": D = ", round(x$testout$statistic, digits), ", p = ", 
-             format(x$testout$p.value, scientific = TRUE, digits = digits), ".")
-   }
+   test_text <- testtext(x, breaktext = TRUE, digits = digits)
    cat(test_text, "\n")
    cat("\n")
    cat("Computed results stored in the object:", "\n")
@@ -169,15 +194,12 @@ print.qqplot_maha <- function(x, ..., digits = max(3, getOption("digits") - 3)){
 
 ## Method 'plot' for S3 class 'qqplot_maha'
 plot.qqplot_maha <- 
-   function(x, ..., digits = max(3, getOption("digits") - 3), plot.pars = list())
+   function(x, ..., digits = max(3, getOption("digits") - 4), plot.pars = list())
 {
    ## Set parameters
    plot.pars <- get_set_qqplot_param(plot.pars)
    ## Construct the text for the axis
-   axistext <- if(is.null(x$testout)) "" else {
-      paste0(x$testout$method, ": D = ", round(x$testout$statistic, digits), 
-             ", p = ", format(x$testout$p.value, scientific = TRUE, 
-                               digits = digits), ".")}
+   axistext <- testtext(x, digits = digits)
    ## Plot
    plot(x$theo_quant, x$maha2, xlab = plot.pars$xlab, ylab = plot.pars$ylab,
         xlim = plot.pars$xlim, ylim = plot.pars$ylim, main = plot.pars$main,
@@ -185,7 +207,8 @@ plot.qqplot_maha <-
         col = plot.pars$col[1])
    ## Add line
    if(plot.pars$plot_line)
-      abline(x$int, x$slope, lty = plot.pars$lty[1], col = plot.pars$col[2])
+      abline(x$int, x$slope, lty = plot.pars$lty[1], col = plot.pars$col[2],
+             untf = TRUE)
    ## Add asymptotic CI 
    for(i in c(-1, 1))
       lines(x$theo_quant, x$maha2 + i * x$asymptSE, lty = plot.pars$lty[2], 
@@ -210,3 +233,39 @@ plot.qqplot_maha <-
    invisible(x)
 }
 
+
+## Method testtext() for "qqplot_maha"
+testtext <- function(x, breaktext, digits) { 
+   UseMethod("testtext") # name of the generic function
+}
+
+testtext.qqplot_maha <- function(x, breaktext = FALSE, 
+                                 digits = max(3, getOption("digits") - 4)) {
+   if(is.null(x$testout)) "No GoF test performed." else {
+      if(length(x$testout) == 2){
+         if(breaktext){
+            paste0("KS test: D = ", round(x$testout$KS.out$statistic, digits),
+                   ", p = ", format(x$testout$KS.out$p.value, scientific = TRUE, 
+                                    digits = digits), "\n", "AD test: D = ", 
+                   round(x$testout$AD.out$statistic, digits),
+                   ", p = ", format(x$testout$AD.out$p.value, scientific = TRUE, 
+                                    digits = digits), ".")
+         } else {
+            paste0("KS test/AD test: D = ", round(x$testout$KS.out$statistic, digits),
+                   " / ", round(x$testout$AD.out$statistic, digits), " ; p = ",
+                   format(x$testout$KS.out$p.value, scientific = TRUE, 
+                          digits = digits), " / ", 
+                   format(x$testout$AD.out$p.value, scientific = TRUE, 
+                          digits = digits), ".")
+         }
+      } else {
+         stopifnot(length(x$testout) == 1)
+         paste0(x$testout[[1]]$method, ": D = ", round(x$testout[[1]]$statistic, digits), 
+                ", p = ", 
+                format(x$testout[[1]]$p.value, scientific = TRUE, digits = digits),
+                ".")
+         
+      }
+   }
+   
+}

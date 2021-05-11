@@ -10,7 +10,7 @@ qqplot_maha(x, qmix, loc, scale, fitnvmix_object,
             trafo.to.normal = FALSE, test = c("KS", "AD", "none"),
             boot.pars = list(B = 500, level = 0.95),
             plot = TRUE, verbose = TRUE, control = list(), 
-            digits = max(3, getOption("digits") - 3), plot.pars = list(), ...)
+            digits = max(3, getOption("digits") - 4), plot.pars = list(), ...)
 }
 \arguments{
   \item{x}{\eqn{(n, d)}-data \code{\link{matrix}}.}
