@@ -7,7 +7,7 @@
 }
 \usage{
 qqplot_maha(x, qmix, loc, scale, fitnvmix_object, 
-            trafo.to.normal = FALSE, test = c("KS", "AD", "none"),
+            trafo.to.normal = FALSE, test = c("KS.AD", "KS", "AD", "none"),
             boot.pars = list(B = 500, level = 0.95),
             plot = TRUE, verbose = TRUE, control = list(), 
             digits = max(3, getOption("digits") - 4), plot.pars = list(), ...)
@@ -28,7 +28,8 @@ qqplot_maha(x, qmix, loc, scale, fitnvmix_object,
   shall be performed. \code{"KS"} performs a Kolmogorov-Smirnoff (see
   \code{\link{ks.test}()}), \code{"AD"} an Anderson-Darling test (see 
   \code{\link{ad.test}()} from the package \code{ADGofTest} and \code{"none"}
-  performs no test.}
+  performs no test. By default, \code{test = "KS.AD"} in which case both tests
+  are performed.}
   \item{boot.pars}{\code{\link{list}} with elements \code{B} 
   (Bootstrap sample size for computing CIs; if \code{B <= 1}, 
   no Bootstrap is performed) and 
